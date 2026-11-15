@@ -84,7 +84,8 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          # Robolectric SDK 36 requires Java 21 (confirmed by JUnit XML).
+          java-version: '21'
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '9.3.1'
