@@ -1,0 +1,82 @@
+name: Repair uploaded integrated Android source ZIP (staging only)
+on:
+  push:
+    branches: [feature/openai-chat-staging]
+    paths: ['.github/workflows/repair-integrated-source-zip.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  correct-uploaded-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Correct Kotlin unit-test signatures directly inside source archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          from tempfile import NamedTemporaryFile
+          import os, zipfile
+          src = Path('Cash-N-Carry-Staging-Upload-Under-25MB.zip')
+          assert src.is_file(), 'Integrated source missing'
+          target = 'app/src/test/java/com/example/data/remote/CloudflareSyncRepositoryTest.kt'
+          regression = 'scripts/test_staging_source.py'
+          old = 'storage.saveSession(token = "c".repeat(64), userId = "buyer-2", email = "amina@example.ng", role = "buyer")'
+          fixed = 'storage.saveSession(token = "c".repeat(64), sessionCookie = null, userId = "buyer-2", email = "amina@example.ng", role = "buyer")'
+          test_method = '''    def test_cloudflare_session_test_calls_supply_cookie_parameter(self):
+                  source = (ANDROID / 'src/test/java/com/example/data/remote/CloudflareSyncRepositoryTest.kt').read_text()
+                  self.assertNotIn('storage.saveSession(token = "c".repeat(64), userId =', source)
+                  self.assertEqual(source.count('storage.saveSession(token = "c".repeat(64), sessionCookie = null,'), 2)
+
+          '''
+          with NamedTemporaryFile(suffix='.zip', delete=False, dir='.') as temporary:
+              temp_path = Path(temporary.name)
+          try:
+              with zipfile.ZipFile(src) as zin, zipfile.ZipFile(temp_path, 'w') as zout:
+                  assert zin.namelist().count(target) == 1
+                  assert zin.namelist().count(regression) == 1
+                  for info in zin.infolist():
+                      b = zin.read(info.filename)
+                      if info.filename == target:
+                          t = b.decode('utf-8')
+                          if old in t:
+                              assert t.count(old) == 2, f'Unexpected old signatures: {t.count(old)}'
+                              t = t.replace(old, fixed)
+                          assert t.count(fixed) == 2
+                          b = t.encode('utf-8')
+                      elif info.filename == regression:
+                          t = b.decode('utf-8')
+                          marker = '    def test_preserved_android_identity_and_signing(self):'
+                          assert marker in t
+                          if 'test_cloudflare_session_test_calls_supply_cookie_parameter' not in t:
+                              t = t.replace(marker, test_method + marker, 1)
+                          b = t.encode('utf-8')
+                      zout.writestr(info, b)
+              with zipfile.ZipFile(temp_path) as z:
+                  assert z.testzip() is None
+              assert temp_path.stat().st_size < 25_000_000
+              os.replace(temp_path, src)
+          finally:
+              temp_path.unlink(missing_ok=True)
+          PY
+          mkdir -p _source_verification
+          unzip -q Cash-N-Carry-Staging-Upload-Under-25MB.zip -d _source_verification
+          python3 -m unittest discover -s _source_verification/scripts -p 'test_*.py' -v
+      - name: Commit corrected source archive to staging branch only
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add Cash-N-Carry-Staging-Upload-Under-25MB.zip
+          if git diff --cached --quiet; then
+            echo 'Source already corrected'
+            exit 0
+          fi
+          git commit -m 'fix(android): correct sessionCookie arguments in integrated source unit tests'
+          git push origin HEAD:feature/openai-chat-staging
