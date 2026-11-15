@@ -30,7 +30,9 @@ jobs:
           mkdir -p android
           unzip -q "$SOURCE_ZIP" -d android
           test -f android/app/build.gradle.kts || { echo "Not an Android Gradle project"; exit 1; }
-      - name: Apply Android authentication repair\n        run: python3 deploy/android/patch-auth.py\n      - uses: actions/setup-java@v4
+      - name: Apply Android authentication repair
+        run: python3 deploy/android/patch-auth.py
+      - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
