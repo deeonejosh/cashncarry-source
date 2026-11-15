@@ -30,5 +30,20 @@ if source.count(old) == 2:
     source = source.replace(old, new)
 elif old in source or source.count(new) != 2:
     raise SystemExit('Unexpected Android session test contract: refusing blind patch')
+old_name = 'fun updateProfile_andCheckout_sendBearerTokenAndIdempotentRequestId()'
+new_name = 'fun updateProfile_sendsBearerTokenAndCheckoutFailsClosedInStaging()'
+old_assertions = '''        val checkoutRes = repository.checkoutCart(requestId = "req-idem-001", addressId = "addr-1")
+        assertTrue(checkoutRes is CloudflareResult.Success)
+        assertEquals("CNC-2026-8841", (checkoutRes as CloudflareResult.Success).data)
+        val checkoutCall = recordedRequests.last { it.path == "/api/checkout" }
+        assertEquals("req-idem-001", JSONObject(checkoutCall.body).getString("request_id"))'''
+new_assertions = '''        val checkoutRes = repository.checkoutCart(requestId = "req-idem-001", addressId = "addr-1")
+        assertTrue(checkoutRes is CloudflareResult.Failure)
+        assertEquals("PAYMENTS_DISABLED", (checkoutRes as CloudflareResult.Failure).code)
+        assertTrue(recordedRequests.none { it.path == "/api/checkout" })'''
+if source.count(old_name) == 1 and source.count(old_assertions) == 1:
+    source = source.replace(old_name, new_name, 1).replace(old_assertions, new_assertions, 1)
+elif source.count(new_name) != 1 or source.count(new_assertions) != 1:
+    raise SystemExit('Unexpected staging checkout test state: refusing blind patch')
 android_test.write_text(source, encoding='utf-8')
-print('Reviewed storefront route and two session test fixtures verified')
+print('Reviewed storefront route, session fixtures, and payments-disabled checkout test verified')
