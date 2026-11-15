@@ -91,3 +91,27 @@ g = g.replace('versionCode = 1', 'versionCode = 2', 1).replace('versionName = "1
 gradle.write_text(g)
 # Avoid silently swallowing Google auth cancellation in the UI.
 assert 'onAuthCancelled = {' in s, "Google cancellation handler not found"
+
+# Harden the Cloudflare client: never accept HTML/SPA fallbacks as successful API JSON.
+api = Path("android/app/src/main/java/com/example/data/remote/CloudflareSyncRepository.kt")
+a = api.read_text()
+old = """                val obj = runCatching {
+                    if (raw.isNotBlank()) JSONObject(raw) else JSONObject()
+                }.getOrDefault(JSONObject())
+
+                if (!res.isSuccessful) {"""
+new = """                val contentType = res.header("Content-Type").orEmpty()
+                val obj = runCatching { JSONObject(raw) }.getOrNull()
+                if (obj == null || !contentType.contains("application/json", ignoreCase = true)) {
+                    return CloudflareResult.Failure(
+                        statusCode = res.code,
+                        code = "INVALID_API_RESPONSE",
+                        message = "Cloudflare authentication API returned a non-JSON response. Check the staging Worker route."
+                    )
+                }
+
+                if (!res.isSuccessful) {"""
+assert old in a, "Cloudflare JSON response anchor missing"
+a = a.replace(old, new, 1)
+api.write_text(a)
+print("Cloudflare API now rejects HTML fallback and malformed JSON responses")
