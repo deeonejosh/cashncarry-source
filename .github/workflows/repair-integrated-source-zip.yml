@@ -1,4 +1,4 @@
-name: Finalize Cloudflare Android login validation in uploaded staging source
+name: Clean up Cloudflare Android Compose test imports (staging only)
 on:
   push:
     branches: [feature/openai-chat-staging]
@@ -7,121 +7,46 @@ on:
 permissions:
   contents: write
 jobs:
-  correct-integrated-source:
+  fix-test-import:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - name: Add inline password validation and correct Compose test in the uploaded source
+      - name: Remove incorrect Compose assertExists import from integrated Android source
         shell: bash
         run: |
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
-          import zipfile, os
+          import os, zipfile
           src = Path('Cash-N-Carry-Staging-Upload-Under-25MB.zip')
           dest = Path('Cash-N-Carry-Staging-Upload-Under-25MB.tmp.zip')
-          ui = 'app/src/main/java/com/example/ui/auth/AuthComponents.kt'
-          test = 'app/src/test/java/com/example/ui/auth/AuthComponentsTest.kt'
-          regression = 'scripts/test_staging_source.py'
-          anchor = '\n'.join([
-              '                                        modifier = Modifier',
-              '                                            .fillMaxWidth()',
-              '                                            .testTag("login_password_input")',
-              '                                    )',
-              '',
-              '                                    Row(',
-          ])
-          new_anchor = '\n'.join([
-              '                                        modifier = Modifier',
-              '                                            .fillMaxWidth()',
-              '                                            .testTag("login_password_input")',
-              '                                    )',
-              '                                    if (password.isNotEmpty() && password.length < CloudflareEndpoints.MIN_PASSWORD_LENGTH) {',
-              '                                        Text(',
-              '                                            text = "Password must be at least 12 characters.",',
-              '                                            color = LiveCrimson,',
-              '                                            style = MaterialTheme.typography.bodySmall,',
-              '                                            modifier = Modifier.testTag("login_password_length_hint")',
-              '                                        )',
-              '                                    }',
-              '',
-              '                                    Row(',
-          ])
-          oldtest = '\n'.join([
-              '        composeRule.onNodeWithTag("login_password_input").performTextInput("short123")',
-              '        composeRule.onNodeWithTag("login_submit_button").performClick()',
-              '        composeRule.waitForIdle()',
-              '',
-              '        composeRule.onNodeWithTag("auth_error_banner").performScrollTo().assertIsDisplayed()',
-          ])
-          newtest = '\n'.join([
-              '        composeRule.onNodeWithTag("login_password_input").performTextInput("short123")',
-              '        composeRule.waitForIdle()',
-              '        composeRule.onNodeWithTag("login_password_length_hint", useUnmergedTree = true).assertExists()',
-              '        composeRule.onNodeWithTag("login_submit_button").assertIsNotEnabled()',
-              '        composeRule.onNodeWithTag("login_password_input").performTextInput("4567")',
-              '        composeRule.waitForIdle()',
-              '        composeRule.onNodeWithTag("login_submit_button").assertIsEnabled()',
-          ])
+          target = 'app/src/test/java/com/example/ui/auth/AuthComponentsTest.kt'
+          wrong = 'import androidx.compose.ui.test.assertExists\n'
           with zipfile.ZipFile(src) as zin, zipfile.ZipFile(dest, 'w') as zout:
-              expected = {ui, test, regression}
-              assert expected.issubset(zin.namelist())
-              for info in zin.infolist():
-                  raw = zin.read(info.filename)
-                  if info.filename == ui:
-                      text = raw.decode('utf-8')
-                      start = text.index('AuthFlowStep.LOGIN -> Column')
-                      end = text.index('AuthFlowStep.CREATE_ACCOUNT -> Column', start)
-                      fragment = text[start:end]
-                      assert fragment.count(anchor) == 1
-                      assert fragment.count('enabled = !isLoading,') == 1
-                      fragment = fragment.replace(anchor, new_anchor, 1)
-                      fragment = fragment.replace('enabled = !isLoading,', 'enabled = !isLoading && email.isNotBlank() && password.length >= CloudflareEndpoints.MIN_PASSWORD_LENGTH,', 1)
-                      text = text[:start] + fragment + text[end:]
-                      raw = text.encode('utf-8')
-                  elif info.filename == test:
-                      text = raw.decode('utf-8')
-                      assert text.count(oldtest) == 1
-                      text = text.replace(oldtest, newtest, 1)
-                      text = text.replace('import androidx.compose.ui.test.assertIsDisplayed', 'import androidx.compose.ui.test.assertIsDisplayed\nimport androidx.compose.ui.test.assertExists\nimport androidx.compose.ui.test.assertIsEnabled\nimport androidx.compose.ui.test.assertIsNotEnabled', 1)
-                      raw = text.encode('utf-8')
-                  elif info.filename == regression:
-                      text = raw.decode('utf-8')
-                      original = '    def test_auth_validation_banner_scrolls_into_view(self):'
-                      marker = '    def test_preserved_android_identity_and_signing(self):'
-                      assert original in text and marker in text
-                      start = text.index(original)
-                      end = text.index(marker, start)
-                      method = '\n'.join([
-                          '    def test_login_validation_is_reactive_and_blocks_short_passwords(self):',
-                          '        ui = (ANDROID / "src/main/java/com/example/ui/auth/AuthComponents.kt").read_text()',
-                          '        test = (ANDROID / "src/test/java/com/example/ui/auth/AuthComponentsTest.kt").read_text()',
-                          '        self.assertIn(\'.testTag("login_password_length_hint")\', ui)',
-                          '        self.assertIn("email.isNotBlank() && password.length >= CloudflareEndpoints.MIN_PASSWORD_LENGTH", ui)',
-                          '        self.assertIn(\'composeRule.onNodeWithTag("login_submit_button").assertIsNotEnabled()\', test)',
-                          '        self.assertIn(\'composeRule.onNodeWithTag("login_submit_button").assertIsEnabled()\', test)',
-                          '',
-                          '',
-                      ])
-                      text = text[:start] + method + text[end:]
-                      raw = text.encode('utf-8')
-                  zout.writestr(info, raw)
-          with zipfile.ZipFile(dest) as z:
-              assert z.testzip() is None
+              assert target in zin.namelist()
+              for item in zin.infolist():
+                  data = zin.read(item.filename)
+                  if item.filename == target:
+                      body = data.decode('utf-8')
+                      assert body.count(wrong) == 1, 'Expected one unnecessary assertExists import'
+                      body = body.replace(wrong, '', 1)
+                      assert 'composeRule.onNodeWithTag("login_password_length_hint", useUnmergedTree = true).assertExists()' in body
+                      data = body.encode('utf-8')
+                  zout.writestr(item, data)
+          with zipfile.ZipFile(dest) as archive:
+              assert archive.testzip() is None
           assert dest.stat().st_size < 25_000_000
           os.replace(dest, src)
           PY
-          mkdir -p _source_verification
-          unzip -q Cash-N-Carry-Staging-Upload-Under-25MB.zip -d _source_verification
-          python3 -m unittest discover -s _source_verification/scripts -p 'test_*.py' -v
-      - name: Commit tested source ZIP to staging branch only
-        shell: bash
+          mkdir -p _verified
+          unzip -q Cash-N-Carry-Staging-Upload-Under-25MB.zip -d _verified
+          python3 -m unittest discover -s _verified/scripts -p 'test_*.py' -v
+      - name: Commit corrected integrated source ZIP
         run: |
           set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add Cash-N-Carry-Staging-Upload-Under-25MB.zip
           git diff --cached --quiet && { echo 'Nothing to commit'; exit 0; }
-          git commit -m 'fix(android): validate login password length before Cloudflare sign-in'
+          git commit -m 'test(android): remove incorrect assertExists import'
           git push origin HEAD:feature/openai-chat-staging
