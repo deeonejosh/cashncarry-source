@@ -82,3 +82,12 @@ if 'testTag("login_submit")' not in s:
     s = s.replace(marker, login + marker, 1)
 p.write_text(s)
 print("Verified email login and registration controls are present")
+
+# Stamp a unique APK version so the installed build is distinguishable.
+gradle = Path("android/app/build.gradle.kts")
+g = gradle.read_text()
+assert 'versionCode = 1' in g and 'versionName = "1.0"' in g, "Unexpected version configuration"
+g = g.replace('versionCode = 1', 'versionCode = 2', 1).replace('versionName = "1.0"', 'versionName = "1.0.1"', 1)
+gradle.write_text(g)
+# Avoid silently swallowing Google auth cancellation in the UI.
+assert 'onAuthCancelled = {' in s, "Google cancellation handler not found"
