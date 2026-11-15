@@ -86,9 +86,21 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '9.3.1'
-      - uses: android-actions/setup-android@v3
-      - name: Install required Android SDK APIs
-        run: sdkmanager --install 'platforms;android-36' 'platforms;android-36.1' 'build-tools;36.0.0'
+      - name: Use GitHub runner preinstalled Android SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          sdk_dir="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          test -d "$sdk_dir" || { echo "Android SDK missing on runner"; exit 1; }
+          echo "ANDROID_HOME=$sdk_dir" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$sdk_dir" >> "$GITHUB_ENV"
+          sdkmanager --version
+      - name: Accept SDK licences and install required Android APIs
+        shell: bash
+        run: |
+          set -euo pipefail
+          sdkmanager --licenses < <(yes) > /dev/null
+          sdkmanager --install 'platforms;android-36' 'platforms;android-36.1' 'build-tools;36.0.0' < <(yes)
       - name: Run unit and Robolectric tests
         working-directory: integrated
         run: gradle :app:testDebugUnitTest --no-daemon --stacktrace
