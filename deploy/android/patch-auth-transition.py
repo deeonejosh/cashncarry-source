@@ -107,6 +107,17 @@ for tag in (
                if line.startswith(prefix) and ('.performClick()' in line or '.performTextInput(' in line)]
     assert len(targets) == 1, f'Expected one action for {tag}, got {len(targets)}'
     test_source = test_source.replace(targets[0], scroll + chr(10) + targets[0], 1)
+# A Compose click on a button below the Robolectric viewport may not dispatch
+# until the button is physically visible. Verify the click rather than assuming it.
+login_click = '        composeRule.onNodeWithTag("login_submit_button").performClick()'
+login_scroll_click = '''        composeRule.onNodeWithTag("login_submit_button").performScrollTo()
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag("login_submit_button").assertIsDisplayed()
+        composeRule.onNodeWithTag("login_submit_button").performClick()'''
+if test_source.count(login_click) == 1:
+    test_source = test_source.replace(login_click, login_scroll_click, 1)
+elif login_scroll_click not in test_source:
+    raise SystemExit('Expected login submit action missing from Compose test')
 # Assert validation exists, then scroll the native Compose semantics node into
 # view in Robolectric's 320x470 viewport. This tests screen accessibility, not
 # an assumption about which fragment of the tall auth card is initially visible.
