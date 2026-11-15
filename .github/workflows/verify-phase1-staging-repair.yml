@@ -4,6 +4,8 @@ on:
     branches: [feature/openai-chat-staging]
     paths:
       - 'Cash-N-Carry-Staging-Phase1-Repair.zip'
+      - 'deploy/android/patch-auth-transition.py'
+      - '.github/workflows/verify-phase1-staging-repair.yml'
   workflow_dispatch:
 permissions:
   contents: read
