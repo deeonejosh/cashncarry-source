@@ -113,6 +113,23 @@ jobs:
           set -euo pipefail
           sdkmanager --licenses < <(yes) > /dev/null
           sdkmanager --install 'platforms;android-36' 'platforms;android-36.1' 'build-tools;36.0.0' < <(yes)
+      - name: Restore required Compose onRoot import when present in source
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          test_file = Path('integrated/app/src/test/java/com/example/ui/auth/AuthComponentsTest.kt')
+          source = test_file.read_text()
+          if 'onRoot(' in source and 'import androidx.compose.ui.test.onRoot' not in source:
+              marker = 'import androidx.compose.ui.test.onNodeWithTag'
+              if marker not in source:
+                  raise SystemExit('Cannot locate Compose UI test import block')
+              source = source.replace(marker, 'import androidx.compose.ui.test.onRoot' + chr(10) + marker, 1)
+              test_file.write_text(source)
+              print('Fixed missing onRoot extension import in current source')
+          else:
+              print('No missing onRoot extension import detected; source unchanged')
+          PY
       - name: Run unit and Robolectric tests
         working-directory: integrated
         run: gradle :app:testDebugUnitTest --no-daemon --stacktrace
