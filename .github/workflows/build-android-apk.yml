@@ -121,9 +121,11 @@ jobs:
           file = Path('integrated/app/src/test/java/com/example/ui/auth/AuthComponentsTest.kt')
           src = file.read_text()
           if 'import androidx.compose.ui.test.*' not in src:
-              import re
-              src, count = re.subn(r'^import androidx\\.compose\\.ui\\.test\\.(?!junit4\\.).+$', '', src, flags=re.MULTILINE)
+              lines = src.splitlines()
+              kept = [line for line in lines if not (line.startswith('import androidx.compose.ui.test.') and not line.startswith('import androidx.compose.ui.test.junit4.'))]
+              count = len(lines) - len(kept)
               assert count > 0, 'No Compose test imports found; verify current Android source'
+              src = chr(10).join(kept) + chr(10)
               marker = 'import androidx.compose.ui.test.junit4.createComposeRule'
               assert marker in src
               src = src.replace(marker, 'import androidx.compose.ui.test.*' + chr(10) + marker, 1)
