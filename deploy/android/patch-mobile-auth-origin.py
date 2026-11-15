@@ -45,7 +45,7 @@ calls = t.find("RecordedCall(", start+1)
 assert calls > start, "Recording constructor not found"
 fragment = t[calls:calls+1000]
 if 'origin = exchange.requestHeaders.getFirst("Origin")' not in fragment:
-    k = 'clientType = exchange.requestHeaders.getFirst("X-Client-Type"),'
+    k = 'clientType = exchange.requestHeaders.getFirst(CloudflareEndpoints.CLIENT_TYPE_HEADER),'
     assert k in fragment, "Expected test HTTP record field missing"
     t = t.replace(k, k+'\n            origin = exchange.requestHeaders.getFirst("Origin"),', 1)
 line = '''        assertEquals("mobile", loginCall.clientType)'''
