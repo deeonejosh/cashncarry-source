@@ -33,6 +33,7 @@ jobs:
           grep -Fq 'fun updateProfile_sendsBearerToken_andCheckoutFailsClosedWhenPaymentsDisabled()' integrated/app/src/test/java/com/example/data/remote/CloudflareSyncRepositoryTest.kt
           grep -Fq 'login_password_length_hint' integrated/app/src/main/java/com/example/ui/auth/AuthComponents.kt
           grep -Fq 'composeRule.onNodeWithTag("login_submit_button").assertIsNotEnabled()' integrated/app/src/test/java/com/example/ui/auth/AuthComponentsTest.kt
+          ! grep -Fq 'import androidx.compose.ui.test.assertExists' integrated/app/src/test/java/com/example/ui/auth/AuthComponentsTest.kt
       - name: Source security, SQLite and Firebase removal checks
         working-directory: integrated
         run: python3 -m unittest discover -s scripts -p 'test_*.py' -v
