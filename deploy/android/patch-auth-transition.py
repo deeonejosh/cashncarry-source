@@ -69,6 +69,26 @@ if ('import androidx.compose.ui.test.performScrollTo' not in test_source
         and 'import androidx.compose.ui.test.*' not in test_source):
     test_source = test_source.replace('import androidx.compose.ui.test.performClick',
                                       'import androidx.compose.ui.test.performScrollTo' + chr(10) + 'import androidx.compose.ui.test.performClick', 1)
+# In the small Robolectric viewport, recovery links and inputs are below
+# the fold. Test actual user interactions after scrolling each control into view.
+for tag in (
+    'forgot_password_link',
+    'forgot_email_input',
+    'forgot_submit_button',
+    'proceed_to_reset_password_button',
+    'reset_token_input',
+    'reset_new_password_input',
+    'reset_confirm_password_input',
+    'reset_submit_button',
+):
+    prefix = f'        composeRule.onNodeWithTag("{tag}")'
+    scroll = prefix + '.performScrollTo()'
+    if scroll in test_source:
+        continue
+    targets = [line for line in test_source.splitlines()
+               if line.startswith(prefix) and ('.performClick()' in line or '.performTextInput(' in line)]
+    assert len(targets) == 1, f'Expected one action for {tag}, got {len(targets)}'
+    test_source = test_source.replace(targets[0], scroll + chr(10) + targets[0], 1)
 test_file.write_text(test_source, encoding='utf-8')
 p.write_text(s, encoding='utf-8')
 print('Patched AuthScreen form rendering, scroll reset and smooth resize')
