@@ -53,6 +53,8 @@ jobs:
         run: python3 deploy/android/patch-cloudflare-cookie-auth.py
       - name: Add Cloudflare password recovery API client
         run: python3 deploy/android/patch-password-recovery.py
+      - name: Add Cloudflare two-stage registration and verification
+        run: python3 deploy/android/patch-cloudflare-registration.py
       - name: Enforce staging checkout fail-closed behavior
         run: python3 deploy/android/patch-checkout-fail-closed.py
       - name: Verify login and registration controls in compiled source
