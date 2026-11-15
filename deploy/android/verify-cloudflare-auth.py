@@ -33,7 +33,16 @@ for method, path in checks:
     is_html = b"<html" in body.lower() or b"<!doctype html" in body.lower()
     valid = is_json and not is_html and "json" in ctype.lower()
     if path == "/api/health":
-        valid = valid and parsed.get("ok") is True
+        staging = parsed.get("staging") or {}
+        valid = (valid
+                 and status == 200
+                 and parsed.get("ok") is True
+                 and parsed.get("authDbConnected") is True
+                 and parsed.get("dbConnected") is True
+                 and parsed.get("environment") == "staging"
+                 and staging.get("paymentsEnabled") is False
+                 and staging.get("coinsPurchasesEnabled") is False
+                 and staging.get("kycUploadsEnabled") is False)
     if method == "POST":
         # An empty request must not successfully authenticate or create a user.
         valid = valid and status in (400, 401, 403, 405, 422)
