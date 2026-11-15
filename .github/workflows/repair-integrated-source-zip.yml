@@ -26,6 +26,7 @@ jobs:
           assert src.is_file(), 'Integrated source missing'
           target = 'app/src/test/java/com/example/data/remote/CloudflareSyncRepositoryTest.kt'
           regression = 'scripts/test_staging_source.py'
+          ui_test = 'app/src/test/java/com/example/ui/auth/AuthComponentsTest.kt'
           old = 'storage.saveSession(token = "c".repeat(64), userId = "buyer-2", email = "amina@example.ng", role = "buyer")'
           fixed = 'storage.saveSession(token = "c".repeat(64), sessionCookie = null, userId = "buyer-2", email = "amina@example.ng", role = "buyer")'
           test_method = '''    def test_cloudflare_session_test_calls_supply_cookie_parameter(self):
@@ -40,6 +41,7 @@ jobs:
               with zipfile.ZipFile(src) as zin, zipfile.ZipFile(temp_path, 'w') as zout:
                   assert zin.namelist().count(target) == 1
                   assert zin.namelist().count(regression) == 1
+                  assert zin.namelist().count(ui_test) == 1
                   for info in zin.infolist():
                       b = zin.read(info.filename)
                       if info.filename == target:
@@ -87,6 +89,26 @@ jobs:
                           ])
                           if 'test_staging_checkout_unit_test_fails_closed' not in t:
                               t = t.replace(marker, checkout_test + marker, 1)
+                          ui_regression = '\n'.join([
+                              '    def test_auth_validation_banner_scrolls_into_view(self):',
+                              '        ui = (ANDROID / "src/test/java/com/example/ui/auth/AuthComponentsTest.kt").read_text()',
+                              '        self.assertIn(\'composeRule.onNodeWithTag("auth_error_banner").performScrollTo().assertIsDisplayed()\', ui)',
+                              '',
+                              '',
+                          ])
+                          if 'test_auth_validation_banner_scrolls_into_view' not in t:
+                              t = t.replace(marker, ui_regression + marker, 1)
+                          b = t.encode('utf-8')
+                      elif info.filename == ui_test:
+                          t = b.decode('utf-8')
+                          original = 'composeRule.onNodeWithTag("auth_error_banner").assertIsDisplayed()'
+                          fixed_banner = 'composeRule.onNodeWithTag("auth_error_banner").performScrollTo().assertIsDisplayed()'
+                          if original in t:
+                              assert t.count(original) == 1 and t.count('import androidx.compose.ui.test.performClick') == 1
+                              t = t.replace(original, fixed_banner)
+                              t = t.replace('import androidx.compose.ui.test.performClick', 'import androidx.compose.ui.test.performScrollTo\nimport androidx.compose.ui.test.performClick')
+                          assert t.count(fixed_banner) == 1
+                          assert t.count('import androidx.compose.ui.test.performScrollTo') == 1
                           b = t.encode('utf-8')
                       zout.writestr(info, b)
               with zipfile.ZipFile(temp_path) as z:
@@ -110,5 +132,5 @@ jobs:
             echo 'Source already corrected'
             exit 0
           fi
-          git commit -m 'fix(android): align checkout tests with fail-closed staging payments'
+          git commit -m 'test(android): scroll auth validation error into view in Robolectric tests'
           git push origin HEAD:feature/openai-chat-staging
