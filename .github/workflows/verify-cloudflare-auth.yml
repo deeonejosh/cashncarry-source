@@ -1,0 +1,17 @@
+name: Verify Cloudflare staging auth contract
+on:
+  push:
+    branches: [feature/openai-chat-staging]
+    paths:
+      - deploy/android/verify-cloudflare-auth.py
+      - .github/workflows/verify-cloudflare-auth.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probe staging endpoints without changing accounts
+        run: python3 deploy/android/verify-cloudflare-auth.py
