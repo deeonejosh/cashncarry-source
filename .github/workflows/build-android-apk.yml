@@ -190,7 +190,7 @@ jobs:
           src = src.replace(before, '    debug {\n      // Only the disposable CI extraction gets a parallel-installable test ID.\n      applicationIdSuffix = ".staging"\n      versionNameSuffix = "-staging"', 1)
           gradle.write_text(src)
           api = Path('integrated/app/src/main/java/com/example/data/remote/CloudflareApiModels.kt').read_text()
-          assert 'https://cashncarry-d1-staging-worker.cashncarry-workforce-2026.workers.dev' in api, 'Staging API not configured'
+          assert 'https://cashncarry-mobile-staging-api.cashncarry-workforce-2026.workers.dev' in api, 'Dedicated staging API not configured'
           assert 'https://www.cashncarryng.com/api' not in api, 'Production API must not be used by test app'
           strings = Path('integrated/app/src/main/res/values/strings.xml')
           if strings.exists():
