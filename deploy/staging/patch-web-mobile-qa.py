@@ -17,6 +17,9 @@ s=re.sub(r'\s*<meta name="(?:google-site-verification|msvalidate\.01)"[^>]*>',''
 s=s.replace('Repaired and verified staging platform for Cash N Carry Nigeria: complete buyer marketplace, seller centre, admin console, Flutterwave sandbox checkout, Cloudflare Stream WHIP/WHEP, auctions, and KYC verification.','Private Cash N Carry staging preview. Payments, coins and KYC uploads are disabled.')
 p.write_text(s)
 (root/'web/public/robots.txt').write_text('User-agent: *\nDisallow: /\n')
+rep('web/scripts/run-automated-tests.ts',
+    "    assert.ok(robots.includes('Disallow: /admin'));\n    assert.ok(robots.includes('Disallow: /checkout'));",
+    "    assert.equal(robots.trim(), 'User-agent: *\\nDisallow: /');")
 rep('web/public/manifest.webmanifest','"name": "Cash N Carry Nigeria"','"name": "Cash N Carry Nigeria (Staging)"')
 rep('web/package.json','"build": "tsx scripts/generate-sitemap.ts && tsx scripts/generate-google-shopping-feed.ts && vite build"','"build": "CNC_PRIVATE_STAGING=true tsx scripts/generate-sitemap.ts && CNC_PRIVATE_STAGING=true tsx scripts/generate-google-shopping-feed.ts && vite build"')
 rep('web/scripts/generate-sitemap.ts',"  const xmlContent = generateSitemapXml(resolvedBase);\n  const robotsContent = generateRobotsTxt(resolvedBase);","  const privateStaging = process.env.CNC_PRIVATE_STAGING === 'true';\n  const xmlContent = privateStaging ? '<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\"></urlset>' : generateSitemapXml(resolvedBase);\n  const robotsContent = privateStaging ? 'User-agent: *\\nDisallow: /\\n' : generateRobotsTxt(resolvedBase);")
