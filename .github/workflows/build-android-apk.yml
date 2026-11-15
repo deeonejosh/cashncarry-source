@@ -88,6 +88,15 @@ jobs:
           set -euo pipefail
           keytool -genkeypair -noprompt -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -dname "CN=Android Debug,O=Android,C=US" -keyalg RSA -keysize 2048 -validity 3650
           gradle --no-daemon :app:assembleDebug
+      - name: Verify APK version and report Google OAuth signing fingerprints
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'versionCode = 2' android/app/build.gradle.kts
+          grep -q 'versionName = "1.0.1"' android/app/build.gradle.kts
+          echo "Google Sign-In requires this APK signing certificate to be registered in Firebase:"
+          keytool -list -v -keystore android/debug.keystore -storepass android -alias androiddebugkey | grep -E 'SHA1:|SHA256:'
+          echo "WARNING: This workflow creates a new debug keystore on every build. Register the fingerprint for the APK being installed, or configure a persistent signing keystore."
       - uses: actions/upload-artifact@v4
         with:
           name: cash-n-carry-android-debug-apk
