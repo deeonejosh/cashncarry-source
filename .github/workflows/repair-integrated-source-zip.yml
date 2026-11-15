@@ -76,13 +76,15 @@ jobs:
                           assert marker in t
                           if 'test_cloudflare_session_test_calls_supply_cookie_parameter' not in t:
                               t = t.replace(marker, test_method + marker, 1)
-                          checkout_test = '''    def test_staging_checkout_unit_test_fails_closed(self):
-                                  unit_src = (ANDROID / 'src/test/java/com/example/data/remote/CloudflareSyncRepositoryTest.kt').read_text()
-                                  self.assertIn('fun updateProfile_sendsBearerToken_andCheckoutFailsClosedWhenPaymentsDisabled()', unit_src)
-                                  self.assertIn('assertEquals("PAYMENTS_DISABLED", (checkoutRes as CloudflareResult.Failure).code)', unit_src)
-                                  self.assertNotIn('assertTrue(checkoutRes is CloudflareResult.Success)', unit_src)
-
-                          '''
+                          checkout_test = '\n'.join([
+                              '    def test_staging_checkout_unit_test_fails_closed(self):',
+                              '        unit_src = (ANDROID / "src/test/java/com/example/data/remote/CloudflareSyncRepositoryTest.kt").read_text()',
+                              '        self.assertIn("fun updateProfile_sendsBearerToken_andCheckoutFailsClosedWhenPaymentsDisabled()", unit_src)',
+                              '        self.assertIn(\'assertEquals("PAYMENTS_DISABLED", (checkoutRes as CloudflareResult.Failure).code)\', unit_src)',
+                              '        self.assertNotIn(\'assertTrue(checkoutRes is CloudflareResult.Success)\', unit_src)',
+                              '',
+                              '',
+                          ])
                           if 'test_staging_checkout_unit_test_fails_closed' not in t:
                               t = t.replace(marker, checkout_test + marker, 1)
                           b = t.encode('utf-8')
