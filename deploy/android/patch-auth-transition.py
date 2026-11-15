@@ -26,10 +26,11 @@ s = s.replace('import androidx.compose.animation.fadeIn\n', '', 1)
 s = s.replace('import androidx.compose.animation.fadeOut\n', '', 1)
 s = s.replace('import androidx.compose.animation.togetherWith\n', '', 1)
 s = s.replace('import androidx.compose.runtime.Composable\n', 'import androidx.compose.runtime.Composable\nimport androidx.compose.runtime.LaunchedEffect\nimport androidx.compose.runtime.key\n', 1)
-s = s.replace('import androidx.compose.animation.animateColor\n', 'import androidx.compose.animation.animateColor\nimport androidx.compose.animation.animateContentSize\n', 1)
+s = s.replace('import androidx.compose.animation.animateColor\n', 'import androidx.compose.animation.animateColor\nimport androidx.compose.animation.animateContentSize\nimport androidx.compose.foundation.relocation.BringIntoViewRequester\nimport androidx.compose.foundation.relocation.bringIntoViewRequester\n', 1)
 assert 'val scope = rememberCoroutineScope()' in s
 s = s.replace('    val scope = rememberCoroutineScope()\n', '''    val scope = rememberCoroutineScope()
     val authScrollState = rememberScrollState()
+    val errorBringIntoViewRequester = remember { BringIntoViewRequester() }
 ''', 1)
 assert 'verticalScroll(rememberScrollState())' in s
 s = s.replace('verticalScroll(rememberScrollState())', 'verticalScroll(authScrollState)', 1)
@@ -37,9 +38,10 @@ needle = '    fun switchStep(next: AuthFlowStep, clearPassword: Boolean = true) 
 assert s.count(needle) == 1
 s = s.replace(needle, '''    // Place the next step at its beginning, including on small screens.
     LaunchedEffect(step) { authScrollState.scrollTo(0) }
-    // Validation feedback must return into view after pressing the bottom sign-in button.
+    // Bring validation feedback into view even when the sign-in button is far below
+    // the fold on small Android screens. Scrolling to the top hides the banner.
     LaunchedEffect(errorMessage) {
-        if (errorMessage != null) authScrollState.scrollTo(0)
+        if (errorMessage != null) errorBringIntoViewRequester.bringIntoView()
     }
 
 ''' + needle, 1)
@@ -52,6 +54,15 @@ s = s.replace(needle2, '''                    Column(
                         modifier = Modifier.padding(18.dp).animateContentSize(animationSpec = tween(180)),
                         verticalArrangement = Arrangement.spacedBy(14.dp)
 ''', 1)
+# Give the error banner an explicit relocation target: unlike scrolling to the
+# top this correctly handles a tall brand header and a small screen.
+banner = '''                                    .fillMaxWidth()
+                                    .testTag("auth_error_banner")'''
+replacement = '''                                    .fillMaxWidth()
+                                    .bringIntoViewRequester(errorBringIntoViewRequester)
+                                    .testTag("auth_error_banner")'''
+assert s.count(banner) == 1, 'Expected one attached login error banner'
+s = s.replace(banner, replacement, 1)
 # The Step 1 token shortcut appears below the viewport on 320x470 Robolectric
 # test devices. Compose performClick() sends a position-based event, so the
 # scrollable form must be scrolled to that control first.
