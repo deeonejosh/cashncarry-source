@@ -3,9 +3,6 @@ on:
   push:
     branches:
       - feature/openai-chat-staging
-    paths:
-      - '.github/workflows/build-android-apk.yml'
-      - 'deploy/android/**'
   workflow_dispatch:
     inputs:
       source_zip:
@@ -23,7 +20,7 @@ jobs:
       - name: Extract Android project
         shell: bash
         env:
-          SOURCE_ZIP: ${{ inputs.source_zip }}
+          SOURCE_ZIP: cash-n-carry-android-build-source.zip
         run: |
           set -euo pipefail
           case "$SOURCE_ZIP" in
