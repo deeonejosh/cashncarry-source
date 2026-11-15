@@ -5,6 +5,7 @@ on:
     paths:
       - 'Cash-N-Carry-Staging-Upload-Under-25MB.zip'
       - '.github/workflows/build-android-apk.yml'
+      - 'deploy/android/patch-auth-transition.py'
   workflow_dispatch:
 permissions:
   contents: read
@@ -37,6 +38,11 @@ jobs:
           grep -Fq 'composeRule.mainClock.advanceTimeBy(350)' integrated/app/src/test/java/com/example/ui/auth/AuthComponentsTest.kt
           grep -Fq 'Verification input missing after transition' integrated/app/src/test/java/com/example/ui/auth/AuthComponentsTest.kt
           grep -Fq 'composeRule.onNodeWithTag("verify_token_input", useUnmergedTree = true).assertExists()' integrated/app/src/test/java/com/example/ui/auth/AuthComponentsTest.kt
+      - name: Verify deterministic auth-step patch against uploaded source
+        run: |
+          python3 deploy/android/patch-auth-transition.py
+          grep -Fq 'key(step)' integrated/app/src/main/java/com/example/ui/auth/AuthComponents.kt
+          grep -Fq 'LaunchedEffect(step) { authScrollState.scrollTo(0) }' integrated/app/src/main/java/com/example/ui/auth/AuthComponents.kt
       - name: Source security, SQLite and Firebase removal checks
         working-directory: integrated
         run: python3 -m unittest discover -s scripts -p 'test_*.py' -v
@@ -134,6 +140,8 @@ jobs:
           else:
               print('Compose UI wildcard import already present')
           PY
+      - name: Fix authentication step transition in Android source
+        run: python3 deploy/android/patch-auth-transition.py
       - name: Run unit and Robolectric tests
         working-directory: integrated
         run: gradle :app:testDebugUnitTest --no-daemon --stacktrace
