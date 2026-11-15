@@ -6,6 +6,7 @@ on:
       - 'Cash-N-Carry-Staging-Upload-Under-25MB.zip'
       - '.github/workflows/build-android-apk.yml'
       - 'deploy/android/patch-auth-transition.py'
+      - 'deploy/android/patch-mobile-api-host.py'
   workflow_dispatch:
 permissions:
   contents: read
@@ -142,6 +143,10 @@ jobs:
           PY
       - name: Fix authentication step transition in Android source
         run: python3 deploy/android/patch-auth-transition.py
+      - name: Route Android traffic to the JSON-only staging API Worker
+        run: python3 deploy/android/patch-mobile-api-host.py
+      - name: Verify remote staging authentication API before building APK
+        run: python3 deploy/android/verify-cloudflare-auth.py
       - name: Run unit and Robolectric tests
         working-directory: integrated
         run: gradle :app:testDebugUnitTest --no-daemon --stacktrace
