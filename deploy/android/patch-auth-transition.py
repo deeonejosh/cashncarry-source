@@ -48,5 +48,28 @@ s = s.replace(needle2, '''                    Column(
                         modifier = Modifier.padding(18.dp).animateContentSize(animationSpec = tween(180)),
                         verticalArrangement = Arrangement.spacedBy(14.dp)
 ''', 1)
+# The Step 1 token shortcut appears below the viewport on 320x470 Robolectric
+# test devices. Compose performClick() sends a position-based event, so the
+# scrollable form must be scrolled to that control first.
+test_file = p.parents[4] / 'test/java/com/example/ui/auth/AuthComponentsTest.kt'
+if not test_file.is_file():
+    test_file = Path('integrated/app/src/test/java/com/example/ui/auth/AuthComponentsTest.kt')
+assert test_file.is_file(), f'Missing Compose registration test: {test_file}'
+test_source = test_file.read_text(encoding='utf-8')
+old_tap = '        composeRule.onNodeWithTag("already_have_verify_token_button").performClick()'
+new_tap = '''        composeRule.onNodeWithTag("already_have_verify_token_button").performScrollTo()
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag("already_have_verify_token_button").assertIsDisplayed()
+        composeRule.onNodeWithTag("already_have_verify_token_button").performClick()'''
+if old_tap not in test_source and new_tap not in test_source:
+    raise SystemExit('Expected token shortcut click not found in Compose test')
+if old_tap in test_source:
+    test_source = test_source.replace(old_tap, new_tap, 1)
+if ('import androidx.compose.ui.test.performScrollTo' not in test_source
+        and 'import androidx.compose.ui.test.*' not in test_source):
+    test_source = test_source.replace('import androidx.compose.ui.test.performClick',
+                                      'import androidx.compose.ui.test.performScrollTo\\nimport androidx.compose.ui.test.performClick', 1)
+    test_source = test_source.replace('performScrollTo\\\\nimport', 'performScrollTo' + chr(10) + 'import')
+test_file.write_text(test_source, encoding='utf-8')
 p.write_text(s, encoding='utf-8')
 print('Patched AuthScreen form rendering, scroll reset and smooth resize')
