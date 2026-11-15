@@ -1,5 +1,11 @@
 name: Build Cash N Carry Android APK
 on:
+  push:
+    branches:
+      - feature/openai-chat-staging
+    paths:
+      - '.github/workflows/build-android-apk.yml'
+      - 'deploy/android/**'
   workflow_dispatch:
     inputs:
       source_zip:
