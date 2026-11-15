@@ -113,22 +113,24 @@ jobs:
           set -euo pipefail
           sdkmanager --licenses < <(yes) > /dev/null
           sdkmanager --install 'platforms;android-36' 'platforms;android-36.1' 'build-tools;36.0.0' < <(yes)
-      - name: Restore required Compose onRoot import when present in source
+      - name: Normalize Compose UI test extension imports in staging test source
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          test_file = Path('integrated/app/src/test/java/com/example/ui/auth/AuthComponentsTest.kt')
-          source = test_file.read_text()
-          if 'onRoot(' in source and 'import androidx.compose.ui.test.onRoot' not in source:
-              marker = 'import androidx.compose.ui.test.onNodeWithTag'
-              if marker not in source:
-                  raise SystemExit('Cannot locate Compose UI test import block')
-              source = source.replace(marker, 'import androidx.compose.ui.test.onRoot' + chr(10) + marker, 1)
-              test_file.write_text(source)
-              print('Fixed missing onRoot extension import in current source')
+          file = Path('integrated/app/src/test/java/com/example/ui/auth/AuthComponentsTest.kt')
+          src = file.read_text()
+          if 'import androidx.compose.ui.test.*' not in src:
+              import re
+              src, count = re.subn(r'^import androidx\\.compose\\.ui\\.test\\.(?!junit4\\.).+$', '', src, flags=re.MULTILINE)
+              assert count > 0, 'No Compose test imports found; verify current Android source'
+              marker = 'import androidx.compose.ui.test.junit4.createComposeRule'
+              assert marker in src
+              src = src.replace(marker, 'import androidx.compose.ui.test.*' + chr(10) + marker, 1)
+              file.write_text(src)
+              print(f'Consolidated {count} Compose UI test extension imports')
           else:
-              print('No missing onRoot extension import detected; source unchanged')
+              print('Compose UI wildcard import already present')
           PY
       - name: Run unit and Robolectric tests
         working-directory: integrated
