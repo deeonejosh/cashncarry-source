@@ -5,6 +5,7 @@ on:
     paths:
       - 'Cash-N-Carry-Staging-Phase1-Repair.zip'
       - 'deploy/android/patch-auth-transition.py'
+      - 'deploy/staging/patch-phase1-source.py'
       - '.github/workflows/verify-phase1-staging-repair.yml'
   workflow_dispatch:
 permissions:
@@ -34,6 +35,8 @@ jobs:
           grep -Fq 'suspend fun fetchCart()' integrated/app/src/main/java/com/example/data/remote/CloudflareSyncRepository.kt
           grep -Fq 'renderAuthEmail' integrated/web/deploy/chatgpt-sites/auth-email.ts
           grep -Fq 'Saving a delivery address is not available' integrated/app/src/main/java/com/example/data/repository/CatalogRepository.kt
+      - name: Apply reviewed Phase 1 source contract fixes (CI extraction only)
+        run: python3 deploy/staging/patch-phase1-source.py
       - name: Verify deterministic auth-step patch against uploaded source
         run: |
           python3 deploy/android/patch-auth-transition.py
@@ -51,6 +54,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Extract integrated source
         run: mkdir -p integrated && unzip -q "$SOURCE_ZIP" -d integrated
+      - name: Apply reviewed Phase 1 source contract fixes (CI extraction only)
+        run: python3 deploy/staging/patch-phase1-source.py
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -90,6 +95,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Extract integrated Android source
         run: mkdir -p integrated && unzip -q "$SOURCE_ZIP" -d integrated
+      - name: Apply reviewed Phase 1 source contract fixes (CI extraction only)
+        run: python3 deploy/staging/patch-phase1-source.py
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
