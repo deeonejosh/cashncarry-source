@@ -45,7 +45,7 @@ jobs:
           print(f'Firebase references still present in {len(hits)} Kotlin source files')
           for path in hits: print('  ' + path)
           if hits:
-              print('NOT FIREBASE-FREE: This is a legacy debug build, not the requested migration.')
+              raise SystemExit('Firebase dependencies remain; refusing to publish a misleading replacement APK.')
           PY
       - name: Apply Android authentication repair
         run: python3 deploy/android/patch-auth.py
