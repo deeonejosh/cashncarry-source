@@ -21,11 +21,14 @@ if old not in s:
     raise SystemExit('Expected AnimatedContent transition not found; review source before patching')
 assert s.count(old) == 1, 'Unexpected multiple auth step animations'
 s = s.replace(old, new, 1)
+s = s.replace('import androidx.compose.foundation.BorderStroke\\n', 'import androidx.compose.foundation.BorderStroke\\nimport androidx.compose.foundation.ExperimentalFoundationApi\\n', 1)
 s = s.replace('import androidx.compose.animation.AnimatedContent\n', '', 1)
 s = s.replace('import androidx.compose.animation.fadeIn\n', '', 1)
 s = s.replace('import androidx.compose.animation.fadeOut\n', '', 1)
 s = s.replace('import androidx.compose.animation.togetherWith\n', '', 1)
 s = s.replace('import androidx.compose.runtime.Composable\n', 'import androidx.compose.runtime.Composable\nimport androidx.compose.runtime.LaunchedEffect\nimport androidx.compose.runtime.key\n', 1)
+# The relocation modifier is explicitly experimental in the current Compose BOM.
+s = s.replace('@Composable\\nfun AuthScreen(', '@OptIn(ExperimentalFoundationApi::class)\\n@Composable\\nfun AuthScreen(', 1)
 s = s.replace('import androidx.compose.animation.animateColor\n', 'import androidx.compose.animation.animateColor\nimport androidx.compose.animation.animateContentSize\nimport androidx.compose.foundation.relocation.BringIntoViewRequester\nimport androidx.compose.foundation.relocation.bringIntoViewRequester\n', 1)
 assert 'val scope = rememberCoroutineScope()' in s
 s = s.replace('    val scope = rememberCoroutineScope()\n', '''    val scope = rememberCoroutineScope()
