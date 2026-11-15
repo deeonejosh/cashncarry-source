@@ -28,6 +28,8 @@ jobs:
           test -f integrated/web/package.json
           test -f integrated/web/wrangler.jsonc
           test -f integrated/web/deploy/chatgpt-sites/migrations/0017_unified_mobile_sync.sql
+          # Catch the exact Kotlin test compile regression before starting Gradle.
+          test "$(grep -Fc 'sessionCookie = null, userId = "buyer-2"' integrated/app/src/test/java/com/example/data/remote/CloudflareSyncRepositoryTest.kt)" -eq 2
       - name: Source security, SQLite and Firebase removal checks
         working-directory: integrated
         run: python3 -m unittest discover -s scripts -p 'test_*.py' -v
