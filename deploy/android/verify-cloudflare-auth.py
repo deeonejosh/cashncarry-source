@@ -43,9 +43,19 @@ for method, path in checks:
                  and staging.get("paymentsEnabled") is False
                  and staging.get("coinsPurchasesEnabled") is False
                  and staging.get("kycUploadsEnabled") is False)
+    if path == "/api/health":
+        print(json.dumps({"health_summary": {"ok": parsed.get("ok"),
+              "service": parsed.get("service"),
+              "environment": parsed.get("environment"),
+              "dbConnected": parsed.get("dbConnected"),
+              "authDbConnected": parsed.get("authDbConnected"),
+              "staging": parsed.get("staging")}}))
     if method == "POST":
-        # An empty request must not successfully authenticate or create a user.
-        valid = valid and status in (400, 401, 403, 405, 422)
+        # Empty logout is idempotent. All other empty requests must fail.
+        if path == "/api/auth/logout":
+            valid = valid and status in (200, 204)
+        else:
+            valid = valid and status in (400, 401, 403, 405, 422)
     print(json.dumps({"method":method,"path":path,"status":status,
                       "content_type":ctype,"json_contract":is_json,
                       "valid":valid}))
