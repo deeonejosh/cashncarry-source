@@ -68,8 +68,7 @@ if old_tap in test_source:
 if ('import androidx.compose.ui.test.performScrollTo' not in test_source
         and 'import androidx.compose.ui.test.*' not in test_source):
     test_source = test_source.replace('import androidx.compose.ui.test.performClick',
-                                      'import androidx.compose.ui.test.performScrollTo\\nimport androidx.compose.ui.test.performClick', 1)
-    test_source = test_source.replace('performScrollTo\\\\nimport', 'performScrollTo' + chr(10) + 'import')
+                                      'import androidx.compose.ui.test.performScrollTo' + chr(10) + 'import androidx.compose.ui.test.performClick', 1)
 test_file.write_text(test_source, encoding='utf-8')
 p.write_text(s, encoding='utf-8')
 print('Patched AuthScreen form rendering, scroll reset and smooth resize')
