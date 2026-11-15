@@ -107,6 +107,17 @@ for tag in (
                if line.startswith(prefix) and ('.performClick()' in line or '.performTextInput(' in line)]
     assert len(targets) == 1, f'Expected one action for {tag}, got {len(targets)}'
     test_source = test_source.replace(targets[0], scroll + chr(10) + targets[0], 1)
+# Assert validation exists, then scroll the native Compose semantics node into
+# view in Robolectric's 320x470 viewport. This tests screen accessibility, not
+# an assumption about which fragment of the tall auth card is initially visible.
+err = '        composeRule.onNodeWithTag("auth_error_banner").assertIsDisplayed()'
+err_scroll = '''        composeRule.onNodeWithTag("auth_error_banner").assertExists()
+        composeRule.onNodeWithTag("auth_error_banner").performScrollTo()
+        composeRule.onNodeWithTag("auth_error_banner").assertIsDisplayed()'''
+if test_source.count(err) == 1:
+    test_source = test_source.replace(err, err_scroll, 1)
+elif err_scroll not in test_source:
+    raise SystemExit('Expected password-validation assertion not found')
 test_file.write_text(test_source, encoding='utf-8')
 p.write_text(s, encoding='utf-8')
 print('Patched AuthScreen form rendering, scroll reset and smooth resize')
