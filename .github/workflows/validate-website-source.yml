@@ -1,0 +1,30 @@
+name: Validate Cash N Carry website source
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    if: github.ref_name == 'development/cloudflare-staging'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect existing source archives without deploying
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import zipfile, pathlib, json
+          archives = sorted(pathlib.Path('.').glob('*.zip'))
+          for archive in archives:
+              if 'android' in archive.name.lower():
+                  continue
+              print(f'\nARCHIVE: {archive.name}')
+              with zipfile.ZipFile(archive) as z:
+                  names = [x.filename for x in z.infolist() if not x.is_dir()]
+                  print('Entries:', len(names))
+                  hits = [x for x in names if x.endswith(('package.json','wrangler.toml','wrangler.jsonc','vite.config.ts','next.config.js','Dockerfile','index.html'))]
+                  print('Build configuration candidates:')
+                  for path in hits[:40]: print('  ',path)
+                  print('Total uncompressed bytes:',sum(x.file_size for x in z.infolist()))
+          assert archives, 'No source archives found'
+          PY
