@@ -45,9 +45,15 @@ s = s.replace('''            .url("$normalizedBase$path")
                 builder.header("Cookie", "__Host-cnc_session=$cookie")
             }
         }''', 1)
-s = s.replace('''                val obj = runCatching {
-                    if (raw.isNotBlank()) JSONObject(raw) else JSONObject()
-                }.getOrDefault(JSONObject())
+s = s.replace('''                val contentType = res.header("Content-Type").orEmpty()
+                val obj = runCatching { JSONObject(raw) }.getOrNull()
+                if (obj == null || !contentType.contains("application/json", ignoreCase = true)) {
+                    return CloudflareResult.Failure(
+                        statusCode = res.code,
+                        code = "INVALID_API_RESPONSE",
+                        message = "Cloudflare authentication API returned a non-JSON response. Check the staging Worker route."
+                    )
+                }
 
                 if (!res.isSuccessful) {''',
 '''                val obj = runCatching { JSONObject(raw) }.getOrNull()
