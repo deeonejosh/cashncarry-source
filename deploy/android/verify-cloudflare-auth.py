@@ -51,15 +51,32 @@ for method, path in checks:
               "authDbConnected": parsed.get("authDbConnected"),
               "staging": parsed.get("staging")}}))
     if method == "POST":
-        # Empty logout is idempotent. All other empty requests must fail.
+        # A matching Origin must reach input validation, not get rejected by CSRF.
         if path == "/api/auth/logout":
             valid = valid and status in (200, 204)
+        elif path == "/api/auth/login":
+            valid = valid and status == 400 and parsed.get("error") != "Invalid request origin"
         else:
-            valid = valid and status in (400, 401, 403, 405, 422)
+            valid = valid and status in (400, 401, 405, 422)
     print(json.dumps({"method":method,"path":path,"status":status,
                       "content_type":ctype,"json_contract":is_json,
                       "valid":valid}))
     if not valid: failed = True
+# Check that a missing Origin is still rejected (CSRF protection remains active).
+req = urllib.request.Request(BASE + "/api/auth/login", method="POST", data=b"{}",
+    headers={"Accept":"application/json","Content-Type":"application/json"})
+try:
+    with urllib.request.urlopen(req, timeout=12) as response:
+        no_origin_status = response.status
+except urllib.error.HTTPError as exc:
+    no_origin_status = exc.code
+except Exception as exc:
+    print(json.dumps({"missing_origin_probe_error": str(exc)}))
+    no_origin_status = None
+print(json.dumps({"missing_origin_rejected": no_origin_status == 403}))
+if no_origin_status != 403:
+    failed = True
+
 if failed:
     print("FAILED: staging endpoints did not establish a valid JSON authentication contract.")
     sys.exit(1)
