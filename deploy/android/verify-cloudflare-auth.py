@@ -5,7 +5,7 @@ import sys
 import urllib.error
 import urllib.request
 
-BASE = "https://cashncarry-d1-staging-worker.cashncarry-workforce-2026.workers.dev"
+BASE = "https://cashncarry-mobile-staging-api.cashncarry-workforce-2026.workers.dev"
 checks = [("GET", "/api/health"), ("GET", "/api/v1/profile"),
           ("POST", "/api/auth/login"), ("POST", "/api/auth/register"),
           ("POST", "/api/auth/request-reset"), ("POST", "/api/auth/reset"),
