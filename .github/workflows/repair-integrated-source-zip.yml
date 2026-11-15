@@ -1,4 +1,4 @@
-name: Repair uploaded integrated Android source ZIP (staging only)
+name: Finalize Cloudflare Android login validation in uploaded staging source
 on:
   push:
     branches: [feature/openai-chat-staging]
@@ -7,130 +7,121 @@ on:
 permissions:
   contents: write
 jobs:
-  correct-uploaded-source:
+  correct-integrated-source:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-        with:
-          persist-credentials: true
-      - name: Correct Kotlin session and fail-closed checkout tests in source archive
+      - name: Add inline password validation and correct Compose test in the uploaded source
         shell: bash
         run: |
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
-          from tempfile import NamedTemporaryFile
-          import os, zipfile
+          import zipfile, os
           src = Path('Cash-N-Carry-Staging-Upload-Under-25MB.zip')
-          assert src.is_file(), 'Integrated source missing'
-          target = 'app/src/test/java/com/example/data/remote/CloudflareSyncRepositoryTest.kt'
+          dest = Path('Cash-N-Carry-Staging-Upload-Under-25MB.tmp.zip')
+          ui = 'app/src/main/java/com/example/ui/auth/AuthComponents.kt'
+          test = 'app/src/test/java/com/example/ui/auth/AuthComponentsTest.kt'
           regression = 'scripts/test_staging_source.py'
-          ui_test = 'app/src/test/java/com/example/ui/auth/AuthComponentsTest.kt'
-          old = 'storage.saveSession(token = "c".repeat(64), userId = "buyer-2", email = "amina@example.ng", role = "buyer")'
-          fixed = 'storage.saveSession(token = "c".repeat(64), sessionCookie = null, userId = "buyer-2", email = "amina@example.ng", role = "buyer")'
-          test_method = '''    def test_cloudflare_session_test_calls_supply_cookie_parameter(self):
-                  source = (ANDROID / 'src/test/java/com/example/data/remote/CloudflareSyncRepositoryTest.kt').read_text()
-                  self.assertNotIn('storage.saveSession(token = "c".repeat(64), userId =', source)
-                  self.assertEqual(source.count('storage.saveSession(token = "c".repeat(64), sessionCookie = null,'), 2)
-
-          '''
-          with NamedTemporaryFile(suffix='.zip', delete=False, dir='.') as temporary:
-              temp_path = Path(temporary.name)
-          try:
-              with zipfile.ZipFile(src) as zin, zipfile.ZipFile(temp_path, 'w') as zout:
-                  assert zin.namelist().count(target) == 1
-                  assert zin.namelist().count(regression) == 1
-                  assert zin.namelist().count(ui_test) == 1
-                  for info in zin.infolist():
-                      b = zin.read(info.filename)
-                      if info.filename == target:
-                          t = b.decode('utf-8')
-                          if old in t:
-                              assert t.count(old) == 2, f'Unexpected old signatures: {t.count(old)}'
-                              t = t.replace(old, fixed)
-                          assert t.count(fixed) == 2
-                          old_name = 'fun updateProfile_andCheckout_sendBearerTokenAndIdempotentRequestId()'
-                          new_name = 'fun updateProfile_sendsBearerToken_andCheckoutFailsClosedWhenPaymentsDisabled()'
-                          old_checkout = '\n'.join([
-                              '        val checkoutRes = repository.checkoutCart(requestId = "req-idem-001", addressId = "addr-1")',
-                              '        assertTrue(checkoutRes is CloudflareResult.Success)',
-                              '        assertEquals("CNC-2026-8841", (checkoutRes as CloudflareResult.Success).data)',
-                              '        val checkoutCall = recordedRequests.last { it.path == "/api/checkout" }',
-                              '        assertEquals("req-idem-001", JSONObject(checkoutCall.body).getString("request_id"))',
-                          ])
-                          new_checkout = '\n'.join([
-                              '        val checkoutRequestsBefore = recordedRequests.count { it.path == "/api/checkout" }',
-                              '        val checkoutRes = repository.checkoutCart(requestId = "req-idem-001", addressId = "addr-1")',
-                              '        assertTrue(checkoutRes is CloudflareResult.Failure)',
-                              '        assertEquals("PAYMENTS_DISABLED", (checkoutRes as CloudflareResult.Failure).code)',
-                              '        // A disabled checkout must not attempt any network request.',
-                              '        assertEquals(checkoutRequestsBefore, recordedRequests.count { it.path == "/api/checkout" })',
-                          ])
-                          if old_name in t:
-                              assert t.count(old_name) == 1 and t.count(old_checkout) == 1
-                              t = t.replace(old_name, new_name).replace(old_checkout, new_checkout)
-                          assert t.count(new_name) == 1 and t.count(new_checkout) == 1
-                          b = t.encode('utf-8')
-                      elif info.filename == regression:
-                          t = b.decode('utf-8')
-                          marker = '    def test_preserved_android_identity_and_signing(self):'
-                          assert marker in t
-                          if 'test_cloudflare_session_test_calls_supply_cookie_parameter' not in t:
-                              t = t.replace(marker, test_method + marker, 1)
-                          checkout_test = '\n'.join([
-                              '    def test_staging_checkout_unit_test_fails_closed(self):',
-                              '        unit_src = (ANDROID / "src/test/java/com/example/data/remote/CloudflareSyncRepositoryTest.kt").read_text()',
-                              '        self.assertIn("fun updateProfile_sendsBearerToken_andCheckoutFailsClosedWhenPaymentsDisabled()", unit_src)',
-                              '        self.assertIn(\'assertEquals("PAYMENTS_DISABLED", (checkoutRes as CloudflareResult.Failure).code)\', unit_src)',
-                              '        self.assertNotIn(\'assertTrue(checkoutRes is CloudflareResult.Success)\', unit_src)',
-                              '',
-                              '',
-                          ])
-                          if 'test_staging_checkout_unit_test_fails_closed' not in t:
-                              t = t.replace(marker, checkout_test + marker, 1)
-                          ui_regression = '\n'.join([
-                              '    def test_auth_validation_banner_scrolls_into_view(self):',
-                              '        ui = (ANDROID / "src/test/java/com/example/ui/auth/AuthComponentsTest.kt").read_text()',
-                              '        self.assertIn(\'composeRule.onNodeWithTag("auth_error_banner").performScrollTo().assertIsDisplayed()\', ui)',
-                              '',
-                              '',
-                          ])
-                          if 'test_auth_validation_banner_scrolls_into_view' not in t:
-                              t = t.replace(marker, ui_regression + marker, 1)
-                          b = t.encode('utf-8')
-                      elif info.filename == ui_test:
-                          t = b.decode('utf-8')
-                          original = 'composeRule.onNodeWithTag("auth_error_banner").assertIsDisplayed()'
-                          fixed_banner = 'composeRule.onNodeWithTag("auth_error_banner").performScrollTo().assertIsDisplayed()'
-                          if original in t:
-                              assert t.count(original) == 1 and t.count('import androidx.compose.ui.test.performClick') == 1
-                              t = t.replace(original, fixed_banner)
-                              t = t.replace('import androidx.compose.ui.test.performClick', 'import androidx.compose.ui.test.performScrollTo\nimport androidx.compose.ui.test.performClick')
-                          assert t.count(fixed_banner) == 1
-                          assert t.count('import androidx.compose.ui.test.performScrollTo') == 1
-                          b = t.encode('utf-8')
-                      zout.writestr(info, b)
-              with zipfile.ZipFile(temp_path) as z:
-                  assert z.testzip() is None
-              assert temp_path.stat().st_size < 25_000_000
-              os.replace(temp_path, src)
-          finally:
-              temp_path.unlink(missing_ok=True)
+          anchor = '\n'.join([
+              '                                        modifier = Modifier',
+              '                                            .fillMaxWidth()',
+              '                                            .testTag("login_password_input")',
+              '                                    )',
+              '',
+              '                                    Row(',
+          ])
+          new_anchor = '\n'.join([
+              '                                        modifier = Modifier',
+              '                                            .fillMaxWidth()',
+              '                                            .testTag("login_password_input")',
+              '                                    )',
+              '                                    if (password.isNotEmpty() && password.length < CloudflareEndpoints.MIN_PASSWORD_LENGTH) {',
+              '                                        Text(',
+              '                                            text = "Password must be at least 12 characters.",',
+              '                                            color = LiveCrimson,',
+              '                                            style = MaterialTheme.typography.bodySmall,',
+              '                                            modifier = Modifier.testTag("login_password_length_hint")',
+              '                                        )',
+              '                                    }',
+              '',
+              '                                    Row(',
+          ])
+          oldtest = '\n'.join([
+              '        composeRule.onNodeWithTag("login_password_input").performTextInput("short123")',
+              '        composeRule.onNodeWithTag("login_submit_button").performClick()',
+              '        composeRule.waitForIdle()',
+              '',
+              '        composeRule.onNodeWithTag("auth_error_banner").performScrollTo().assertIsDisplayed()',
+          ])
+          newtest = '\n'.join([
+              '        composeRule.onNodeWithTag("login_password_input").performTextInput("short123")',
+              '        composeRule.waitForIdle()',
+              '        composeRule.onNodeWithTag("login_password_length_hint", useUnmergedTree = true).assertExists()',
+              '        composeRule.onNodeWithTag("login_submit_button").assertIsNotEnabled()',
+              '        composeRule.onNodeWithTag("login_password_input").performTextInput("4567")',
+              '        composeRule.waitForIdle()',
+              '        composeRule.onNodeWithTag("login_submit_button").assertIsEnabled()',
+          ])
+          with zipfile.ZipFile(src) as zin, zipfile.ZipFile(dest, 'w') as zout:
+              expected = {ui, test, regression}
+              assert expected.issubset(zin.namelist())
+              for info in zin.infolist():
+                  raw = zin.read(info.filename)
+                  if info.filename == ui:
+                      text = raw.decode('utf-8')
+                      start = text.index('AuthFlowStep.LOGIN -> Column')
+                      end = text.index('AuthFlowStep.CREATE_ACCOUNT -> Column', start)
+                      fragment = text[start:end]
+                      assert fragment.count(anchor) == 1
+                      assert fragment.count('enabled = !isLoading,') == 1
+                      fragment = fragment.replace(anchor, new_anchor, 1)
+                      fragment = fragment.replace('enabled = !isLoading,', 'enabled = !isLoading && email.isNotBlank() && password.length >= CloudflareEndpoints.MIN_PASSWORD_LENGTH,', 1)
+                      text = text[:start] + fragment + text[end:]
+                      raw = text.encode('utf-8')
+                  elif info.filename == test:
+                      text = raw.decode('utf-8')
+                      assert text.count(oldtest) == 1
+                      text = text.replace(oldtest, newtest, 1)
+                      text = text.replace('import androidx.compose.ui.test.assertIsDisplayed', 'import androidx.compose.ui.test.assertIsDisplayed\nimport androidx.compose.ui.test.assertExists\nimport androidx.compose.ui.test.assertIsEnabled\nimport androidx.compose.ui.test.assertIsNotEnabled', 1)
+                      raw = text.encode('utf-8')
+                  elif info.filename == regression:
+                      text = raw.decode('utf-8')
+                      original = '    def test_auth_validation_banner_scrolls_into_view(self):'
+                      marker = '    def test_preserved_android_identity_and_signing(self):'
+                      assert original in text and marker in text
+                      start = text.index(original)
+                      end = text.index(marker, start)
+                      method = '\n'.join([
+                          '    def test_login_validation_is_reactive_and_blocks_short_passwords(self):',
+                          '        ui = (ANDROID / "src/main/java/com/example/ui/auth/AuthComponents.kt").read_text()',
+                          '        test = (ANDROID / "src/test/java/com/example/ui/auth/AuthComponentsTest.kt").read_text()',
+                          '        self.assertIn(\'.testTag("login_password_length_hint")\', ui)',
+                          '        self.assertIn("email.isNotBlank() && password.length >= CloudflareEndpoints.MIN_PASSWORD_LENGTH", ui)',
+                          '        self.assertIn(\'composeRule.onNodeWithTag("login_submit_button").assertIsNotEnabled()\', test)',
+                          '        self.assertIn(\'composeRule.onNodeWithTag("login_submit_button").assertIsEnabled()\', test)',
+                          '',
+                          '',
+                      ])
+                      text = text[:start] + method + text[end:]
+                      raw = text.encode('utf-8')
+                  zout.writestr(info, raw)
+          with zipfile.ZipFile(dest) as z:
+              assert z.testzip() is None
+          assert dest.stat().st_size < 25_000_000
+          os.replace(dest, src)
           PY
           mkdir -p _source_verification
           unzip -q Cash-N-Carry-Staging-Upload-Under-25MB.zip -d _source_verification
           python3 -m unittest discover -s _source_verification/scripts -p 'test_*.py' -v
-      - name: Commit corrected source archive to staging branch only
+      - name: Commit tested source ZIP to staging branch only
         shell: bash
         run: |
           set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add Cash-N-Carry-Staging-Upload-Under-25MB.zip
-          if git diff --cached --quiet; then
-            echo 'Source already corrected'
-            exit 0
-          fi
-          git commit -m 'test(android): scroll auth validation error into view in Robolectric tests'
+          git diff --cached --quiet && { echo 'Nothing to commit'; exit 0; }
+          git commit -m 'fix(android): validate login password length before Cloudflare sign-in'
           git push origin HEAD:feature/openai-chat-staging
