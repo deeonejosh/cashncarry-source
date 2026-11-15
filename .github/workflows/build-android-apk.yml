@@ -94,7 +94,9 @@ jobs:
           test -d "$sdk_dir" || { echo "Android SDK missing on runner"; exit 1; }
           echo "ANDROID_HOME=$sdk_dir" >> "$GITHUB_ENV"
           echo "ANDROID_SDK_ROOT=$sdk_dir" >> "$GITHUB_ENV"
-          sdkmanager --version
+          test -x "$sdk_dir/cmdline-tools/latest/bin/sdkmanager" || { echo "SDK manager not installed"; exit 1; }
+          echo "$sdk_dir/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
+          "$sdk_dir/cmdline-tools/latest/bin/sdkmanager" --version
       - name: Accept SDK licences and install required Android APIs
         shell: bash
         run: |
