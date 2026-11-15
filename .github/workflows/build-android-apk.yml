@@ -113,6 +113,19 @@ jobs:
           set -euo pipefail
           sdkmanager --licenses < <(yes) > /dev/null
           sdkmanager --install 'platforms;android-36' 'platforms;android-36.1' 'build-tools;36.0.0' < <(yes)
+      - name: Fix missing Compose test onRoot extension import
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('integrated/app/src/test/java/com/example/ui/auth/AuthComponentsTest.kt')
+          source = path.read_text()
+          assert 'composeRule.onRoot()' in source, 'Expected Compose root test invocation not found'
+          if 'import androidx.compose.ui.test.onRoot' not in source:
+              assert 'import androidx.compose.ui.test.onNodeWithTag' in source
+              source = source.replace('import androidx.compose.ui.test.onNodeWithTag', 'import androidx.compose.ui.test.onRoot\\nimport androidx.compose.ui.test.onNodeWithTag', 1)
+              path.write_text(source)
+          PY
       - name: Run unit and Robolectric tests
         working-directory: integrated
         run: gradle :app:testDebugUnitTest --no-daemon --stacktrace
