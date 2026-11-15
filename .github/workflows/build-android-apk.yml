@@ -1,130 +1,116 @@
-name: Build Cash N Carry Android APK
+name: Build integrated Cash N Carry staging source
 on:
   push:
-    branches:
-      - feature/openai-chat-staging
+    branches: [feature/openai-chat-staging]
+    paths:
+      - 'Cash-N-Carry-Staging-Upload-Under-25MB.zip'
+      - '.github/workflows/build-android-apk.yml'
   workflow_dispatch:
-    inputs:
-      source_zip:
-        description: "Android source ZIP stored in repository root"
-        required: true
-        default: "cash-n-carry-android-build-source.zip"
 permissions:
   contents: read
+env:
+  SOURCE_ZIP: Cash-N-Carry-Staging-Upload-Under-25MB.zip
 jobs:
-  android-debug-apk:
+  source-contract:
+    name: Verify staging source and Firebase-free Android
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - name: Extract Android project
-        shell: bash
-        env:
-          SOURCE_ZIP: cash-n-carry-android-build-source.zip
-        run: |
-          set -euo pipefail
-          case "$SOURCE_ZIP" in
-            */*|*..*) echo "Source must be a ZIP in repository root"; exit 1 ;;
-          esac
-          test -f "$SOURCE_ZIP" || { echo "Upload $SOURCE_ZIP to this branch first"; exit 1; }
-          mkdir -p android
-          unzip -q "$SOURCE_ZIP" -d android
-          test -f android/app/build.gradle.kts || { echo "Not an Android Gradle project"; exit 1; }
-      - name: Check Firebase-free migration readiness
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          root = Path('android')
-          source = root / 'app/src/main/java'
-          hits = []
-          for file in source.rglob('*.kt'):
-              text = file.read_text(errors='replace')
-              if 'com.google.firebase' in text or 'Firebase.auth' in text:
-                  hits.append(str(file.relative_to(root)))
-          print(f'Firebase references still present in {len(hits)} Kotlin source files')
-          for path in hits: print('  ' + path)
-          if hits:
-              raise SystemExit('Firebase dependencies remain; refusing to publish a misleading replacement APK.')
-          PY
-      - name: Apply Android authentication repair
-        run: python3 deploy/android/patch-auth.py
-      - name: Apply Cloudflare Worker cookie-session adapter
-        run: python3 deploy/android/patch-cloudflare-cookie-auth.py
-      - name: Add Cloudflare password recovery API client
-        run: python3 deploy/android/patch-password-recovery.py
-      - name: Add Cloudflare two-stage registration and verification
-        run: python3 deploy/android/patch-cloudflare-registration.py
-      - name: Enforce staging checkout fail-closed behavior
-        run: python3 deploy/android/patch-checkout-fail-closed.py
-      - name: Verify login and registration controls in compiled source
+      - name: Extract integrated source (NOT the legacy Android ZIP)
         shell: bash
         run: |
           set -euo pipefail
-          python3 - <<'PY'
-          from pathlib import Path
-          source = Path('android/app/src/main/java/com/example/ui/auth/AuthComponents.kt').read_text()
-          required = {
-              'email sign-in field': 'testTag("login_email")',
-              'password sign-in field': 'testTag("login_password")',
-              'email sign-in button': 'testTag("login_submit")',
-              'email registration field': 'testTag("register_email")',
-              'registration password field': 'testTag("register_password")',
-              'registration button': 'testTag("register_submit")',
-              'Firebase registration': 'createUserWithEmailAndPassword',
-              'Firebase email login': 'signInWithEmailAndPassword',
-              'Google Firebase credential': 'signInWithCredential',
-          }
-          missing = [name for name, token in required.items() if token not in source]
-          if missing:
-              raise SystemExit('Missing authentication controls: ' + ', '.join(missing))
-          print('Verified all nine authentication code markers in source used by APK')
-          PY
+          test -s "$SOURCE_ZIP"
+          mkdir -p integrated
+          unzip -q "$SOURCE_ZIP" -d integrated
+          test -f integrated/app/build.gradle.kts
+          test -f integrated/web/package.json
+          test -f integrated/web/wrangler.jsonc
+          test -f integrated/web/deploy/chatgpt-sites/migrations/0017_unified_mobile_sync.sql
+      - name: Source security, SQLite and Firebase removal checks
+        working-directory: integrated
+        run: python3 -m unittest discover -s scripts -p 'test_*.py' -v
+  web-and-worker:
+    name: Build and test Cloudflare staging source (no deploy)
+    needs: source-contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract integrated source
+        run: mkdir -p integrated && unzip -q "$SOURCE_ZIP" -d integrated
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: integrated/web/package-lock.json
+      - name: Install dependencies
+        working-directory: integrated/web
+        run: npm install --legacy-peer-deps --no-audit --no-fund
+      - name: Type-check source
+        working-directory: integrated/web
+        run: npm run lint
+      - name: Worker and D1 integration tests
+        working-directory: integrated/web
+        run: npm test
+      - name: Build website
+        working-directory: integrated/web
+        run: npm run build
+      - name: Bundle Worker
+        working-directory: integrated/web
+        run: npm run bundle:worker
+      - name: Verify fresh Worker bundle
+        run: test -s integrated/web/dist/_worker.js
+      - name: Smoke test Worker routes
+        working-directory: integrated/web
+        run: node deploy/chatgpt-sites/worker-smoke.mjs
+      - name: Smoke test authentication, sessions and orders
+        working-directory: integrated/web
+        run: node deploy/chatgpt-sites/new-auth-smoke.mjs
+  android-tests-and-apk:
+    name: Test and build Firebase-free Android APK
+    needs: source-contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    env:
+      CNC_DEBUG_KEYSTORE_BASE64: ${{ secrets.CNC_DEBUG_KEYSTORE_BASE64 }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract integrated Android source
+        run: mkdir -p integrated && unzip -q "$SOURCE_ZIP" -d integrated
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
-      - name: Use preinstalled Android SDK
-        run: |
-          echo "ANDROID_HOME=${ANDROID_HOME:-$ANDROID_SDK_ROOT}" >> "$GITHUB_ENV"
-          test -d "${ANDROID_HOME:-$ANDROID_SDK_ROOT}" || exit 1
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '9.3.1'
-      - name: Prepare Android environment template
+      - uses: android-actions/setup-android@v3
+      - name: Install required Android SDK APIs
+        run: sdkmanager --install 'platforms;android-36' 'platforms;android-36.1' 'build-tools;36.0.0'
+      - name: Run unit and Robolectric tests
+        working-directory: integrated
+        run: gradle :app:testDebugUnitTest --no-daemon --stacktrace
+      - name: Restore original debug keystore securely
         shell: bash
-        env:
-          CHAT_API_BASE_URL: https://cashncarry-new-staging.cashncarry-workforce-2026.workers.dev
+        working-directory: integrated
         run: |
           set -euo pipefail
-          if [ ! -f android/.env.example ]; then
-            printf 'CHAT_API_BASE_URL=%s\n' "$CHAT_API_BASE_URL" > android/.env.example
+          if [ ! -f debug.keystore ]; then
+            if [ -z "$CNC_DEBUG_KEYSTORE_BASE64" ]; then
+              echo 'Missing ORIGINAL debug.keystore. Configure the CNC_DEBUG_KEYSTORE_BASE64 GitHub Actions secret. Refusing to generate a new signing identity.' >&2
+              exit 1
+            fi
+            printf '%s' "$CNC_DEBUG_KEYSTORE_BASE64" | base64 --decode > debug.keystore
+            chmod 600 debug.keystore
           fi
-          # Secrets Gradle Plugin generates BuildConfig.FLUTTERWAVE_PUBLIC_KEY
-          # only when this property is present. Keep payments in sandbox mode.
-          if ! grep -q '^FLUTTERWAVE_PUBLIC_KEY=' android/.env.example; then
-            printf 'FLUTTERWAVE_PUBLIC_KEY=PLACEHOLDER_DISABLED\n' >> android/.env.example
-          fi
-      - name: Build debug APK
-        working-directory: android
-        env:
-          CHAT_API_BASE_URL: https://cashncarry-new-staging.cashncarry-workforce-2026.workers.dev
-        run: |
-          set -euo pipefail
-          keytool -genkeypair -noprompt -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -dname "CN=Android Debug,O=Android,C=US" -keyalg RSA -keysize 2048 -validity 3650
-          gradle --no-daemon :app:assembleDebug
-      - name: Verify APK version and report Google OAuth signing fingerprints
-        shell: bash
-        run: |
-          set -euo pipefail
-          grep -q 'versionCode = 2' android/app/build.gradle.kts
-          grep -q 'versionName = "1.0.1"' android/app/build.gradle.kts
-          echo "Google Sign-In requires this APK signing certificate to be registered in Firebase:"
-          keytool -list -v -keystore android/debug.keystore -storepass android -alias androiddebugkey | grep -E 'SHA1:|SHA256:'
-          echo "WARNING: This workflow creates a new debug keystore on every build. Register the fingerprint for the APK being installed, or configure a persistent signing keystore."
+      - name: Build signed staging debug APK
+        working-directory: integrated
+        run: gradle :app:assembleDebug --no-daemon --stacktrace
       - uses: actions/upload-artifact@v4
         with:
-          name: cash-n-carry-android-debug-apk
-          path: android/app/build/outputs/apk/debug/*.apk
+          name: cash-n-carry-cloudflare-staging-debug-apk
+          path: integrated/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
-          retention-days: 7
+          retention-days: 14
