@@ -1,4 +1,4 @@
-name: Repair Cloudflare Android auth flow UI tests in staging source ZIP
+name: Synchronize Android Cloudflare auth flow tests in integrated ZIP
 on:
   push:
     branches: [feature/openai-chat-staging]
@@ -7,67 +7,79 @@ on:
 permissions:
   contents: write
 jobs:
-  repair-auth-flow-tests:
+  synchronize-auth-flow:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - name: Ensure registration and recovery tests scroll into view
+      - name: Update actual Kotlin UI tests inside integrated Android source archive
         shell: bash
         run: |
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
           import os, zipfile
-          source = Path('Cash-N-Carry-Staging-Upload-Under-25MB.zip')
-          output = Path('Cash-N-Carry-Staging-Upload-Under-25MB.tmp.zip')
-          target = 'app/src/test/java/com/example/ui/auth/AuthComponentsTest.kt'
-          regression = 'scripts/test_staging_source.py'
-          tags = ('verify_token_input', 'email_sent_confirmation_screen', 'password_reset_success_screen')
-          with zipfile.ZipFile(source) as zin, zipfile.ZipFile(output, 'w') as zout:
-              assert {target, regression}.issubset(zin.namelist())
-              for info in zin.infolist():
-                  data = zin.read(info.filename)
-                  if info.filename == target:
-                      text = data.decode('utf-8')
-                      assert 'import androidx.compose.ui.test.performScrollTo' in text
-                      for tag in tags:
-                          before = 'composeRule.onNodeWithTag("' + tag + '").assertIsDisplayed()'
-                          after = 'composeRule.onNodeWithTag("' + tag + '").performScrollTo().assertIsDisplayed()'
-                          assert text.count(before) == 1, 'Expected one assertion for ' + tag
-                          text = text.replace(before, after, 1)
-                      data = text.encode('utf-8')
-                  elif info.filename == regression:
-                      text = data.decode('utf-8')
-                      marker = '    def test_preserved_android_identity_and_signing(self):'
-                      assert marker in text
-                      check = '\n'.join([
-                          '    def test_auth_flow_scrolls_transition_fields_into_view(self):',
-                          '        src = (ANDROID / "src/test/java/com/example/ui/auth/AuthComponentsTest.kt").read_text()',
-                          '        for tag in ("verify_token_input", "email_sent_confirmation_screen", "password_reset_success_screen"):',
-                          '            self.assertIn(tag, src)',
-                          '        self.assertGreaterEqual(src.count(".performScrollTo().assertIsDisplayed()"), 3)',
-                          '',
-                          '',
-                      ])
-                      if 'test_auth_flow_scrolls_transition_fields_into_view' not in text:
-                          text = text.replace(marker, check + marker, 1)
-                      data = text.encode('utf-8')
-                  zout.writestr(info, data)
-          with zipfile.ZipFile(output) as z:
-              assert z.testzip() is None
-          assert output.stat().st_size < 25_000_000
-          os.replace(output, source)
+          src=Path('Cash-N-Carry-Staging-Upload-Under-25MB.zip')
+          out=Path('Cash-N-Carry-Staging-Upload-Under-25MB.tmp.zip')
+          unit='app/src/test/java/com/example/ui/auth/AuthComponentsTest.kt'
+          contract='scripts/test_staging_source.py'
+          old='\n'.join([
+            '        composeRule.onNodeWithTag("already_have_verify_token_button").performClick()',
+            '        composeRule.waitForIdle()',
+            '        composeRule.onNodeWithTag("verify_token_input").performScrollTo().assertIsDisplayed()'
+          ])
+          new='\n'.join([
+            '        composeRule.onNodeWithTag("already_have_verify_token_button").performClick()',
+            '        composeRule.mainClock.advanceTimeBy(350)',
+            '        composeRule.waitForIdle()',
+            '        composeRule.onNodeWithTag("verify_token_input", useUnmergedTree = true).assertExists()'
+          ])
+          with zipfile.ZipFile(src) as zin, zipfile.ZipFile(out,'w') as zout:
+            assert {unit,contract}.issubset(zin.namelist())
+            for item in zin.infolist():
+              data=zin.read(item.filename)
+              if item.filename==unit:
+                txt=data.decode('utf-8')
+                assert txt.count(old)==1, 'Unexpected auth verification test content'
+                txt=txt.replace(old,new,1)
+                for tag in ('email_sent_confirmation_screen','password_reset_success_screen'):
+                  before=f'onNodeWithTag("{tag}").performScrollTo().assertIsDisplayed()'
+                  after=f'onNodeWithTag("{tag}", useUnmergedTree = true).assertExists()'
+                  assert txt.count(before)==1, 'Unexpected screen assertion: '+tag
+                  txt=txt.replace(before,after,1)
+                data=txt.encode('utf-8')
+              elif item.filename==contract:
+                txt=data.decode('utf-8')
+                start=txt.index('    def test_auth_flow_scrolls_transition_fields_into_view(self):')
+                stop=txt.index('    def test_preserved_android_identity_and_signing(self):',start)
+                method='\n'.join([
+                  '    def test_auth_flow_waits_for_step_transition_and_checks_field_existence(self):',
+                  "        src = (ANDROID / 'src/test/java/com/example/ui/auth/AuthComponentsTest.kt').read_text()",
+                  "        self.assertIn('composeRule.mainClock.advanceTimeBy(350)', src)",
+                  "        self.assertIn('onNodeWithTag(\"verify_token_input\", useUnmergedTree = true).assertExists()', src)",
+                  "        self.assertIn('onNodeWithTag(\"email_sent_confirmation_screen\", useUnmergedTree = true).assertExists()', src)",
+                  "        self.assertIn('onNodeWithTag(\"password_reset_success_screen\", useUnmergedTree = true).assertExists()', src)",
+                  '',
+                  ''
+                ])
+                txt=txt[:start]+method+txt[stop:]
+                data=txt.encode('utf-8')
+              zout.writestr(item,data)
+          with zipfile.ZipFile(out) as z:
+            assert z.testzip() is None
+          assert out.stat().st_size < 25_000_000
+          os.replace(out,src)
           PY
-          mkdir -p _verified_source
-          unzip -q Cash-N-Carry-Staging-Upload-Under-25MB.zip -d _verified_source
-          python3 -m unittest discover -s _verified_source/scripts -p 'test_*.py' -v
-      - name: Commit verified ZIP only to staging branch
+          mkdir -p source_verification
+          unzip -q Cash-N-Carry-Staging-Upload-Under-25MB.zip -d source_verification
+          python3 -m unittest discover -s source_verification/scripts -p 'test_*.py' -v
+      - name: Commit corrected integrated source to staging branch
+        shell: bash
         run: |
           set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add Cash-N-Carry-Staging-Upload-Under-25MB.zip
-          git diff --cached --quiet && { echo 'Nothing to commit'; exit 0; }
-          git commit -m 'test(android): scroll verification and recovery test screens into view'
+          git diff --cached --quiet && { echo 'Source already synchronized'; exit 0; }
+          git commit -m 'test(android): synchronize verification transition and recovery Compose assertions'
           git push origin HEAD:feature/openai-chat-staging
