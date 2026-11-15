@@ -40,8 +40,8 @@ s = s.replace(needle, '''    // Place the next step at its beginning, including 
 
 ''' + needle, 1)
 needle2 = '''                    Column(
-                        modifier = Modifier.padding(18.dp),
-                        verticalArrangement = Arrangement.spacedBy(14.dp)
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
 '''
 assert s.count(needle2) == 1
 s = s.replace(needle2, '''                    Column(
