@@ -30,6 +30,23 @@ jobs:
           mkdir -p android
           unzip -q "$SOURCE_ZIP" -d android
           test -f android/app/build.gradle.kts || { echo "Not an Android Gradle project"; exit 1; }
+      - name: Check Firebase-free migration readiness
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          root = Path('android')
+          source = root / 'app/src/main/java'
+          hits = []
+          for file in source.rglob('*.kt'):
+              text = file.read_text(errors='replace')
+              if 'com.google.firebase' in text or 'Firebase.auth' in text:
+                  hits.append(str(file.relative_to(root)))
+          print(f'Firebase references still present in {len(hits)} Kotlin source files')
+          for path in hits: print('  ' + path)
+          if hits:
+              print('NOT FIREBASE-FREE: This is a legacy debug build, not the requested migration.')
+          PY
       - name: Apply Android authentication repair
         run: python3 deploy/android/patch-auth.py
       - name: Apply Cloudflare Worker cookie-session adapter
