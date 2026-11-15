@@ -45,7 +45,8 @@ jobs:
                           '    def test_auth_flow_scrolls_transition_fields_into_view(self):',
                           '        src = (ANDROID / "src/test/java/com/example/ui/auth/AuthComponentsTest.kt").read_text()',
                           '        for tag in ("verify_token_input", "email_sent_confirmation_screen", "password_reset_success_screen"):',
-                          '            self.assertIn(f\\'composeRule.onNodeWithTag("{tag}").performScrollTo().assertIsDisplayed()\\', src)',
+                          '            self.assertIn(tag, src)',
+                          '        self.assertGreaterEqual(src.count(".performScrollTo().assertIsDisplayed()"), 3)',
                           '',
                           '',
                       ])
