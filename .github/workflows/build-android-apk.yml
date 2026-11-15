@@ -5,7 +5,7 @@ on:
       source_zip:
         description: "Android source ZIP stored in repository root"
         required: true
-        default: "cash-n-carry-ai-connected-staging.zip"
+        default: "cash-n-carry-android-build-source.zip"
 permissions:
   contents: read
 jobs:
