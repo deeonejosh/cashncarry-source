@@ -14,7 +14,7 @@ for method, path in checks:
     req = urllib.request.Request(BASE + path, method=method,
         data=b"{}" if method == "POST" else None,
         headers={"Accept": "application/json", "Content-Type": "application/json",
-                 "User-Agent": "CashNCarry-Auth-Contract/2.0"})
+                 "Origin": BASE, "User-Agent": "CashNCarry-Auth-Contract/2.0"})
     try:
         with urllib.request.urlopen(req, timeout=12) as res:
             status, ctype, body = res.status, res.headers.get("Content-Type", ""), res.read(4096)
