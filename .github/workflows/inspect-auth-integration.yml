@@ -1,0 +1,46 @@
+name: Inspect Android and marketplace auth integration
+on:
+  push:
+    branches: [feature/openai-chat-staging]
+    paths: [.github/workflows/inspect-auth-integration.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract source and identify auth entry points
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p extracted/android extracted/web report
+          unzip -q cash-n-carry-android-build-source.zip -d extracted/android
+          unzip -q 'Cash-N-Carry-source.zip' -d extracted/web
+          python3 - <<'PY'
+          from pathlib import Path
+          roots=[Path('extracted/android'),Path('extracted/web')]
+          patterns=['firebase','credentialmanager','googleauthprovider','/api/auth','cnc_auth_sessions','register','signInWithEmailAndPassword']
+          with open('report/auth-locations.txt','w') as out:
+              for root in roots:
+                  for p in root.rglob('*'):
+                      if not p.is_file() or p.suffix.lower() not in ('.kt','.kts','.ts','.tsx','.js','.jsx','.json','.sql','.xml'): continue
+                      if p.stat().st_size>250000: continue
+                      try: txt=p.read_text()
+                      except UnicodeError: continue
+                      matches=[word for word in patterns if word.lower() in txt.lower()]
+                      if matches: out.write(f'{p}: {", ".join(matches)}\n')
+          PY
+          mkdir -p report/android
+          cp -R extracted/android/app/src/main/java report/android/java
+          cp extracted/android/app/build.gradle.kts report/android/build.gradle.kts
+          find report -type f \( -name '*google-services*' -o -name '*.keystore' -o -name '*.jks' -o -name '*.env*' \) -delete
+          find report/android -type f | while read -r f; do
+            case "$f" in *.kt|*.kts) ;; *) rm -f "$f";; esac
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cashncarry-auth-integration-inspection
+          path: report/
+          retention-days: 1
