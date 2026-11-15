@@ -108,6 +108,31 @@ jobs:
       - name: Run unit and Robolectric tests
         working-directory: integrated
         run: gradle :app:testDebugUnitTest --no-daemon --stacktrace
+      - name: Report Android test failures with underlying exception
+        if: failure()
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          from xml.etree import ElementTree as ET
+          files = sorted(Path('integrated/app/build/test-results/testDebugUnitTest').glob('*.xml'))
+          print(f'Android JUnit XML reports: {len(files)}')
+          for file in files:
+              root = ET.parse(file).getroot()
+              print('SUITE',root.get('name'), 'tests=',root.get('tests'), 'failures=',root.get('failures'))
+              for case in root.iter('testcase'):
+                  for bad in [*case.findall('failure'), *case.findall('error')]:
+                      print('FAILED',case.get('classname'),case.get('name'))
+                      print('Exception type:',bad.get('type'),'message:',bad.get('message'))
+                      print((bad.text or '')[:8000])
+          PY
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: cash-n-carry-android-junit-diagnostics
+          path: integrated/app/build/test-results/testDebugUnitTest/
+          retention-days: 3
+          if-no-files-found: warn
       - name: Restore original debug keystore securely
         shell: bash
         working-directory: integrated
