@@ -8,6 +8,7 @@ on:
       - 'deploy/android/patch-auth-transition.py'
       - 'deploy/android/patch-mobile-api-host.py'
       - 'deploy/android/patch-mobile-auth-origin.py'
+      - 'deploy/android/patch-mobile-cookie-login.py'
   workflow_dispatch:
 permissions:
   contents: read
@@ -151,6 +152,11 @@ jobs:
           python3 deploy/android/patch-mobile-auth-origin.py
           grep -Fq '.header("Origin", normalizedBase)' integrated/app/src/main/java/com/example/data/remote/CloudflareSyncRepository.kt
           grep -Fq 'assertEquals(baseUrl, loginCall.origin)' integrated/app/src/test/java/com/example/data/remote/CloudflareSyncRepositoryTest.kt
+      - name: Validate cookie-only login against Worker auth-me contract
+        run: |
+          python3 deploy/android/patch-mobile-cookie-login.py
+          grep -Fq 'sessionCookieOverride = cookieValue' integrated/app/src/main/java/com/example/data/remote/CloudflareSyncRepository.kt
+          grep -Fq 'cookieLoginWithoutVerifiedMe_failsClosedAndDoesNotSaveCredential' integrated/app/src/test/java/com/example/data/remote/CloudflareSyncRepositoryTest.kt
 
       - name: Verify remote staging authentication API before building APK
         run: python3 deploy/android/verify-cloudflare-auth.py
