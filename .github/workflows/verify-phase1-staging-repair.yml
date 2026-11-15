@@ -6,12 +6,14 @@ on:
       - 'Cash-N-Carry-Staging-Phase1-Repair.zip'
       - 'deploy/android/patch-auth-transition.py'
       - 'deploy/staging/patch-phase1-source.py'
+      - 'deploy/staging/patch-web-mobile-qa.py'
       - '.github/workflows/verify-phase1-staging-repair.yml'
   workflow_dispatch:
 permissions:
   contents: read
 env:
   SOURCE_ZIP: Cash-N-Carry-Staging-Phase1-Repair.zip
+  CF_STAGING_DEPLOY_TOKEN: ${{ secrets.CNC_STAGING_CF_API_TOKEN }}
 jobs:
   source-contract:
     name: Verify staging source and Firebase-free Android
@@ -37,6 +39,8 @@ jobs:
           grep -Fq 'Saving a delivery address is not available' integrated/app/src/main/java/com/example/data/repository/CatalogRepository.kt
       - name: Apply reviewed Phase 1 source contract fixes (CI extraction only)
         run: python3 deploy/staging/patch-phase1-source.py
+      - name: Apply desktop and Android staging QA fixes
+        run: python3 deploy/staging/patch-web-mobile-qa.py
       - name: Verify deterministic auth-step patch against uploaded source
         run: |
           python3 deploy/android/patch-auth-transition.py
@@ -56,6 +60,8 @@ jobs:
         run: mkdir -p integrated && unzip -q "$SOURCE_ZIP" -d integrated
       - name: Apply reviewed Phase 1 source contract fixes (CI extraction only)
         run: python3 deploy/staging/patch-phase1-source.py
+      - name: Apply desktop and Android staging QA fixes
+        run: python3 deploy/staging/patch-web-mobile-qa.py
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -76,6 +82,26 @@ jobs:
       - name: Bundle Worker
         working-directory: integrated/web
         run: npm run bundle:worker
+      - name: Verify private preview indexing protections
+        shell: bash
+        run: |
+          grep -q 'Disallow: /' integrated/web/dist/robots.txt
+          ! grep -Fq 'https://www.cashncarryng.com/' integrated/web/dist/sitemap.xml
+          grep -q 'noindex, nofollow' integrated/web/dist/index.html
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cash-n-carry-staging-web-build
+          path: integrated/web/dist
+          if-no-files-found: error
+          retention-days: 14
+      - name: Publish desktop to isolated Cloudflare staging Worker
+        if: ${{ env.CF_STAGING_DEPLOY_TOKEN != '' }}
+        working-directory: integrated/web
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ env.CF_STAGING_DEPLOY_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: 508a24cccf3f5f764015a27fa1bb0f15
+        run: |
+          npx wrangler deploy --env staging --keep-vars
       - name: Verify fresh Worker bundle
         run: test -s integrated/web/dist/_worker.js
       - name: Smoke test Worker routes
@@ -97,6 +123,8 @@ jobs:
         run: mkdir -p integrated && unzip -q "$SOURCE_ZIP" -d integrated
       - name: Apply reviewed Phase 1 source contract fixes (CI extraction only)
         run: python3 deploy/staging/patch-phase1-source.py
+      - name: Apply desktop and Android staging QA fixes
+        run: python3 deploy/staging/patch-web-mobile-qa.py
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
