@@ -115,3 +115,16 @@ assert old in a, "Cloudflare JSON response anchor missing"
 a = a.replace(old, new, 1)
 api.write_text(a)
 print("Cloudflare API now rejects HTML fallback and malformed JSON responses")
+
+# The staging Worker rejects POST authentication requests without a matching Origin.
+# Android OkHttp does not send Origin automatically.
+origin_anchor = '''            .url("$normalizedBase$path")
+            .header(CloudflareEndpoints.CLIENT_TYPE_HEADER, CloudflareEndpoints.CLIENT_TYPE_MOBILE)'''
+origin_replacement = '''            .url("$normalizedBase$path")
+            .header("Origin", normalizedBase)
+            .header("Accept", "application/json")
+            .header(CloudflareEndpoints.CLIENT_TYPE_HEADER, CloudflareEndpoints.CLIENT_TYPE_MOBILE)'''
+assert origin_anchor in a, "Cloudflare request builder anchor missing"
+a = a.replace(origin_anchor, origin_replacement, 1)
+api.write_text(a)
+print("Cloudflare requests now include matching Origin and Accept: application/json")
