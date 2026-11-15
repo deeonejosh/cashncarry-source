@@ -32,6 +32,8 @@ jobs:
           test -f android/app/build.gradle.kts || { echo "Not an Android Gradle project"; exit 1; }
       - name: Apply Android authentication repair
         run: python3 deploy/android/patch-auth.py
+      - name: Apply Cloudflare Worker cookie-session adapter
+        run: python3 deploy/android/patch-cloudflare-cookie-auth.py
       - name: Verify login and registration controls in compiled source
         shell: bash
         run: |
