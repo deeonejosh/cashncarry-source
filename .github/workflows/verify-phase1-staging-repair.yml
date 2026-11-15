@@ -1,0 +1,253 @@
+name: Verify Cash N Carry Phase 1 staging repairs
+on:
+  push:
+    branches: [feature/openai-chat-staging]
+    paths:
+      - 'Cash-N-Carry-Staging-Phase1-Repair.zip'
+  workflow_dispatch:
+permissions:
+  contents: read
+env:
+  SOURCE_ZIP: Cash-N-Carry-Staging-Phase1-Repair.zip
+jobs:
+  source-contract:
+    name: Verify staging source and Firebase-free Android
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract integrated source (NOT the legacy Android ZIP)
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s "$SOURCE_ZIP"
+          mkdir -p integrated
+          unzip -q "$SOURCE_ZIP" -d integrated
+          test -f integrated/app/build.gradle.kts
+          test -f integrated/web/package.json
+          test -f integrated/web/wrangler.jsonc
+          test -f integrated/web/deploy/chatgpt-sites/migrations/0017_unified_mobile_sync.sql
+          # Source contract checks are run against the updated integrated archive.
+          test -f integrated/scripts/test_phase1_repairs.py
+          grep -Fq 'suspend fun fetchCart()' integrated/app/src/main/java/com/example/data/remote/CloudflareSyncRepository.kt
+          grep -Fq 'renderAuthEmail' integrated/web/deploy/chatgpt-sites/auth-email.ts
+          grep -Fq 'Saving a delivery address is not available' integrated/app/src/main/java/com/example/data/repository/CatalogRepository.kt
+      - name: Verify deterministic auth-step patch against uploaded source
+        run: |
+          python3 deploy/android/patch-auth-transition.py
+          grep -Fq 'key(step)' integrated/app/src/main/java/com/example/ui/auth/AuthComponents.kt
+          grep -Fq 'LaunchedEffect(step) { authScrollState.scrollTo(0) }' integrated/app/src/main/java/com/example/ui/auth/AuthComponents.kt
+      - name: Source security, SQLite and Firebase removal checks
+        working-directory: integrated
+        run: python3 -m unittest discover -s scripts -p 'test_*.py' -v
+  web-and-worker:
+    name: Build and test Cloudflare staging source (no deploy)
+    needs: source-contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract integrated source
+        run: mkdir -p integrated && unzip -q "$SOURCE_ZIP" -d integrated
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: integrated/web/package-lock.json
+      - name: Install dependencies
+        working-directory: integrated/web
+        run: npm install --legacy-peer-deps --no-audit --no-fund
+      - name: Type-check source
+        working-directory: integrated/web
+        run: npm run lint
+      - name: Worker and D1 integration tests
+        working-directory: integrated/web
+        run: npm test
+      - name: Build website
+        working-directory: integrated/web
+        run: npm run build
+      - name: Bundle Worker
+        working-directory: integrated/web
+        run: npm run bundle:worker
+      - name: Verify fresh Worker bundle
+        run: test -s integrated/web/dist/_worker.js
+      - name: Smoke test Worker routes
+        working-directory: integrated/web
+        run: node deploy/chatgpt-sites/worker-smoke.mjs
+      - name: Smoke test authentication, sessions and orders
+        working-directory: integrated/web
+        run: node deploy/chatgpt-sites/new-auth-smoke.mjs
+  android-tests-and-apk:
+    name: Test and build Firebase-free Android APK
+    needs: source-contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    env:
+      CNC_STAGING_DEBUG_KEYSTORE_BASE64: ${{ secrets.CNC_STAGING_DEBUG_KEYSTORE_BASE64 }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract integrated Android source
+        run: mkdir -p integrated && unzip -q "$SOURCE_ZIP" -d integrated
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          # Robolectric SDK 36 requires Java 21 (confirmed by JUnit XML).
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.3.1'
+      - name: Use GitHub runner preinstalled Android SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          sdk_dir="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          test -d "$sdk_dir" || { echo "Android SDK missing on runner"; exit 1; }
+          echo "ANDROID_HOME=$sdk_dir" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$sdk_dir" >> "$GITHUB_ENV"
+          test -x "$sdk_dir/cmdline-tools/latest/bin/sdkmanager" || { echo "SDK manager not installed"; exit 1; }
+          echo "$sdk_dir/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
+          "$sdk_dir/cmdline-tools/latest/bin/sdkmanager" --version
+      - name: Accept SDK licences and install required Android APIs
+        shell: bash
+        run: |
+          set -euo pipefail
+          sdkmanager --licenses < <(yes) > /dev/null
+          sdkmanager --install 'platforms;android-36' 'platforms;android-36.1' 'build-tools;36.0.0' < <(yes)
+      - name: Normalize Compose UI test extension imports in staging test source
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          file = Path('integrated/app/src/test/java/com/example/ui/auth/AuthComponentsTest.kt')
+          src = file.read_text()
+          if 'import androidx.compose.ui.test.*' not in src:
+              lines = src.splitlines()
+              kept = [line for line in lines if not (line.startswith('import androidx.compose.ui.test.') and not line.startswith('import androidx.compose.ui.test.junit4.'))]
+              count = len(lines) - len(kept)
+              assert count > 0, 'No Compose test imports found; verify current Android source'
+              src = chr(10).join(kept) + chr(10)
+              marker = 'import androidx.compose.ui.test.junit4.createComposeRule'
+              assert marker in src
+              src = src.replace(marker, 'import androidx.compose.ui.test.*' + chr(10) + marker, 1)
+              file.write_text(src)
+              print(f'Consolidated {count} Compose UI test extension imports')
+          else:
+              print('Compose UI wildcard import already present')
+          PY
+      - name: Fix authentication step transition in Android source
+        run: python3 deploy/android/patch-auth-transition.py
+      - name: Route Android traffic to the JSON-only staging API Worker
+        run: python3 deploy/android/patch-mobile-api-host.py
+      - name: Add exact staging API Origin to native authentication requests
+        run: |
+          python3 deploy/android/patch-mobile-auth-origin.py
+          grep -Fq '.header("Origin", normalizedBase)' integrated/app/src/main/java/com/example/data/remote/CloudflareSyncRepository.kt
+          grep -Fq 'assertEquals(baseUrl, loginCall.origin)' integrated/app/src/test/java/com/example/data/remote/CloudflareSyncRepositoryTest.kt
+      - name: Validate cookie-only login against Worker auth-me contract
+        run: |
+          python3 deploy/android/patch-mobile-cookie-login.py
+          grep -Fq 'sessionCookieOverride = cookieValue' integrated/app/src/main/java/com/example/data/remote/CloudflareSyncRepository.kt
+          grep -Fq 'cookieLoginWithoutVerifiedMe_failsClosedAndDoesNotSaveCredential' integrated/app/src/test/java/com/example/data/remote/CloudflareSyncRepositoryTest.kt
+
+      - name: Verify remote staging authentication API before building APK
+        run: python3 deploy/android/verify-cloudflare-auth.py
+      - name: Run unit and Robolectric tests
+        working-directory: integrated
+        run: gradle :app:testDebugUnitTest --no-daemon --stacktrace
+      - name: Report Android test failures with underlying exception
+        if: failure()
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          from xml.etree import ElementTree as ET
+          files = sorted(Path('integrated/app/build/test-results/testDebugUnitTest').glob('*.xml'))
+          print(f'Android JUnit XML reports: {len(files)}')
+          for file in files:
+              root = ET.parse(file).getroot()
+              print('SUITE',root.get('name'), 'tests=',root.get('tests'), 'failures=',root.get('failures'))
+              for case in root.iter('testcase'):
+                  for bad in [*case.findall('failure'), *case.findall('error')]:
+                      print('FAILED',case.get('classname'),case.get('name'))
+                      print('Exception type:',bad.get('type'),'message:',bad.get('message'))
+                      print((bad.text or '')[:8000])
+          PY
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: cash-n-carry-android-junit-diagnostics
+          path: integrated/app/build/test-results/testDebugUnitTest/
+          retention-days: 3
+          if-no-files-found: warn
+      - name: Isolate staging APK from production Android installation
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          gradle = Path('integrated/app/build.gradle.kts')
+          src = gradle.read_text()
+          assert 'applicationId = "com.aistudio.cashncarry.vqmzkw"' in src, 'Production application ID differs; stop for review'
+          assert 'signingConfig = signingConfigs.getByName("debugConfig")' in src, 'Expected original debugConfig missing'
+          before = '    debug {'
+          assert src.count(before) == 1, 'Expected exactly one debug buildType'
+          src = src.replace(before, '    debug {\n      // Only the disposable CI extraction gets a parallel-installable test ID.\n      applicationIdSuffix = ".staging"\n      versionNameSuffix = "-staging"', 1)
+          gradle.write_text(src)
+          api = Path('integrated/app/src/main/java/com/example/data/remote/CloudflareApiModels.kt').read_text()
+          assert 'https://cashncarry-mobile-staging-api.cashncarry-workforce-2026.workers.dev' in api, 'Dedicated staging API not configured'
+          assert 'https://www.cashncarryng.com/api' not in api, 'Production API must not be used by test app'
+          strings = Path('integrated/app/src/main/res/values/strings.xml')
+          if strings.exists():
+              xml = strings.read_text()
+              replacement = re.sub(r'(<string\s+name="app_name"[^>]*>)([^<]*)(</string>)',
+                                   lambda m: m.group(1) + 'Cash N Carry (Staging)' + m.group(3), xml, count=1)
+              assert replacement != xml, 'Staging app name could not be set'
+              strings.write_text(replacement)
+          print('Verified staging API, isolated package suffix, dedicated staging app label, and unchanged base signing config')
+          PY
+      - name: Set up dedicated staging-only signing key
+        shell: bash
+        working-directory: integrated
+        run: |
+          set -euo pipefail
+          if [ -e debug.keystore ]; then
+            echo 'Refusing to reuse a keystore from the uploaded archive.' >&2
+            exit 1
+          fi
+          if [ -n "$CNC_STAGING_DEBUG_KEYSTORE_BASE64" ]; then
+            printf '%s' "$CNC_STAGING_DEBUG_KEYSTORE_BASE64" | base64 --decode > debug.keystore
+            echo 'Using persistent staging-only key from GitHub Actions secret' >> "$GITHUB_STEP_SUMMARY"
+          else
+            # Ephemeral debug signing key: production signer and original app ID are never used.
+            # Without a persistent secret, each new APK must be installed fresh (not upgraded).
+            keytool -genkeypair -noprompt -keystore debug.keystore -storepass android \
+              -alias androiddebugkey -keypass android -keyalg RSA -keysize 3072 \
+              -dname 'CN=Cash N Carry Staging,OU=Android Testing,O=Cash N Carry,C=NG' \
+              -validity 3650
+            echo 'Ephemeral staging key generated: uninstall previous staging APK before installing a new one' >> "$GITHUB_STEP_SUMMARY"
+          fi
+          chmod 600 debug.keystore
+          keytool -list -keystore debug.keystore -storepass android -alias androiddebugkey > /dev/null
+          echo 'Production signing key was not accessed' >> "$GITHUB_STEP_SUMMARY"
+      - name: Build staging-only Android debug APK
+        working-directory: integrated
+        run: gradle :app:assembleDebug --no-daemon --stacktrace
+      - name: Verify staging package identity and APK signature
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk=integrated/app/build/outputs/apk/debug/app-debug.apk
+          test -s "$apk"
+          badging="$ANDROID_HOME/build-tools/36.0.0/aapt"
+          signer="$ANDROID_HOME/build-tools/36.0.0/apksigner"
+          test -x "$badging"
+          test -x "$signer"
+          "$badging" dump badging "$apk" | grep "^package: name='com.aistudio.cashncarry.vqmzkw.staging'"
+          "$signer" verify --verbose --print-certs "$apk"
+          echo 'Signed APK verified with staging-only package ID and signing key' >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cash-n-carry-phase1-staging-android-apk
+          path: integrated/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 14
