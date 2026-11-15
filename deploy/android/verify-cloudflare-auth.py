@@ -10,13 +10,13 @@ BASE = "https://cashncarry-d1-staging-worker.cashncarry-workforce-2026.workers.d
 checks = [
     ("GET", "/api/health"),
     ("GET", "/api/v1/profile"),
-    ("OPTIONS", "/api/auth/login"),
-    ("OPTIONS", "/api/auth/register"),
-    ("OPTIONS", "/api/auth/google"),
-    ("OPTIONS", "/api/auth/logout"),
+    ("POST", "/api/auth/login"),
+    ("POST", "/api/auth/register"),
+    ("POST", "/api/auth/google"),
+    ("POST", "/api/auth/logout"),
 ]
 for method, path in checks:
-    req = urllib.request.Request(BASE + path, method=method,
+    req = urllib.request.Request(BASE + path, method=method, data=b"{}" if method == "POST" else None,
         headers={"User-Agent": "CashNCarry-Staging-Auth-Contract-Check/1.0"})
     try:
         with urllib.request.urlopen(req, timeout=12) as res:
@@ -31,3 +31,6 @@ for method, path in checks:
     print(json.dumps({"method":method,"path":path,"http_status":code,
         "allow":res.headers.get("Allow","") if 200<=code<400 else "",
         "health_ok":('"ok":true' in body.replace(" ","")) if path=="/api/health" else None}))
+
+# These requests use empty JSON and cannot verify successful authentication.
+# A passing workflow is not proof that registration or Google OAuth is implemented.
