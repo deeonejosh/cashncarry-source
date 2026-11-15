@@ -1,0 +1,48 @@
+#!/usr/bin/env python3
+"""Apply verified staging-only visual, auth and SEO fixes after Phase 1 extraction."""
+from pathlib import Path
+import re
+root=Path('integrated')
+def rep(path,old,new,count=1):
+ p=root/path
+ s=p.read_text()
+ if s.count(old)!=count: raise RuntimeError(f'{path}: expected {count}, found {s.count(old)} occurrences of {old[:70]!r}')
+ p.write_text(s.replace(old,new,count))
+p=root/'web/index.html';s=p.read_text()
+assert 'Cash N Carry Nigeria - Staging V17' in s
+s=s.replace('Cash N Carry Nigeria - Staging V17','Cash N Carry Nigeria | Private Staging')
+s=s.replace('<meta name="viewport" content="width=device-width, initial-scale=1.0" />','<meta name="viewport" content="width=device-width, initial-scale=1.0" />\n    <meta name="robots" content="noindex, nofollow, noarchive" />')
+s=re.sub(r'\s*<link rel="canonical"[^>]*>','',s)
+s=re.sub(r'\s*<meta name="(?:google-site-verification|msvalidate\.01)"[^>]*>','',s)
+s=s.replace('Repaired and verified staging platform for Cash N Carry Nigeria: complete buyer marketplace, seller centre, admin console, Flutterwave sandbox checkout, Cloudflare Stream WHIP/WHEP, auctions, and KYC verification.','Private Cash N Carry staging preview. Payments, coins and KYC uploads are disabled.')
+p.write_text(s)
+(root/'web/public/robots.txt').write_text('User-agent: *\nDisallow: /\n')
+rep('web/public/manifest.webmanifest','"name": "Cash N Carry Nigeria"','"name": "Cash N Carry Nigeria (Staging)"')
+rep('web/package.json','"build": "tsx scripts/generate-sitemap.ts && tsx scripts/generate-google-shopping-feed.ts && vite build"','"build": "CNC_PRIVATE_STAGING=true tsx scripts/generate-sitemap.ts && CNC_PRIVATE_STAGING=true tsx scripts/generate-google-shopping-feed.ts && vite build"')
+rep('web/scripts/generate-sitemap.ts',"  const xmlContent = generateSitemapXml(resolvedBase);\n  const robotsContent = generateRobotsTxt(resolvedBase);","  const privateStaging = process.env.CNC_PRIVATE_STAGING === 'true';\n  const xmlContent = privateStaging ? '<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\"></urlset>' : generateSitemapXml(resolvedBase);\n  const robotsContent = privateStaging ? 'User-agent: *\\nDisallow: /\\n' : generateRobotsTxt(resolvedBase);")
+rep('web/scripts/generate-google-shopping-feed.ts','  const xmlContent = generateGoogleShoppingFeedXml(resolvedBase);',"  const xmlContent = process.env.CNC_PRIVATE_STAGING === 'true' ? '<rss version=\"2.0\"><channel><title>Private staging - no offers</title></channel></rss>' : generateGoogleShoppingFeedXml(resolvedBase);")
+rep('web/src/App.tsx','  const [currentTab, setCurrentTab] = useState<string>(\'home\');',"  const [currentTab, setCurrentTab] = useState<string>(() => new URLSearchParams(window.location.search).get('tab') || 'home');\n  const [shopSearchQuery, setShopSearchQuery] = useState<string>('');")
+rep('web/src/App.tsx', "'flex-1 mx-auto max-w-7xl w-full px-4 pt-6 md:px-8'","'flex-1 min-w-0 mx-auto max-w-7xl w-full px-3 pt-4 pb-24 sm:px-4 md:px-8 md:pt-6 md:pb-8'")
+rep('web/src/App.tsx', '        onOpenExport={() => setExportModalOpen(true)}\n      />','        onOpenExport={() => setExportModalOpen(true)}\n        onSearch={(q) => { setShopSearchQuery(q); setCurrentTab(\'shop\'); }}\n      />')
+rep('web/src/App.tsx','            selectedCategory={selectedCategory}\n            onSelectCategory={(cat) => setSelectedCategory(cat)}','            selectedCategory={selectedCategory}\n            searchTerm={shopSearchQuery}\n            onSelectCategory={(cat) => setSelectedCategory(cat)}')
+rep('web/src/App.tsx',"      <MobileNav\n        currentTab={currentTab}\n        setCurrentTab={setCurrentTab}\n        onOpenCreate={() => setIsCreateModalOpen(true)}\n      />","      {currentTab !== 'for-you' && <MobileNav\n        currentTab={currentTab}\n        setCurrentTab={setCurrentTab}\n        onOpenCreate={() => setIsCreateModalOpen(true)}\n      />}")
+rep('web/src/components/ui/Navbar.tsx','  onOpenExport: () => void;\n}','  onOpenExport: () => void;\n  onSearch: (query: string) => void;\n}')
+rep('web/src/components/ui/Navbar.tsx','  onOpenExport,\n}: NavbarProps)','  onOpenExport,\n  onSearch,\n}: NavbarProps)')
+rep('web/src/components/ui/Navbar.tsx',"    if (searchQuery.trim()) {\n      setCurrentTab('shop');\n    }","    onSearch(searchQuery.trim());\n    setMobileMenuOpen(false);")
+rep('web/src/components/ui/Navbar.tsx','Staging V17 (Cloudflare D1)','Private Staging')
+rep('web/src/components/ui/Navbar.tsx','Staging V17 (Cloudflare Workers &amp; D1)','Private Staging - Worker &amp; D1')
+rep('web/src/components/ui/Navbar.tsx','<div className="border-t border-slate-200 bg-white p-4 sm:hidden">','<div className="max-h-[70dvh] overflow-y-auto border-t border-slate-200 bg-white p-4 sm:hidden">')
+rep('web/src/components/ui/MobileNav.tsx','flex h-12 w-12 -translate-y-3','flex h-11 w-11 -translate-y-1')
+rep('web/src/components/pages/ShopPage.tsx',"import React, { useState, useMemo } from 'react';","import React, { useState, useMemo, useEffect } from 'react';")
+rep('web/src/components/pages/ShopPage.tsx','  selectedCategory?: string;\n  onSelectCategory?','  selectedCategory?: string;\n  searchTerm?: string;\n  onSelectCategory?')
+rep('web/src/components/pages/ShopPage.tsx','  selectedCategory: controlledCategory,\n  onSelectCategory,','  selectedCategory: controlledCategory,\n  searchTerm = \'\',\n  onSelectCategory,')
+rep('web/src/components/pages/ShopPage.tsx',"  const [searchQuery, setSearchQuery] = useState<string>('');","  const [searchQuery, setSearchQuery] = useState<string>(searchTerm);\n  useEffect(() => setSearchQuery(searchTerm), [searchTerm]);")
+rep('web/src/components/pages/ShopPage.tsx','  const [maxPrice, setMaxPrice] = useState<number>(100000);','  const priceCeiling = useMemo(() => Math.max(100000,...products.map(p=>p.price)),[products]);\n  const [maxPrice, setMaxPrice] = useState<number>(Number.MAX_SAFE_INTEGER);\n  const visibleMaxPrice = Math.min(maxPrice,priceCeiling);')
+for old,new,count in [('maxPrice < 100000','maxPrice !== Number.MAX_SAFE_INTEGER',1),('setMaxPrice(100000);','setMaxPrice(Number.MAX_SAFE_INTEGER);',2),('p.price > maxPrice','p.price > visibleMaxPrice',1),('[products, selectedCategory, searchQuery, sortBy, inStockOnly, maxPrice]','[products, selectedCategory, searchQuery, sortBy, inStockOnly, visibleMaxPrice]',1),('₦{maxPrice.toLocaleString()}','₦{visibleMaxPrice.toLocaleString()}',1),('max={100000}','max={priceCeiling}',1),('value={maxPrice}','value={visibleMaxPrice}',1),('<span>₦100,000</span>','<span>₦{priceCeiling.toLocaleString()}</span>',1)]:
+ rep('web/src/components/pages/ShopPage.tsx',old,new,count)
+rep('web/src/components/ui/AuthModal.tsx','    } finally {\n      setLoading(false);\n    }',"    } catch {\n      setErrorMsg('Connection failed. Please retry.');\n    } finally {\n      setLoading(false);\n    }")
+rep('web/src/components/ui/AuthModal.tsx','relative w-full max-w-md overflow-hidden rounded-3xl border','relative flex w-full max-w-md max-h-[95dvh] flex-col overflow-hidden rounded-t-3xl sm:rounded-3xl border')
+rep('web/src/components/ui/AuthModal.tsx','<form onSubmit={handleSubmit} className="space-y-4 p-6">','<form onSubmit={handleSubmit} className="min-h-0 flex-1 overflow-y-auto space-y-4 p-5 sm:p-6">')
+rep('app/src/main/java/com/example/MainActivity.kt','badgeCount = cartCount,\n                                        tag = "nav_orders"','badgeCount = 0,\n                                        tag = "nav_orders"')
+rep('web/deploy/chatgpt-sites/worker.ts',"          headers.set('x-rendered-by', 'cnc-edge-seo');","          headers.set('x-rendered-by', 'cnc-edge-seo');\n          if (/staging/i.test(env.AUTH_ORIGIN || url.hostname)) headers.set('x-robots-tag', 'noindex, nofollow, noarchive');")
+print('Applied staging-only web/mobile and native QA fixes')
