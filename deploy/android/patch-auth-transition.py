@@ -37,6 +37,10 @@ needle = '    fun switchStep(next: AuthFlowStep, clearPassword: Boolean = true) 
 assert s.count(needle) == 1
 s = s.replace(needle, '''    // Place the next step at its beginning, including on small screens.
     LaunchedEffect(step) { authScrollState.scrollTo(0) }
+    // Validation feedback must return into view after pressing the bottom sign-in button.
+    LaunchedEffect(errorMessage) {
+        if (errorMessage != null) authScrollState.scrollTo(0)
+    }
 
 ''' + needle, 1)
 needle2 = '''                    Column(
