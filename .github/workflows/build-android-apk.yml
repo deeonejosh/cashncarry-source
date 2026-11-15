@@ -32,6 +32,29 @@ jobs:
           test -f android/app/build.gradle.kts || { echo "Not an Android Gradle project"; exit 1; }
       - name: Apply Android authentication repair
         run: python3 deploy/android/patch-auth.py
+      - name: Verify login and registration controls in compiled source
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          source = Path('android/app/src/main/java/com/example/ui/auth/AuthComponents.kt').read_text()
+          required = {
+              'email sign-in field': 'testTag("login_email")',
+              'password sign-in field': 'testTag("login_password")',
+              'email sign-in button': 'testTag("login_submit")',
+              'email registration field': 'testTag("register_email")',
+              'registration password field': 'testTag("register_password")',
+              'registration button': 'testTag("register_submit")',
+              'Firebase registration': 'createUserWithEmailAndPassword',
+              'Firebase email login': 'signInWithEmailAndPassword',
+              'Google Firebase credential': 'signInWithCredential',
+          }
+          missing = [name for name, token in required.items() if token not in source]
+          if missing:
+              raise SystemExit('Missing authentication controls: ' + ', '.join(missing))
+          print('Verified all nine authentication code markers in source used by APK')
+          PY
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
