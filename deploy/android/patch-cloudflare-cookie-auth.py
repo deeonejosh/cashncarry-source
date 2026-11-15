@@ -32,6 +32,8 @@ s = s.replace('''        storage.clearSession()
         lastAuthCookie = null
     }''', 1)
 s = s.replace('''            .url("$normalizedBase$path")
+            .header("Origin", normalizedBase)
+            .header("Accept", "application/json")
             .header(CloudflareEndpoints.CLIENT_TYPE_HEADER, CloudflareEndpoints.CLIENT_TYPE_MOBILE)
         storage.getToken()?.let { token ->
             builder.header("Authorization", "Bearer $token")
