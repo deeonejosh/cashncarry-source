@@ -14,7 +14,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: true
-      - name: Correct Kotlin unit-test signatures directly inside source archive
+      - name: Correct Kotlin session and fail-closed checkout tests in source archive
         shell: bash
         run: |
           set -euo pipefail
@@ -48,6 +48,27 @@ jobs:
                               assert t.count(old) == 2, f'Unexpected old signatures: {t.count(old)}'
                               t = t.replace(old, fixed)
                           assert t.count(fixed) == 2
+                          old_name = 'fun updateProfile_andCheckout_sendBearerTokenAndIdempotentRequestId()'
+                          new_name = 'fun updateProfile_sendsBearerToken_andCheckoutFailsClosedWhenPaymentsDisabled()'
+                          old_checkout = '\n'.join([
+                              '        val checkoutRes = repository.checkoutCart(requestId = "req-idem-001", addressId = "addr-1")',
+                              '        assertTrue(checkoutRes is CloudflareResult.Success)',
+                              '        assertEquals("CNC-2026-8841", (checkoutRes as CloudflareResult.Success).data)',
+                              '        val checkoutCall = recordedRequests.last { it.path == "/api/checkout" }',
+                              '        assertEquals("req-idem-001", JSONObject(checkoutCall.body).getString("request_id"))',
+                          ])
+                          new_checkout = '\n'.join([
+                              '        val checkoutRequestsBefore = recordedRequests.count { it.path == "/api/checkout" }',
+                              '        val checkoutRes = repository.checkoutCart(requestId = "req-idem-001", addressId = "addr-1")',
+                              '        assertTrue(checkoutRes is CloudflareResult.Failure)',
+                              '        assertEquals("PAYMENTS_DISABLED", (checkoutRes as CloudflareResult.Failure).code)',
+                              '        // A disabled checkout must not attempt any network request.',
+                              '        assertEquals(checkoutRequestsBefore, recordedRequests.count { it.path == "/api/checkout" })',
+                          ])
+                          if old_name in t:
+                              assert t.count(old_name) == 1 and t.count(old_checkout) == 1
+                              t = t.replace(old_name, new_name).replace(old_checkout, new_checkout)
+                          assert t.count(new_name) == 1 and t.count(new_checkout) == 1
                           b = t.encode('utf-8')
                       elif info.filename == regression:
                           t = b.decode('utf-8')
@@ -55,6 +76,15 @@ jobs:
                           assert marker in t
                           if 'test_cloudflare_session_test_calls_supply_cookie_parameter' not in t:
                               t = t.replace(marker, test_method + marker, 1)
+                          checkout_test = '''    def test_staging_checkout_unit_test_fails_closed(self):
+                                  unit_src = (ANDROID / 'src/test/java/com/example/data/remote/CloudflareSyncRepositoryTest.kt').read_text()
+                                  self.assertIn('fun updateProfile_sendsBearerToken_andCheckoutFailsClosedWhenPaymentsDisabled()', unit_src)
+                                  self.assertIn('assertEquals("PAYMENTS_DISABLED", (checkoutRes as CloudflareResult.Failure).code)', unit_src)
+                                  self.assertNotIn('assertTrue(checkoutRes is CloudflareResult.Success)', unit_src)
+
+                          '''
+                          if 'test_staging_checkout_unit_test_fails_closed' not in t:
+                              t = t.replace(marker, checkout_test + marker, 1)
                           b = t.encode('utf-8')
                       zout.writestr(info, b)
               with zipfile.ZipFile(temp_path) as z:
@@ -78,5 +108,5 @@ jobs:
             echo 'Source already corrected'
             exit 0
           fi
-          git commit -m 'fix(android): correct sessionCookie arguments in integrated source unit tests'
+          git commit -m 'fix(android): align checkout tests with fail-closed staging payments'
           git push origin HEAD:feature/openai-chat-staging
