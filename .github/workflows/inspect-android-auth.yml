@@ -1,0 +1,32 @@
+name: Inspect Android authentication source
+on:
+  push:
+    branches: [feature/openai-chat-staging]
+    paths: [.github/workflows/inspect-android-auth.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract Android source for inspection
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p android
+          unzip -q cash-n-carry-android-build-source.zip -d android
+          mkdir -p inspection
+          find android -type f \( -name '*.kt' -o -name '*.kts' -o -name '*.xml' -o -name '*.properties' \) | grep -Ei 'auth|login|google|firebase|build.gradle|manifest|network|api' | while read -r f; do
+            mkdir -p "inspection/$(dirname "$f")"
+            cp "$f" "inspection/$f"
+          done
+          find inspection -type f | sort > inspection/FILES.txt
+          # Never upload credential files, signing keys or environment secrets.
+          find inspection -type f \( -iname '*google-services*' -o -iname '*.keystore' -o -iname '*.jks' -o -iname '*.env*' \) -delete
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cash-n-carry-auth-source-inspection
+          path: inspection/
+          retention-days: 1
