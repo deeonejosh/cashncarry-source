@@ -47,6 +47,11 @@ jobs:
           if [ ! -f android/.env.example ]; then
             printf 'CHAT_API_BASE_URL=%s\n' "$CHAT_API_BASE_URL" > android/.env.example
           fi
+          # Secrets Gradle Plugin generates BuildConfig.FLUTTERWAVE_PUBLIC_KEY
+          # only when this property is present. Keep payments in sandbox mode.
+          if ! grep -q '^FLUTTERWAVE_PUBLIC_KEY=' android/.env.example; then
+            printf 'FLUTTERWAVE_PUBLIC_KEY=PLACEHOLDER_DISABLED\n' >> android/.env.example
+          fi
       - name: Build debug APK
         working-directory: android
         env:
