@@ -1,21 +1,17 @@
-# Cash N Carry NEW Node-platform isolated staging only.
-# DO NOT use this Blueprint for cashncarryng.com or the old Cloudflare Worker.
+# Cash N Carry isolated free-tier staging, NOT www.cashncarryng.com.
+# Secrets must be entered in Render, never committed. No local database or disk.
 services:
   - type: web
-    name: cashncarry-node-staging
+    name: cashncarry-node-free-staging
     runtime: node
     region: frankfurt
-    plan: starter
+    plan: free
     branch: feature/node-platform-phase1
     autoDeployTrigger: "off"
     numInstances: 1
-    buildCommand: cd web && npm ci --include=dev --legacy-peer-deps --no-audit --no-fund && npm run lint && npm run build
+    buildCommand: cd server && npm install --omit=dev --no-audit --no-fund && cd ../web && npm ci --include=dev --legacy-peer-deps --no-audit --no-fund && npm run lint && npm run build
     startCommand: node server/src/server.mjs
     healthCheckPath: /api/health
-    disk:
-      name: cashncarry-staging-data
-      mountPath: /var/data
-      sizeGB: 1
     envVars:
       - key: NODE_VERSION
         value: "22"
@@ -25,12 +21,10 @@ services:
         value: "true"
       - key: CNC_API_BIND_HOST
         value: 0.0.0.0
-      - key: CNC_DB_PATH
-        value: /var/data/db/cashncarry.sqlite
-      - key: CNC_VIDEO_STORAGE_DIR
-        value: /var/data/videos
-      - key: STATIC_DIST_DIR
-        value: web/dist
+      - key: CNC_NEON_DATABASE_URL
+        sync: false
+      - key: CNC_VIDEO_STORAGE_MODE
+        value: disabled
       - key: PAYMENTS_ENABLED
         value: "false"
       - key: COINS_PURCHASES_ENABLED
@@ -39,10 +33,3 @@ services:
         value: "false"
       - key: FLW_MODE
         value: disabled
-      # Optional server-only secrets below belong in the Render dashboard, not GitHub.
-      # CLOUDFLARE_STREAM_ACCOUNT_ID
-      # CLOUDFLARE_STREAM_API_TOKEN
-      # AUTH_RESEND_API_KEY
-      # AUTH_EMAIL_FROM
-      # ADMIN_ACCOUNT_ID
-      # ADMIN_TOTP_SECRET_HEX
