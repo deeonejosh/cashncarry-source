@@ -37,6 +37,7 @@ export default function AdminDashboardPage({ onNavigate }: AdminDashboardPagePro
   const [activeTab, setActiveTab] = useState<'applications' | 'products' | 'audit'>('applications');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [sellerApplicationsAvailable, setSellerApplicationsAvailable] = useState<boolean | null>(null);
   const [overview, setOverview] = useState<AdminOverview | null>(null);
   const [applications, setApplications] = useState<ApiSellerApplication[]>([]);
   const [moderationQueue, setModerationQueue] = useState<ModerationProductRow[]>([]);
@@ -46,6 +47,8 @@ export default function AdminDashboardPage({ onNavigate }: AdminDashboardPagePro
   const loadAdminData = useCallback(async () => {
     setLoading(true);
     setError(null);
+    setOverview(null);
+    setSellerApplicationsAvailable(null);
     const [ovRes, appRes, modRes] = await Promise.all([
       api.getAdminOverview(),
       api.getAdminSellerApplications(),
@@ -74,9 +77,8 @@ export default function AdminDashboardPage({ onNavigate }: AdminDashboardPagePro
       });
     }
 
-    if (appRes.ok && Array.isArray(appRes.data?.applications)) {
-      setApplications(appRes.data.applications);
-    }
+    setSellerApplicationsAvailable(appRes.ok && appRes.data?.available !== false);
+    setApplications(appRes.ok && Array.isArray(appRes.data?.applications) ? appRes.data.applications : []);
     if (modRes.ok && Array.isArray(modRes.data?.products)) {
       setModerationQueue(modRes.data.products as unknown as ModerationProductRow[]);
     }
@@ -176,26 +178,26 @@ export default function AdminDashboardPage({ onNavigate }: AdminDashboardPagePro
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm space-y-1">
           <div className="text-xs font-bold text-slate-400">Total Users</div>
-          <div className="text-2xl font-black text-slate-900">{overview?.counts.totalUsers ?? 0}</div>
+          <div className="text-2xl font-black text-slate-900">{overview ? overview.counts.totalUsers : '—'}</div>
           <div className="text-[11px] text-slate-500">
-            {overview?.counts.approvedSellers ?? 0} approved sellers
+            {overview ? overview.counts.approvedSellers : '—'} approved sellers
           </div>
         </div>
         <div className="rounded-3xl border border-purple-200 bg-purple-50/50 p-5 shadow-sm space-y-1">
           <div className="text-xs font-bold text-purple-800">Pending Seller Apps</div>
-          <div className="text-2xl font-black text-purple-700">{overview?.counts.pendingApplications ?? pendingApplicationsCount}</div>
-          <div className="text-[11px] text-purple-800">Awaiting admin decision</div>
+          <div className="text-2xl font-black text-purple-700">{sellerApplicationsAvailable === false ? '—' : overview?.counts.pendingApplications ?? pendingApplicationsCount}</div>
+          <div className="text-[11px] text-purple-800">{sellerApplicationsAvailable === false ? 'Review service not configured' : 'Awaiting admin decision'}</div>
         </div>
         <div className="rounded-3xl border border-amber-200 bg-amber-50/50 p-5 shadow-sm space-y-1">
           <div className="text-xs font-bold text-amber-800">Pending Product Reviews</div>
-          <div className="text-2xl font-black text-amber-700">{overview?.counts.pendingProducts ?? moderationQueue.length}</div>
+          <div className="text-2xl font-black text-amber-700">{overview ? overview.counts.pendingProducts : '—'}</div>
           <div className="text-[11px] text-amber-800">Awaiting moderation</div>
         </div>
         <div className="rounded-3xl border border-emerald-200 bg-emerald-50/50 p-5 shadow-sm space-y-1">
           <div className="text-xs font-bold text-emerald-800">Published Products</div>
-          <div className="text-2xl font-black text-emerald-700">{overview?.counts.publishedProducts ?? 0}</div>
+          <div className="text-2xl font-black text-emerald-700">{overview ? overview.counts.publishedProducts : '—'}</div>
           <div className="text-[11px] text-emerald-800">
-            {overview?.counts.totalOrders ?? 0} orders · {overview?.counts.totalVideos ?? 0} videos
+            {overview ? overview.counts.totalOrders : '—'} orders · {overview ? overview.counts.totalVideos : '—'} videos
           </div>
         </div>
       </div>
@@ -243,7 +245,7 @@ export default function AdminDashboardPage({ onNavigate }: AdminDashboardPagePro
 
           {applications.length === 0 ? (
             <div className="p-10 text-center text-xs text-slate-400">
-              No seller applications submitted yet.
+              {sellerApplicationsAvailable === false ? 'Seller application reviews are not configured in staging.' : 'No seller applications submitted yet.'}
             </div>
           ) : (
             <div className="divide-y divide-slate-100">
@@ -389,7 +391,7 @@ export default function AdminDashboardPage({ onNavigate }: AdminDashboardPagePro
               </div>
               <div className="rounded-xl bg-slate-50 p-3">
                 <div className="text-slate-400">Open Video Reports</div>
-                <div className="font-black text-slate-900">{overview?.counts.openVideoReports ?? 0}</div>
+                <div className="font-black text-slate-900">Not configured</div>
               </div>
             </div>
           </div>
