@@ -76,7 +76,7 @@ export default function FlashDealsPage({ onSelectProduct, onProceedToCheckout }:
                   </span>
                   <h3
                     onClick={() => onSelectProduct(prod)}
-                    className="mt-0.5 text-xs font-black text-slate-900 line-clamp-1 cursor-pointer hover:text-orange-600"
+                    className="mt-0.5 text-xs font-black text-slate-900 line-clamp-1 cursor-pointer hover:text-orange-700"
                   >
                     {prod.title}
                   </h3>
