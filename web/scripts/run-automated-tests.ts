@@ -547,6 +547,137 @@ async function run() {
       assert.equal(nativeAdmin.status,403);
     });
 
+
+    await test('P0 security: email verification cannot self-assign seller role', async () => {
+      const id='self-assign-check',email='self-assign@example.invalid',token='e'.repeat(64);
+      await authDb.prepare("INSERT INTO cnc_auth_users (id,email,credential,role,verified) VALUES (?,?, '', 'buyer',0)")
+        .bind(id,email).run();
+      await authDb.prepare("INSERT INTO cnc_auth_tokens (hash,user_id,purpose,expires) VALUES (?,?, 'verify',?)")
+        .bind(createHash('sha256').update(token).digest('hex'),id,Date.now()+600000).run();
+      const verified=await mf.dispatchFetch(origin+'/api/auth/verify',{
+        method:'POST',headers:{origin,'content-type':'application/json'},
+        body:JSON.stringify({token,password:'LongStrongPass#2026!',role:'seller'})
+      });
+      assert.equal(verified.status,200,'Email verification must succeed without granting seller role');
+      const record=await authDb.prepare('SELECT role,verified FROM cnc_auth_users WHERE id=?').bind(id)
+        .first<{role:string;verified:number}>();
+      assert.equal(record?.verified,1);
+      assert.equal(record?.role,'buyer','Only an authenticated Admin may promote the applicant');
+    });
+
+    await test('Admin–Seller A/B/F: apply, approve, publish, suspend, reapprove and unpublish', async () => {
+      const adminToken='1'.repeat(64),approvedSellerToken='2'.repeat(64);
+      await authDb.prepare("INSERT INTO cnc_auth_sessions(hash,user_id,expires,mfa) VALUES(?,?,?,1)")
+        .bind(createHash('sha256').update(adminToken).digest('hex'),'staging-admin',Date.now()+600000).run();
+      const adminCookie='__Host-cnc_session='+adminToken;
+      const makePost=(cookie:string, body:unknown)=>({
+        method:'POST',headers:{origin,cookie,'content-type':'application/json'},body:JSON.stringify(body)
+      });
+      const data={businessName:'Test Lagos Market',cacNumber:'RC-012345',businessType:'Retail',
+        stateLocation:'Lagos',phone:'+2348012345678',description:'Isolated test seller application'};
+      const anonymous=await mf.dispatchFetch(origin+'/api/seller/application');
+      assert.equal(anonymous.status,401);
+      const buyerDenied=await mf.dispatchFetch(origin+'/api/admin/seller-applications',{headers:{cookie:buyerCookie}});
+      assert.equal(buyerDenied.status,403);
+      const before=await mf.dispatchFetch(origin+'/api/seller/application',{headers:{cookie:buyerCookie}});
+      assert.equal(before.status,200);
+      assert.equal((await before.json() as any).sellerStatus,'none');
+      const invalidOrigin=await mf.dispatchFetch(origin+'/api/seller/application',makePost(buyerCookie,data) as any);
+      assert.equal(invalidOrigin.status,201);
+      const application=(await invalidOrigin.json() as any).application;
+      assert.equal(application.status,'pending');
+      assert.equal(application.user_id,'staging-buyer');
+      const applicationId=String(application.id);
+      const duplicate=await mf.dispatchFetch(origin+'/api/seller/application',makePost(buyerCookie,data) as any);
+      assert.equal(duplicate.status,409);
+      const priorStore=await mf.dispatchFetch(origin+'/api/seller/store',makePost(buyerCookie,{name:'Unapproved Store',description:'No privilege'}) as any);
+      assert.equal(priorStore.status,403);
+      const reviewDenied=await mf.dispatchFetch(origin+'/api/admin/seller-applications/review',makePost(buyerCookie,{
+        applicationId,userId:'staging-buyer',decision:'approve'
+      }) as any);
+      assert.equal(reviewDenied.status,403);
+      const list=await mf.dispatchFetch(origin+'/api/admin/seller-applications',{headers:{cookie:adminCookie}});
+      assert.equal(list.status,200);
+      assert.ok((await list.json() as any).applications.some((x:any)=>x.id===applicationId));
+      const reviewed=await mf.dispatchFetch(origin+'/api/admin/seller-applications/review',makePost(adminCookie,{
+        applicationId,userId:'staging-buyer',decision:'approve',notes:'Manually reviewed staging-only test data'
+      }) as any);
+      assert.equal(reviewed.status,200,'Admin must be able to approve pending application');
+      const user=await authDb.prepare("SELECT role,suspended FROM cnc_auth_users WHERE id='staging-buyer'")
+        .first<{role:string;suspended:number}>();
+      assert.equal(user?.role,'seller');
+      assert.equal(user?.suspended,0);
+      const stale=await mf.dispatchFetch(origin+'/api/seller/store',{headers:{cookie:buyerCookie}});
+      assert.equal(stale.status,401,'Role change must invalidate prior sessions');
+      await authDb.prepare("INSERT INTO cnc_auth_sessions(hash,user_id,expires,mfa) VALUES(?,?,?,0)")
+        .bind(createHash('sha256').update(approvedSellerToken).digest('hex'),'staging-buyer',Date.now()+600000).run();
+      const sellerCookieApproved='__Host-cnc_session='+approvedSellerToken;
+      const sellerApp=await mf.dispatchFetch(origin+'/api/seller/application',{headers:{cookie:sellerCookieApproved}});
+      assert.equal(sellerApp.status,200);
+      assert.equal((await sellerApp.json() as any).sellerStatus,'approved');
+
+      // An unrelated seller account with no recorded approval cannot operate the Seller Centre.
+      const unrelated=await mf.dispatchFetch(origin+'/api/seller/products',{headers:{cookie:sellerCookie}});
+      assert.equal(unrelated.status,403);
+
+      const savedStore=await mf.dispatchFetch(origin+'/api/seller/store',makePost(sellerCookieApproved,{
+        name:'Staging Test Store',description:'Isolated integration test store',
+        category:'fashion',location:'Lagos',phone:'+2348012345678'
+      }) as any);
+      assert.equal(savedStore.status,200,'Storefront API contract should accept real Seller Centre fields');
+      assert.equal((await savedStore.json() as any).storefront.name,'Staging Test Store');
+
+      const productId=crypto.randomUUID();
+      const created=await mf.dispatchFetch(origin+'/api/seller/products',makePost(sellerCookieApproved,{
+        action:'create',id:productId,name:'Test Ankara Fabric',
+        priceMinor:250000,stock:3,description:'Test-only fabric description',
+        category:'fashion',imageUrl:'https://example.invalid/item.png',brand:'Staging Test Store'
+      }) as any);
+      assert.equal(created.status,200,'Seller product create must accept camelCase priceMinor');
+      const mine=await mf.dispatchFetch(origin+'/api/seller/products',{headers:{cookie:sellerCookieApproved}});
+      assert.equal(mine.status,200);
+      const listing=(await mine.json() as any).items.find((x:any)=>x.id===productId);
+      assert.equal(listing.description,'Test-only fabric description');
+      assert.equal(listing.category,'fashion');
+      assert.equal(listing.price_minor,250000);
+      assert.equal(listing.image_url,'https://example.invalid/item.png');
+      const publiclyVisibleBefore=await authDb.prepare("SELECT COUNT(*) AS n FROM products WHERE id=? AND active=1")
+        .bind(productId).first<{n:number}>();
+      assert.equal(publiclyVisibleBefore?.n,0,'Draft listings must remain private');
+      const submitted=await mf.dispatchFetch(origin+'/api/seller/products',makePost(sellerCookieApproved,{
+        action:'submit',id:productId,revision:listing.revision
+      }) as any);
+      assert.equal(submitted.status,200);
+      const pending=await authDb.prepare("SELECT revision,publication FROM cnc_seller_products WHERE id=?")
+        .bind(productId).first<{revision:number;publication:string}>();
+      assert.equal(pending?.publication,'pending');
+      const moderated=await mf.dispatchFetch(origin+'/api/admin/moderation',makePost(adminCookie,{
+        id:productId,revision:pending?.revision,decision:'approve'
+      }) as any);
+      assert.equal(moderated.status,200);
+      const publicProduct=await authDb.prepare("SELECT store,price,category,active FROM products WHERE id=?")
+        .bind(productId).first<{store:string;price:number;category:string;active:number}>();
+      assert.equal(publicProduct?.store,'staging-buyer');
+      assert.equal(publicProduct?.price,2500);
+      assert.equal(publicProduct?.category,'fashion');
+      assert.equal(publicProduct?.active,1,'Approved listings must be buyer-visible');
+
+      const suspended=await mf.dispatchFetch(origin+'/api/admin/seller-applications/review',makePost(adminCookie,{
+        applicationId,userId:'staging-buyer',decision:'suspend',notes:'Test suspension'
+      }) as any);
+      assert.equal(suspended.status,200);
+      const denied=await mf.dispatchFetch(origin+'/api/seller/products',{headers:{cookie:sellerCookieApproved}});
+      assert.equal(denied.status,401,'Suspended account sessions cannot access Seller Centre');
+      const hidden=await authDb.prepare("SELECT active FROM products WHERE id=?").bind(productId).first<{active:number}>();
+      assert.equal(hidden?.active,0,'Suspended seller catalog must be hidden');
+      const audit=await authDb.prepare("SELECT COUNT(*) AS n FROM cnc_seller_application_events WHERE application_id=?")
+        .bind(applicationId).first<{n:number}>();
+      assert.ok((audit?.n??0)>=3,'Application lifecycle must be auditable');
+      const notifications=await authDb.prepare("SELECT COUNT(*) AS n FROM cnc_notifications WHERE user_id='staging-buyer'")
+        .first<{n:number}>();
+      assert.ok((notifications?.n??0)>=2,'Seller must receive review status notifications');
+    });
+
   } finally {
     await mf.dispose();
   }
