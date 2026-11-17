@@ -8,7 +8,7 @@ Scope: **existing private Cloudflare staging only**. Never use production domain
 - Isolated branch: `fix/staging-admin-seller-benchmark-20261117`
 - Verified CI run 44145253090 at commit `bfa5f2564b4ad5e1fc60b2871a07d101e6e1061e`: **20 isolated Miniflare/D1 tests passed**, TypeScript check and Vite production build passed.
 - The suite verifies browser/native auth boundaries, owner MFA, seller application submission/approval, catalog publishing/suspension and no seeded fake store/products in a clean D1.
-- Further integration assertions for Admin reinstatement, public catalog visibility and Seller unpublishing with revision conflicts were committed at `b9eaf4911a225b33da0d32830ac8bbfb99765614`. **New commit CI must pass before the assertions are considered verified.**
+- Further integration assertions for Admin reinstatement, public catalog visibility and Seller unpublishing with revision conflicts were committed at `b9eaf4911a225b33da0d32830ac8bbfb99765614`. **Verified:** the complete suite passed on the follow-up commit in [CI run 44159155398](https://github.com/deeonejosh/cashncarry-source/actions/runs/44159155398): 20 passed, 0 failed, plus TypeScript and Vite build.
 
 ## Cloudflare deployment evidence
 
@@ -21,6 +21,10 @@ Scope: **existing private Cloudflare staging only**. Never use production domain
 - Active JS bundle was also checked for the old `QA Suite`, `V17 Staging ZIP`, and `Chidi Okafor` text: not found. This is a string check only, not authenticated visual verification.
 - `ADMIN_ACCOUNT_ID`, `ADMIN_TOTP_SECRET_HEX`, `AUTH_RESEND_API_KEY` are present as secret bindings; the secret values were not accessed.
 - `PAYMENTS_ENABLED=false`, `COINS_PURCHASES_ENABLED=false`, `KYC_UPLOADS_ENABLED=false`, `FLW_MODE=disabled`.
+
+## Read-only D1 schema and empty-state verification
+
+The existing staging D1 contains the `cnc_seller_applications`, `cnc_seller_application_events`, `cnc_seller_products` and `cnc_seller_stores` tables. The `cnc_seller_application_changes`, `cnc_public_seller_auth_status` and `cnc_public_seller_product_updated` triggers exist. Required Seller product metadata columns exist. Aggregate counts for seller applications, storefronts, seller products, public catalog products, orders and short videos were **all zero**, with no writes performed. The `d1_migrations` tracking table lists through 0017; schema corresponding to 0019/0020 is present, so reconcile migration history before future schema changes.
 
 ## Acceptance gap and release gate
 
