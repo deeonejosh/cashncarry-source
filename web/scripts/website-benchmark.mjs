@@ -54,7 +54,7 @@ try{
     try{
      const scan=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze();
      item.axeStatus='executed';
-     item.axeViolations=scan.violations.map(v=>({id:v.id,impact:v.impact,nodes:v.nodes.length,help:v.help}));
+     item.axeViolations=scan.violations.map(v=>({id:v.id,impact:v.impact,nodes:v.nodes.length,help:v.help,targets:v.nodes.slice(0,12).map(n=>({selector:n.target,summary:(n.failureSummary||'').slice(0,380)}))}));
     }catch(e){item.axeStatus='blocked';item.axeError=String(e).slice(0,250)}
     item.pass=item.httpStatus===200&&item.overflowPx<=1&&item.visibleTextLength>20&&errors.length===0&&item.axeStatus==='executed'&&item.axeViolations.length===0;
    }catch(e){item.issue=String(e).slice(0,380)}
