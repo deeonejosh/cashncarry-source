@@ -42,7 +42,11 @@ export async function adminRoute(request: Request, env: AuthEnvironment): Promis
   }
 
   if (request.method === 'GET') {
-    const {results} = await db.prepare(`SELECT p.id,p.name,p.category,p.price_minor,p.stock,p.revision,p.publication,s.email AS seller_email,COALESCE(st.name,'') AS store_name FROM cnc_seller_products p JOIN cnc_auth_users s ON s.id=p.owner LEFT JOIN cnc_seller_stores st ON st.owner=p.owner
+    // The baseline schema has no category column; newer isolated staging data may have one.
+    // Select a compatible field without altering data or weakening Admin MFA.
+    const columns = await db.prepare('PRAGMA table_info(cnc_seller_products)').all<{name: string}>();
+    const categoryField = columns.results.some((column) => column.name === 'category') ? 'p.category' : "'' AS category";
+    const {results} = await db.prepare(`SELECT p.id,p.name,${categoryField},p.price_minor,p.stock,p.revision,p.publication,s.email AS seller_email,COALESCE(st.name,'') AS store_name FROM cnc_seller_products p JOIN cnc_auth_users s ON s.id=p.owner LEFT JOIN cnc_seller_stores st ON st.owner=p.owner
       WHERE p.publication='pending' AND p.archived=0 AND s.verified=1 AND s.suspended=0 AND s.role='seller' ORDER BY p.id LIMIT 50`)
       .all<{id:string;name:string;revision:number}>();
     if (url.pathname.startsWith('/api/')) return Response.json({products:results},{headers:{'cache-control':'no-store'}});
