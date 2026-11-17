@@ -154,7 +154,7 @@ export default {
       try { return await ownerSetupRoute(request, env); }
       catch (error) {
         // Opt-in local benchmark diagnostics; do not log credentials, cookies, tokens or request bodies.
-        if (env.BENCH_DIAGNOSTICS === 'enabled') console.error('Owner setup error type:', error instanceof Error ? error.name : 'UnknownError');
+        if (env.BENCH_DIAGNOSTICS === 'enabled') console.error('Owner setup diagnostic:', error instanceof Error ? (error.name + ': ' + error.message.replace(/(?:password|secret|token|cookie|credential)/gi, '[redacted]').slice(0, 350)) : 'UnknownError');
         return reply({ error: 'Owner setup temporarily unavailable' },503);
       }
     }
