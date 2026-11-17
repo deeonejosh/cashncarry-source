@@ -121,6 +121,7 @@ function MainApp() {
     openAuthModal,
   } = useStore();
 
+  const [addressSetupRequested, setAddressSetupRequested] = useState(false);
   const [currentTab, setCurrentTab] = useState<string>(
     () => new URLSearchParams(window.location.search).get('tab') || 'home'
   );
@@ -211,6 +212,7 @@ function MainApp() {
   };
 
   const navigateTab = (tab: string) => {
+    if (tab !== 'profile') setAddressSetupRequested(false);
     setCurrentTab(tab);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -404,7 +406,7 @@ function MainApp() {
           />
         );
       case 'profile':
-        return <ProfilePage onNavigate={navigateTab} />;
+        return <ProfilePage onNavigate={navigateTab} initialAddressSetup={addressSetupRequested} />;
       case 'live':
         return (
           <LiveShoppingPage
@@ -417,7 +419,10 @@ function MainApp() {
         return (
           <AuctionsPage
             onOpenStorefront={handleOpenStorefront}
-            onOpenDeliverySettings={() => navigateTab('profile')}
+            onOpenDeliverySettings={() => {
+              setAddressSetupRequested(true);
+              navigateTab('profile');
+            }}
           />
         );
       case 'coins':
