@@ -501,7 +501,7 @@ async function run() {
         method:'POST',headers:{cookie,origin,'content-type':'application/x-www-form-urlencoded'},
         body:new URLSearchParams({step:'start',password}).toString()
       });
-      assert.equal(start.status,200);
+      assert.equal(start.status,200,'MFA enrolment step response');
       const setupHtml=await start.text();
       assert.match(setupHtml,/otpauth:\/\/totp\//);
       const before=await authDb.prepare('SELECT role FROM cnc_auth_users WHERE id=?').bind(ownerId).first<{role:string}>();
