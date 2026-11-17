@@ -21,9 +21,9 @@ export default function FlashDealsPage({ onSelectProduct, onProceedToCheckout }:
             <Flame size={14} className="text-yellow-300" />
             <span>MARKDOWN DEALS</span>
           </div>
-          <h1 className="text-2xl font-black sm:text-4xl">Flash Deals & Price Drops</h1>
+          <h1 className="text-2xl font-black sm:text-4xl">Flash Deals</h1>
           <p className="max-w-md text-xs text-orange-100 sm:text-sm">
-            Verified price-drop listings directly from approved Cash N Carry Nigeria sellers.
+            Current deals from sellers.
           </p>
         </div>
       </div>

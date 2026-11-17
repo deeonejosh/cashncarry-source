@@ -17,9 +17,9 @@ export default function WishlistPage({ onSelectProduct, onExplore }: WishlistPag
     <div className="space-y-6 pb-16">
       <div className="flex items-center justify-between border-b border-slate-200 pb-4">
         <div>
-          <h1 className="text-2xl font-black text-slate-900 sm:text-3xl">My Saved Wishlist</h1>
+          <h1 className="text-2xl font-black text-slate-900 sm:text-3xl">Wishlist</h1>
           <p className="text-xs text-slate-500 mt-1">
-            Keep track of items you plan to purchase or monitor for price drops.
+            Saved products.
           </p>
         </div>
         <span className="rounded-full bg-rose-50 px-3 py-1 text-xs font-black text-rose-600">

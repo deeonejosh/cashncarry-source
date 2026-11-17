@@ -32,9 +32,9 @@ export default function SellerOrdersPage() {
   return (
     <div className="space-y-6 pb-16">
       <div className="border-b border-slate-200 pb-4">
-        <h1 className="text-2xl font-black text-slate-900 sm:text-3xl">Seller Order Fulfillment</h1>
+        <h1 className="text-2xl font-black text-slate-900 sm:text-3xl">Orders</h1>
         <p className="mt-1 text-xs text-slate-500">
-          Process customer orders, update fulfillment status, and attach verified courier tracking numbers.
+          Manage fulfilment and tracking.
         </p>
       </div>
 

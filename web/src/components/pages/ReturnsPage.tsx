@@ -57,9 +57,9 @@ export default function ReturnsPage({ initialOrder, onBack }: ReturnsPageProps) 
             <RotateCcw size={22} />
           </div>
           <div>
-            <h1 className="text-xl font-black text-slate-900">7-Day Returns & Refunds</h1>
+            <h1 className="text-xl font-black text-slate-900">Returns & Refunds</h1>
             <p className="text-xs text-slate-500">
-              Cash N Carry Nigeria Buyer Protection & Return Resolution.
+              Request and track returns.
             </p>
           </div>
         </div>

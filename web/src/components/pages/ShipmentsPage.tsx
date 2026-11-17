@@ -50,9 +50,9 @@ export default function ShipmentsPage({ initialTracking = '' }: ShipmentsPagePro
           <span className="rounded-full bg-white/20 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-emerald-200">
             ORDER & LOGISTICS TRACKING
           </span>
-          <h1 className="mt-2 text-2xl font-black sm:text-3xl">Shipment Tracking</h1>
+          <h1 className="mt-2 text-2xl font-black sm:text-3xl">Tracking</h1>
           <p className="mt-1 text-xs text-emerald-100 sm:text-sm">
-            View seller-submitted courier tracking codes and fulfilment milestones for your orders.
+            Track dispatched orders.
           </p>
         </div>
 
