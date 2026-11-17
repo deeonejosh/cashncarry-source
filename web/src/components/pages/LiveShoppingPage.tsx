@@ -163,9 +163,9 @@ export default function LiveShoppingPage({
         <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-rose-50 text-rose-600">
           <Radio size={32} />
         </div>
-        <h1 className="text-xl font-black text-slate-900">No one is live right now.</h1>
+        <h1 className="text-xl font-black text-slate-900">No live streams</h1>
         <p className="text-xs text-slate-500 max-w-sm mx-auto">
-          Active live shopping broadcasts from approved Nigerian sellers will appear here automatically.
+          Live seller streams will appear here.
         </p>
         {isApprovedSeller && onOpenCreate && (
           <button
