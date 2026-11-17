@@ -585,7 +585,7 @@ class ApiClient {
 
   async getVideoComments(videoId: string) {
     return this.requestJson<{ comments?: Array<Record<string, unknown>> }>(
-      `/api/v1/videos/comments?videoId=${encodeURIComponent(videoId)}`
+      `/api/v1/videos/comments?video_id=${encodeURIComponent(videoId)}`
     );
   }
 
@@ -697,7 +697,7 @@ class ApiClient {
 
   async getLiveComments(roomId: string) {
     return this.requestJson<{ comments?: Array<Record<string, unknown>> }>(
-      `/api/v1/live/comments?roomId=${encodeURIComponent(roomId)}`
+      `/api/v1/live/comments?room_id=${encodeURIComponent(roomId)}`
     );
   }
 
@@ -721,7 +721,7 @@ class ApiClient {
       body: JSON.stringify({
         productId: input.productId,
         startingBidKobo: Math.round(input.startingBidNaira * 100),
-        durationHours: input.durationHours,
+        durationMinutes: Math.round(input.durationHours * 60),
       }),
     });
   }
