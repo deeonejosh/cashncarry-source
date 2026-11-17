@@ -676,6 +676,45 @@ async function run() {
       const notifications=await authDb.prepare("SELECT COUNT(*) AS n FROM cnc_notifications WHERE user_id='staging-buyer'")
         .first<{n:number}>();
       assert.ok((notifications?.n??0)>=2,'Seller must receive review status notifications');
+      // Suspended sellers may only resume following an explicit Admin decision.
+      const reapproved=await mf.dispatchFetch(origin+'/api/admin/seller-applications/review',makePost(adminCookie,{
+        applicationId,userId:'staging-buyer',decision:'approve',notes:'Verified reinstatement of test seller'
+      }) as any);
+      assert.equal(reapproved.status,200,'Admin should be able to reinstate a suspended seller');
+      const reinstated=await authDb.prepare("SELECT role,suspended FROM cnc_auth_users WHERE id='staging-buyer'")
+        .first<{role:string;suspended:number}>();
+      assert.equal(reinstated?.role,'seller');
+      assert.equal(reinstated?.suspended,0);
+      const visibleAgain=await authDb.prepare("SELECT active FROM products WHERE id=?")
+        .bind(productId).first<{active:number}>();
+      assert.equal(visibleAgain?.active,1,'Reapproval should restore eligible published catalog items');
+      const expiredSellerSession=await mf.dispatchFetch(origin+'/api/seller/products',{headers:{cookie:sellerCookieApproved}});
+      assert.equal(expiredSellerSession.status,401,'Admin reapproval must not reactivate stale sessions');
+
+      // New sign-in session: unpublish must hide the product from the buyer-facing catalog.
+      const resumedToken='3'.repeat(64);
+      await authDb.prepare("INSERT INTO cnc_auth_sessions(hash,user_id,expires,mfa) VALUES(?,?,?,0)")
+        .bind(createHash('sha256').update(resumedToken).digest('hex'),'staging-buyer',Date.now()+600000).run();
+      const resumedCookie='__Host-cnc_session='+resumedToken;
+      const afterReapproval=await mf.dispatchFetch(origin+'/api/seller/products',{headers:{cookie:resumedCookie}});
+      assert.equal(afterReapproval.status,200,'Reapproved seller should regain Seller Centre access');
+      const resumedListing=(await afterReapproval.json() as any).items.find((x:any)=>x.id===productId);
+      assert.equal(resumedListing?.publication,'published');
+      const unpublish=await mf.dispatchFetch(origin+'/api/seller/products',makePost(resumedCookie,{
+        action:'unpublish',id:productId,revision:resumedListing.revision
+      }) as any);
+      assert.equal(unpublish.status,200,'Seller must be able to unpublish an approved product');
+      const unpublished=await authDb.prepare("SELECT publication,revision FROM cnc_seller_products WHERE id=?")
+        .bind(productId).first<{publication:string;revision:number}>();
+      assert.equal(unpublished?.publication,'draft');
+      const noLongerPublic=await authDb.prepare("SELECT active FROM products WHERE id=?")
+        .bind(productId).first<{active:number}>();
+      assert.equal(noLongerPublic?.active,0,'Unpublished product must immediately disappear from buyer-facing catalog');
+      const repeated=await mf.dispatchFetch(origin+'/api/seller/products',makePost(resumedCookie,{
+        action:'unpublish',id:productId,revision:resumedListing.revision
+      }) as any);
+      assert.equal(repeated.status,409,'Stale product revision must fail without overwriting current status');
+
     });
 
   } finally {
