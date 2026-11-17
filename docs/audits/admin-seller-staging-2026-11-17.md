@@ -33,3 +33,12 @@ Current CI is an **isolated backend contract suite**, not a full manual/button-b
 Before deploying the remaining UI: obtain authenticated Access session, reconcile the current Worker/backend and GitHub branch, preserve existing assets/secrets/MFA/Resend/Access policies and D1 data, confirm D1 migration compatibility and backup, prepare the built frontend from the tested commit, use staged asset revision+rollback plan, and run protected staging browser/API smoke tests. Never replace this hand-patched Worker blindly with an older ZIP.
 
 **Verification action here:** read-only Cloudflare checks + GitHub benchmark branch test-only commit; **no Cloudflare mutation, no D1 writes, no production changes**.
+
+## Seller UI follow-up — verified on 17 November
+
+- Source commit `15f802b8b230aee49f8e7e3140ec7c92837f4455` fixes a verified UI weakness in `web/src/components/pages/seller/SellerProductsPage.tsx`: failed submit/unpublish/archive actions previously returned without visible error feedback. The component now shows backend errors, prevents repeated concurrent product actions, and removes a reminder checkbox that never scheduled a reminder (as well as a duplicated success notification).
+- [GitHub Actions run 44168492058](https://github.com/deeonejosh/cashncarry-source/actions/runs/44168492058) **PASSED**: dependency installation, TypeScript, database-backed integration/security regressions, and Vite frontend build.
+- New build artefact JS: `/assets/index-CFB2SPus.js`, SHA-256 `f61532c37e9e089a9b81ae153bb0cedccecb3bb93e0118a7931c23679b0fb4fe`. CSS: `/assets/index-DFKFiQbB.css`, SHA-256 `d2a09b304cbeadca26fee3b6f3618fd027d3784a587003eb19a164f88f8e3653`.
+- Read-only staging D1 checks reconfirmed **zero** seller applications, seller storefronts, seller products, public products, orders and short videos.
+- A separate local Playwright attempt could not execute because Chromium refused the loopback HTTP server with `ERR_BLOCKED_BY_ADMINISTRATOR`. **No local browser pass should be claimed for this exact build.** GitHub CI did not run authenticated hosted-staging E2E either.
+- **Release remains blocked:** Active staging Cloudflare Worker deployment was independently reconfirmed as version `b3f642f1-a10c-449c-b9ec-b5607ca25d9c`, not the frontend candidate. A staged, rollback-ready KV asset and Worker manifest update plus authorised Access browser checks are required before claiming deployment. Keep private Access and all real transaction safeguards in place.
