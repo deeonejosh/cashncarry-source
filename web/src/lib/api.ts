@@ -382,6 +382,7 @@ class ApiClient {
   async mutateSellerProduct(input: {
     action: 'create' | 'update' | 'submit' | 'unpublish' | 'archive';
     id?: string;
+    revision?: number;
     name?: string;
     description?: string;
     category?: string;
@@ -398,7 +399,8 @@ class ApiClient {
         method: 'POST',
         body: JSON.stringify({
           action: input.action,
-          id: input.id,
+          id: input.action === 'create' ? (input.id || crypto.randomUUID()) : input.id,
+          revision: input.revision,
           name: input.name,
           description: input.description,
           category: input.category,
