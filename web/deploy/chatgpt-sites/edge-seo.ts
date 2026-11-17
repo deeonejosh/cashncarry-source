@@ -278,66 +278,71 @@ export async function resolveEdgeSEO({ url, db, baseUrl }: EdgeSEOContext): Prom
  * Injects pre-rendered SEO metadata directly into the raw HTML string
  * for crawlers (Googlebot, Bingbot, Twitterbot, etc.) that do not execute client JS.
  */
+// Untrusted seller-supplied titles/descriptions must never become HTML or script markup.
+function escapeSEOText(value: string): string {
+  return String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+function escapeSEOAttribute(value: string): string {
+  return escapeSEOText(value).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+function safeStructuredData(value: Record<string, unknown>): string {
+  // JSON-LD inside HTML is still a script tag; encode closing-tag characters.
+  return JSON.stringify(value, null, 2)
+    .replace(/</g, '\\u003c')
+    .replace(/>/g, '\\u003e')
+    .replace(/&/g, '\\u0026')
+    .replace(/\u2028/g, '\\u2028')
+    .replace(/\u2029/g, '\\u2029');
+}
+
 export function injectEdgeSEOMeta(html: string, seo: EdgeSEOResult): string {
   let modified = html;
+  const titleText = escapeSEOText(seo.title);
+  const titleAttr = escapeSEOAttribute(seo.title);
+  const descAttr = escapeSEOAttribute(seo.description);
+  const canonicalAttr = escapeSEOAttribute(seo.canonicalUrl);
+  const imageAttr = escapeSEOAttribute(seo.image);
 
-  // Replace or inject <title>
   if (/<title>[\s\S]*?<\/title>/i.test(modified)) {
-    modified = modified.replace(/<title>[\s\S]*?<\/title>/i, `<title>${seo.title}</title>`);
+    modified = modified.replace(/<title>[\s\S]*?<\/title>/i, () => '<title>' + titleText + '</title>');
   } else {
-    modified = modified.replace(/<head>/i, `<head>\n    <title>${seo.title}</title>`);
+    modified = modified.replace(/<head>/i, () => '<head>\n    <title>' + titleText + '</title>');
   }
 
-  // Replace or inject meta description
+  const descriptionTag = '<meta name="description" content="' + descAttr + '" />';
   if (/<meta\s+name=["']description["'][^>]*>/i.test(modified)) {
-    modified = modified.replace(
-      /<meta\s+name=["']description["'][^>]*>/i,
-      `<meta name="description" content="${seo.description.replace(/"/g, '&quot;')}" />`
-    );
+    modified = modified.replace(/<meta\s+name=["']description["'][^>]*>/i, () => descriptionTag);
   } else {
-    modified = modified.replace(
-      /<\/title>/i,
-      `</title>\n    <meta name="description" content="${seo.description.replace(/"/g, '&quot;')}" />`
-    );
+    modified = modified.replace(/<\/title>/i, () => '</title>\n    ' + descriptionTag);
   }
 
-  // Replace or inject canonical link
+  const canonicalTag = '<link rel="canonical" href="' + canonicalAttr + '" />';
   if (/<link\s+rel=["']canonical["'][^>]*>/i.test(modified)) {
-    modified = modified.replace(
-      /<link\s+rel=["']canonical["'][^>]*>/i,
-      `<link rel="canonical" href="${seo.canonicalUrl}" />`
-    );
+    modified = modified.replace(/<link\s+rel=["']canonical["'][^>]*>/i, () => canonicalTag);
   } else {
-    modified = modified.replace(
-      /<\/title>/i,
-      `</title>\n    <link rel="canonical" href="${seo.canonicalUrl}" />`
-    );
+    modified = modified.replace(/<\/title>/i, () => '</title>\n    ' + canonicalTag);
   }
 
-  // OpenGraph and Twitter tags
-  const socialTags = `
-    <meta property="og:title" content="${seo.title.replace(/"/g, '&quot;')}" />
-    <meta property="og:description" content="${seo.description.replace(/"/g, '&quot;')}" />
-    <meta property="og:url" content="${seo.canonicalUrl}" />
-    <meta property="og:type" content="${seo.ogType}" />
-    <meta property="og:image" content="${seo.image}" />
-    <meta property="og:site_name" content="Cash N Carry Nigeria" />
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="${seo.title.replace(/"/g, '&quot;')}" />
-    <meta name="twitter:description" content="${seo.description.replace(/"/g, '&quot;')}" />
-    <meta name="twitter:image" content="${seo.image}" />
-    <meta name="twitter:url" content="${seo.canonicalUrl}" />
-    <script id="cnc-seo-structured-data" type="application/ld+json">
-${JSON.stringify(seo.jsonLd, null, 2)}
-    </script>`;
+  const socialTags = [
+    '<meta property="og:title" content="' + titleAttr + '" />',
+    '<meta property="og:description" content="' + descAttr + '" />',
+    '<meta property="og:url" content="' + canonicalAttr + '" />',
+    '<meta property="og:type" content="' + seo.ogType + '" />',
+    '<meta property="og:image" content="' + imageAttr + '" />',
+    '<meta property="og:site_name" content="Cash N Carry Nigeria" />',
+    '<meta name="twitter:card" content="summary_large_image" />',
+    '<meta name="twitter:title" content="' + titleAttr + '" />',
+    '<meta name="twitter:description" content="' + descAttr + '" />',
+    '<meta name="twitter:image" content="' + imageAttr + '" />',
+    '<meta name="twitter:url" content="' + canonicalAttr + '" />',
+    '<script id="cnc-seo-structured-data" type="application/ld+json">' +
+      safeStructuredData(seo.jsonLd) + '</script>',
+  ].join('\n    ');
 
-  // Clean old tags if present, and insert new social tags
-  modified = modified.replace(/<meta\s+property=["']og:title["'][^>]*>/gi, '');
-  modified = modified.replace(/<meta\s+property=["']og:description["'][^>]*>/gi, '');
-  modified = modified.replace(/<meta\s+property=["']og:url["'][^>]*>/gi, '');
-  modified = modified.replace(/<meta\s+property=["']og:type["'][^>]*>/gi, '');
+  // Deduplicate only SEO-owned tags, not unrelated site metadata.
+  modified = modified.replace(/<meta\s+property=["']og:(?:title|description|url|type|image|site_name)["'][^>]*>/gi, '');
+  modified = modified.replace(/<meta\s+name=["']twitter:(?:card|title|description|image|url)["'][^>]*>/gi, '');
   modified = modified.replace(/<script id=["']cnc-seo-structured-data["'][^>]*>[\s\S]*?<\/script>/gi, '');
 
-  modified = modified.replace(/<\/head>/i, `${socialTags}\n  </head>`);
-  return modified;
+  return modified.replace(/<\/head>/i, () => '\n    ' + socialTags + '\n  </head>');
 }
