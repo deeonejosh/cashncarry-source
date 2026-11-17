@@ -417,6 +417,7 @@ function MainApp() {
         return (
           <AuctionsPage
             onOpenStorefront={handleOpenStorefront}
+            onOpenDeliverySettings={() => navigateTab('profile')}
           />
         );
       case 'coins':
