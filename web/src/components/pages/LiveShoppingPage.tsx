@@ -52,57 +52,34 @@ export default function LiveShoppingPage({
 
   const [comments, setComments] = useState<LiveComment[]>([]);
   const [newComment, setNewComment] = useState('');
-  const [viewerCount, setViewerCount] = useState(0);
+  const [, setViewerCount] = useState(0);
   const [heartsCount, setHeartsCount] = useState(0);
   const [pinModalOpen, setPinModalOpen] = useState(false);
   const [giftingModalOpen, setGiftingModalOpen] = useState(false);
 
   const isHost = Boolean(isApprovedSeller && activeRoom && activeRoom.sellerId === currentUser.id);
-  const ownPublishedProducts = sellerProducts.filter((p) => p.publication === 'published');
+  const ownPublishedProducts = sellerProducts.filter((p) => p.publication === 'published' && p.stock > 0);
 
   useEffect(() => {
     if (!activeRoom?.id) return;
     setViewerCount(activeRoom.viewerCount);
     setHeartsCount(activeRoom.heartsCount);
-    void joinLiveRoom(activeRoom.id);
-    loadLiveComments(activeRoom.id).then(setComments);
-
-    let es: EventSource | null = null;
-    try {
-      es = new EventSource(`/api/v1/live/${encodeURIComponent(activeRoom.id)}/events`, {
-        withCredentials: true,
-      });
-      es.onmessage = (event) => {
-        try {
-          const payload = JSON.parse(event.data) as Record<string, unknown>;
-          if (payload.type === 'comment' && payload.comment) {
-            const c = payload.comment as Record<string, unknown>;
-            const nextComment: LiveComment = {
-              id: String(c.id || Date.now()),
-              roomId: activeRoom.id,
-              userId: String(c.user_id || ''),
-              userName: String(c.user_name || 'Viewer'),
-              body: String(c.body || ''),
-              createdAt: String(c.created || ''),
-            };
-            setComments((prev) => (prev.some((x) => x.id === nextComment.id) ? prev : [...prev, nextComment]));
-          } else if (payload.type === 'room_update' && payload.room) {
-            const r = payload.room as Record<string, unknown>;
-            if (typeof r.viewer_count === 'number') setViewerCount(r.viewer_count);
-            if (typeof r.hearts_count === 'number') setHeartsCount(r.hearts_count);
-            if (r.status === 'ended') {
-              void reloadMarketplace();
-            }
-          }
-        } catch {
-          // ignore malformed SSE event
-        }
-      };
-    } catch {
-      // fallback: manual refresh on actions
-    }
+    // The backend currently has no /live/:id/events SSE route. Poll the actual
+    // persisted comments until a supported authenticated event stream is built.
+    let cancelled = false;
+    const refresh = async () => {
+      try {
+        const updated = await loadLiveComments(activeRoom.id);
+        if (!cancelled) setComments(updated);
+      } catch {
+        // Keep previously displayed comments while temporarily disconnected.
+      }
+    };
+    void refresh();
+    const poll = window.setInterval(() => void refresh(), 5000);
     return () => {
-      es?.close();
+      cancelled = true;
+      window.clearInterval(poll);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeRoom?.id]);
@@ -207,7 +184,7 @@ export default function LiveShoppingPage({
       {!liveStreamingConfigured && (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-3.5 text-xs text-amber-900 flex items-center justify-between gap-3">
           <span>
-            Live room session, chat, hearts, and pinned product updates are active. Video media relay is awaiting live stream server configuration.
+            Video broadcasting is unavailable until the streaming connection is configured and verified.
           </span>
         </div>
       )}
@@ -236,7 +213,7 @@ export default function LiveShoppingPage({
               </span>
               <span className="flex items-center gap-1 rounded-full bg-black/60 px-3 py-1 text-xs font-bold border border-white/10">
                 <Users size={13} className="text-emerald-300" />
-                <span>{viewerCount}</span>
+                <span>Viewers unverified</span>
               </span>
             </div>
           </div>
@@ -244,9 +221,9 @@ export default function LiveShoppingPage({
           <div className="my-auto text-center space-y-2 py-8">
             <h1 className="text-xl sm:text-2xl font-black">{activeRoom.title}</h1>
             <p className="text-xs text-slate-400">
-              {activeRoom.streamUrl
-                ? 'Live video feed connected.'
-                : 'Live shopping room connected via real-time server events.'}
+              {liveStreamingConfigured
+                ? 'Video connection pending verification.'
+                : 'Broadcast unavailable in this staging environment.'}
             </p>
           </div>
 
@@ -315,7 +292,7 @@ export default function LiveShoppingPage({
         </div>
 
         {/* Live Audience Chat */}
-        <div className="flex h-[500px] flex-col rounded-3xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+        <div className="flex h-[min(58dvh,500px)] min-h-[280px] flex-col rounded-3xl border border-slate-200 bg-white shadow-sm overflow-hidden">
           <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50 px-4 py-3">
             <div className="flex items-center gap-2 text-xs font-black text-slate-800">
               <MessageCircle size={15} className="text-[#0c5c36]" />
@@ -358,7 +335,7 @@ export default function LiveShoppingPage({
             </button>
           </div>
 
-          <form onSubmit={handleSendComment} className="border-t border-slate-200 p-3 flex gap-2">
+          <form onSubmit={handleSendComment} className="border-t border-slate-200 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] flex gap-2">
             <input
               type="text"
               value={newComment}
