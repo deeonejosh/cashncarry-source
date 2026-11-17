@@ -7,11 +7,11 @@
 **Source basis:** `fix/staging-workflow-audit` at `d571c5e80d80fd3b547c5e820d9469b09d2db16b`  
 **Private staging:** https://cashncarry-d1-staging-worker.cashncarry-workforce-2026.workers.dev/  
 **Verified existing staging Worker:** `f5675b32-e4c2-4c49-ba5a-a3398761e626`  
-**Staging deployment from this benchmark:** **NOT PERFORMED** — critical regression gate is failing.
+**Staging deployment from this benchmark:** **NOT PERFORMED** — full browser/release verification is incomplete; current staging remains unchanged.
 
 ## Executive summary
 
-This is an evidence-based interim report, not a claim that the entire marketplace is tested. The actual repository was inspected and a separate automated benchmark branch created. Its GitHub Actions setup runs source checks, Playwright desktop and mobile screenshots, Axe accessibility scans, and Lighthouse CI, storing report artifacts. The earlier source-branch CI failed 1 of 18 backend/security tests; an Android build configuration check also failed.
+This is an evidence-based interim report, not a claim that the entire marketplace is tested. The actual repository was inspected and a separate automated benchmark branch created. Its GitHub Actions setup runs source checks, Playwright desktop and mobile screenshots, Axe accessibility scans, and Lighthouse CI, storing report artifacts. The baseline source-branch CI failed 1 of 18 backend/security tests. This was traced to Admin moderation selecting a `category` column missing from the clean migration schema. After a compatibility fix, the isolated rerun **passed all 18 tests**. An Android build configuration check still fails.
 
 Cloudflare Browser Rendering was directed at the real private staging URL but returned **Cloudflare Access sign-in**, not the marketplace. This correctly protects the private staging site; it also blocks uncredentialed end-to-end verification of Buyer, Seller and Admin actions. No unauthorised login bypass has been attempted.
 
@@ -62,29 +62,31 @@ The D1 database has **43 non-internal tables**, with one Admin user, zero seller
 
 ## 3. Automated regression baseline
 
-Source branch GitHub Actions run: https://github.com/deeonejosh/cashncarry-source/actions/runs/44112516309
+Baseline run: https://github.com/deeonejosh/cashncarry-source/actions/runs/44112516309  
+Successful backend retest: https://github.com/deeonejosh/cashncarry-source/actions/runs/44123264147
 
 | Check | Evidence-based result |
 |---|---|
 | Source inventory | PASSED |
-| Backend/security integration | **17 PASSED, 1 FAILED** |
-| Owner setup security regression | **FAILED**: HTTP 503 received where the test expected HTTP 200 |
+| Backend/security integration baseline | **17 PASSED, 1 FAILED** |
+| Backend/security integration after Admin SQL fix | **18 PASSED, 0 FAILED** |
+| Owner setup and Admin moderation regression | **PASSED on retest** after compatibility fix |
 | Android source/build configuration | **FAILED**: repository-root `build.gradle.kts` missing or empty |
 | Desktop/mobile screenshot artifact from the original workflow | **BLOCKED**: web job stopped at failing regression; no screenshots uploaded |
 | Private deployed website UI | **BLOCKED** by Cloudflare Access without a test session |
 | Live third-party payments and supplier integration | NOT TESTED; real transactions prohibited |
 
-The failing test is specifically `Owner setup: existing seller password and TOTP are required before privilege elevation`. This is a failing automated test, not proof of a bypass or of failure in the separately patched running Worker.
+The initially failing `Owner setup: existing seller password and TOTP are required before privilege elevation` test actually reached Admin moderation. Stack diagnostics pinpointed `admin.ts`: the moderation SQL selected `p.category`, which is absent in the clean schema but present in the existing staging database. The branch now conditionally selects the column when it exists, and the same test passed on retest without weakening password, TOTP or role enforcement.
 
 ## 4. Weighted benchmark (100-point rubric)
 
 | Category | Weight | Certified score | Evidence status |
 |---|---:|---|---|
 | UI/UX Design | 20 | Not scored | Local screenshot benchmark pending evidence review |
-| Workflow Functionality | 20 | Not scored | Existing regression suite not fully passing; no complete authenticated E2E |
+| Workflow Functionality | 20 | Not scored | 18/18 isolated backend checks pass; no complete authenticated E2E |
 | Mobile Responsiveness | 15 | Not scored | Playwright screenshots/overflow audit configured, not certified |
-| Backend and API Reliability | 15 | Not scored | Some integration tests passed, owner test failed |
-| Security | 10 | Not scored | Fail-closed staging flags verified; owner regression failed |
+| Backend and API Reliability | 15 | Not scored | 18/18 isolated integration checks passed; runtime protected APIs not E2E tested |
+| Security | 10 | Not scored | Fail-closed staging flags verified; owner/MFA regression passed on retest |
 | Performance | 10 | Not scored | Lighthouse CI collecting lab data |
 | Accessibility | 10 | Not scored | Axe audit collecting evidence |
 | **Total** | **100** | **NOT CERTIFIED / 100** | **No points awarded for tests not completed** |
@@ -95,7 +97,7 @@ A numeric product-quality score would be fabricated at this point. The benchmark
 
 | Priority | Finding | Verification | Status |
 |---|---|---|---|
-| P0 | Owner activation regression test returns HTTP 503 instead of 200 | GitHub CI run `44112516309` | UNRESOLVED; deployment blocked |
+| P0 | Owner/Admin moderation clean-schema regression initially returned HTTP 503 | Baseline `44112516309`; pass `44123264147` | **FIXED in source**; staging deployment not yet approved |
 | P1 | Repository Android Gradle root configuration absent/empty | Android job log | BLOCKED |
 | P1 | Local source and deployed staging Worker contain independently patched auth/UI behaviour; replacing the Worker from source risks regression | Inspected GitHub source and Cloudflare Worker | REQUIRES RECONCILIATION |
 | P1 | No authenticated browser session available to test actual staging | Cloudflare Browser Rendering opened Access sign-in | BLOCKED |
@@ -110,15 +112,16 @@ Dedicated branch `fix/staging-ai-benchmark-20261117` was created. Changes are li
 - `web/lighthouserc.json`: Lighthouse CI collection for local home and Shop previews; filesystem report output.
 - `.github/workflows/benchmark-private-staging.yml`: runs source build, lint, backend tests, Playwright/Axe and Lighthouse; uploads evidence.
 - `.github/workflows/benchmark-auth-regression.yml`: independent fast owner regression check.
-- `web/deploy/chatgpt-sites/worker.ts` and `web/scripts/run-automated-tests.ts`: optional benchmark-only diagnostics and targeted test messages. **These diagnostic changes are not deployed** and must be reviewed/removed before a release.
+- `web/deploy/chatgpt-sites/admin.ts`: fixes the verified clean-schema P0 moderation bug using a safe conditional `category` column projection; preserves the value when the column exists. **18/18 backend tests pass after this change**.
+- `web/deploy/chatgpt-sites/worker.ts` and `web/scripts/run-automated-tests.ts`: optional benchmark-only diagnostics and targeted test messages. **These diagnostic changes are not deployed** and must be removed/reviewed before a release.
 
 No production changes were made. Existing staging was inspected read-only; the benchmark branch has **not** been deployed to the staging Worker.
 
 ## 7. Follow-up verification gates
 
 1. Complete and review the running isolated browser/Lighthouse/Axe CI evidence and screenshots.
-2. Identify and fix the Owner setup HTTP 503 regression in source without weakening passwords, CSRF, TOTP or role checks.
-3. Re-run backend regression suite until all critical tests pass.
+2. Owner/Admin moderation clean-schema 503 regression **fixed and retested: 18/18 passed**; remove diagnostic-only instrumentation before deployment.
+3. Complete remaining browser, Lighthouse and Axe checks and inspect actual outputs.
 4. Address missing Android Gradle configuration independently; do not claim APK tests passed.
 5. Obtain authorised staging test sessions if complete Buyer/Seller/Admin journeys are required. Do not bypass Cloudflare Access.
 6. Reconcile actual staging Worker changes with the approved source branch, back up isolated staging data, then deploy only a tested release candidate.
@@ -126,8 +129,9 @@ No production changes were made. Existing staging was inspected read-only; the b
 
 ## 8. Linked evidence
 
-- [Existing staging backend/source CI (17/18)](https://github.com/deeonejosh/cashncarry-source/actions/runs/44112516309)
+- [Baseline staging backend/source CI (17/18)](https://github.com/deeonejosh/cashncarry-source/actions/runs/44112516309)
+- [After-fix owner/Admin regression (18/18)](https://github.com/deeonejosh/cashncarry-source/actions/runs/44123264147)
 - [Isolated Playwright/Axe/Lighthouse benchmark run](https://github.com/deeonejosh/cashncarry-source/actions/runs/44120802783)
 - [Current benchmark branch](https://github.com/deeonejosh/cashncarry-source/tree/fix/staging-ai-benchmark-20261117)
 
-**Final release decision: BLOCKED.** Do not deploy the benchmark branch to staging while the critical Owner/Admin test is failing or while the deployed Worker changes remain unreconciled with source.
+**Final release decision: BLOCKED pending full release verification.** The owner/Admin regression now passes, but authenticated staging browser tests and complete design/performance evidence remain incomplete. Do not deploy the benchmark branch while deployed Worker changes remain unreconciled with source.
