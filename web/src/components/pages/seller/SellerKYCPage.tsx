@@ -69,7 +69,7 @@ export default function SellerKYCPage({ onNavigate }: SellerKYCPageProps) {
           <ShieldCheck size={14} />
           <span>SELLER ONBOARDING & VERIFICATION</span>
         </div>
-        <h1 className="text-2xl font-black sm:text-3xl">Become a Verified Seller</h1>
+        <h1 className="text-2xl font-black sm:text-3xl">Seller Verification</h1>
         <p className="max-w-xl text-xs text-emerald-100 sm:text-sm">
           Submit your Nigerian business details for compliance review. Only administrator-approved sellers can access Seller Centre, publish products, post shoppable videos, or go live.
         </p>

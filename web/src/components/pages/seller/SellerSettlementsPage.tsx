@@ -29,9 +29,9 @@ export default function SellerSettlementsPage() {
       )}
 
       <div className="border-b border-slate-200 pb-4">
-        <h1 className="text-2xl font-black text-slate-900 sm:text-3xl">Settlements & Payouts</h1>
+        <h1 className="text-2xl font-black text-slate-900 sm:text-3xl">Settlements</h1>
         <p className="mt-1 text-xs text-slate-500">
-          Review verified order totals and payout readiness for your storefront.
+          View earnings and payout status.
         </p>
       </div>
 

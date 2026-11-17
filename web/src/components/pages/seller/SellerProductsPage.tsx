@@ -105,9 +105,9 @@ export default function SellerProductsPage() {
     <div className="space-y-6 pb-16">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
         <div>
-          <h1 className="text-2xl font-black text-slate-900 sm:text-3xl">Manage Products & Inventory</h1>
+          <h1 className="text-2xl font-black text-slate-900 sm:text-3xl">Products</h1>
           <p className="mt-1 text-xs text-slate-500">
-            Create draft listings, update pricing and stock, and submit to admin moderation for public visibility.
+            Manage listings and stock.
           </p>
         </div>
 

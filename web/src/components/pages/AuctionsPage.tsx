@@ -98,9 +98,9 @@ export default function AuctionsPage({ onCheckoutAuctionOrder, onOpenStorefront 
             <Gavel size={14} />
             <span>VERIFIED MARKETPLACE AUCTIONS</span>
           </div>
-          <h1 className="text-2xl font-black sm:text-3xl">Live Marketplace Auctions</h1>
+          <h1 className="text-2xl font-black sm:text-3xl">Auctions</h1>
           <p className="max-w-xl text-xs text-amber-100 sm:text-sm">
-            Bid on authentic items listed by approved Nigerian sellers. Only approved sellers can launch new auctions.
+            Bid on products from approved sellers.
           </p>
         </div>
 

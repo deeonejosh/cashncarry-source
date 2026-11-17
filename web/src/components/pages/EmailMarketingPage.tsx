@@ -112,10 +112,10 @@ export default function EmailMarketingPage({ onOpenNewsletterModal }: EmailMarke
             ADMIN EMAIL TEMPLATE STUDIO
           </span>
           <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
-            Email Template Designer
+            Email Studio
           </h1>
           <p className="text-xs sm:text-sm text-emerald-100/90 max-w-xl">
-            Build responsive Cash N Carry Nigeria HTML email templates referencing live catalog listings.
+            Manage email templates.
           </p>
         </div>
 
