@@ -5,11 +5,10 @@ import LiveAuctionCard from '../ui/LiveAuctionCard';
 import { Gavel, Plus, AlertCircle, ShieldCheck, RefreshCw } from 'lucide-react';
 
 interface AuctionsPageProps {
-  onCheckoutAuctionOrder: () => void;
   onOpenStorefront?: (sellerId: string) => void;
 }
 
-export default function AuctionsPage({ onCheckoutAuctionOrder, onOpenStorefront }: AuctionsPageProps) {
+export default function AuctionsPage({ onOpenStorefront }: AuctionsPageProps) {
   const {
     auctions,
     auctionsState,
@@ -47,14 +46,6 @@ export default function AuctionsPage({ onCheckoutAuctionOrder, onOpenStorefront 
     if (ok) {
       setBiddingAuction(null);
     }
-  };
-
-  const handleWinCheckout = () => {
-    if (!paymentsEnabled) {
-      showToast('Online payments are currently disabled on this server.', 'info');
-      return;
-    }
-    onCheckoutAuctionOrder();
   };
 
   const handleCreateAuction = async (e: React.FormEvent) => {
@@ -154,7 +145,6 @@ export default function AuctionsPage({ onCheckoutAuctionOrder, onOpenStorefront 
                   setBidAmount(amount);
                 }
               }}
-              onClaimWin={() => handleWinCheckout()}
               onInspectSeller={(sellerId) => onOpenStorefront?.(sellerId)}
             />
           ))}
