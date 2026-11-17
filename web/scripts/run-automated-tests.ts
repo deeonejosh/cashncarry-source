@@ -485,7 +485,7 @@ async function run() {
         .bind(createHash('sha256').update(ownerToken).digest('hex'),ownerId,Date.now()+3600000).run();
       const cookie='__Host-cnc_session='+ownerToken;
       const get=await mf.dispatchFetch(origin+'/api/auth/owner-setup',{headers:{cookie}});
-      assert.equal(get.status,200);
+      assert.equal(get.status,200,'Owner GET returned: '+(await get.clone().text()).slice(0,140));
       assert.match(await get.text(),/Activate owner access/);
       const wrongOrigin=await mf.dispatchFetch(origin+'/api/auth/owner-setup',{
         method:'POST',headers:{cookie,origin:'https://attacker.invalid','content-type':'application/x-www-form-urlencoded'},
