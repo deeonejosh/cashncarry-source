@@ -150,7 +150,7 @@ interface StoreContextType {
   // Cart & Wishlist & Checkout
   isCartOpen: boolean;
   setCartOpen: (v: boolean) => void;
-  addToCart: (product: ProductItem, quantity?: number) => Promise<void>;
+  addToCart: (product: ProductItem, quantity?: number) => Promise<boolean>;
   removeFromCart: (productId: string) => Promise<void>;
   updateCartQty: (productId: string, qty: number) => Promise<void>;
   clearCart: () => Promise<void>;
@@ -1037,14 +1037,14 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const addToCart = async (product: ProductItem, quantity = 1) => {
     if (!currentUser.authenticated) {
       openAuthModal('Please sign in to add items to your cart.');
-      return;
+      return false;
     }
     const existing = cart.find((c) => c.productId === product.id);
     const nextQty = (existing?.quantity || 0) + quantity;
     const res = await api.updateCartItem(product.id, nextQty, 'replacement');
     if (!res.ok) {
       showToast(res.error || 'Could not update cart.', 'error');
-      return;
+      return false;
     }
     setCart((prev) => {
       if (existing) {
@@ -1067,6 +1067,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     });
     setCartOpen(true);
     showToast(`Added ${product.title} to your cart.`, 'success');
+    return true;
   };
 
   const updateCartQty = async (productId: string, qty: number) => {
@@ -1423,7 +1424,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       id: String(c.id || ''),
       roomId: String(c.room_id || roomId),
       userId: String(c.user_id || ''),
-      userName: String(c.user_name || 'Viewer'),
+      userName: String(c.author_name || c.user_name || 'Member'),
       body: String(c.body || ''),
       createdAt: String(c.created || ''),
     }));
