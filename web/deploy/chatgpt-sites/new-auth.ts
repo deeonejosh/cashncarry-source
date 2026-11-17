@@ -27,7 +27,7 @@ async function credential(password: string) {
   const salt = random();
   return salt + ':' + await derive(password, salt);
 }
-async function passwordMatches(password: string, stored?: string) {
+export async function passwordMatches(password: string, stored?: string) {
   const [salt, expected] = (stored || '0'.repeat(64) + ':' + '0'.repeat(64)).split(':');
   const actual = await derive(password, salt);
   let different = 0;
@@ -92,15 +92,18 @@ export async function currentAccount(request: Request, env: AuthEnvironment, adm
   const db = env.AUTH_DB;
   const url = new URL(request.url);
   if (!db || env.AUTH_ORIGIN !== url.origin || url.protocol !== 'https:') return null;
-  // Strictly prohibit Bearer tokens from accessing Admin MFA routes
-  if (admin && (request.headers.get('authorization') || request.headers.get('x-client-type')?.toLowerCase() === 'mobile')) return null;
+  // Admin sessions are browser-cookie-only, require MFA and must match the configured owner ID.
+  const nativeRequest = Boolean(request.headers.get('authorization') || request.headers.get('x-client-type')?.toLowerCase() === 'mobile');
+  if (admin && nativeRequest) return null;
   const sessionHash = await requestSessionHash(request);
-  const now = Date.now();
-  return sessionHash ? await db.prepare(`SELECT u.id,u.email,u.role FROM cnc_auth_sessions s
-      JOIN cnc_auth_users u ON u.id=s.user_id WHERE s.hash=? AND s.expires>? AND u.verified=1 AND u.suspended=0 AND ${admin ? "u.role='admin' AND s.mfa=1 AND u.id=?" : "u.role IN ('buyer','seller')"}`)
-      .bind(sessionHash, now, ...(admin ? [env.ADMIN_ACCOUNT_ID ?? ''] : [])).first<Pick<User, 'id' | 'email' | 'role'>>() : null;
+  if (!sessionHash) return null;
+  const rule = admin ? "u.role='admin' AND s.mfa=1 AND u.id=?"
+    : nativeRequest ? "u.role IN ('buyer','seller')"
+    : "(u.role IN ('buyer','seller') OR (u.role='admin' AND s.mfa=1 AND u.id=?))";
+  return db.prepare('SELECT u.id,u.email,u.role FROM cnc_auth_sessions s JOIN cnc_auth_users u ON u.id=s.user_id WHERE s.hash=? AND s.expires>? AND u.verified=1 AND u.suspended=0 AND ' + rule)
+    .bind(sessionHash, Date.now(), ...(admin || !nativeRequest ? [env.ADMIN_ACCOUNT_ID ?? ''] : []))
+    .first<Pick<User, 'id' | 'email' | 'role'>>();
 }
-
 export async function authRoute(request: Request, env: AuthEnvironment) {
   const db = env.AUTH_DB;
   const url = new URL(request.url);
@@ -168,7 +171,7 @@ export async function authRoute(request: Request, env: AuthEnvironment) {
       SELECT ?,id,?,1 FROM cnc_auth_users WHERE id=? AND credential=? AND role='admin' AND verified=1 AND suspended=0
       AND (SELECT last_step FROM cnc_admin_mfa_steps WHERE user_id=cnc_auth_users.id)=? RETURNING hash`)
       .bind(await sha(fresh),now+15*60_000,user.id,user.credential,step).first();
-    return issued ? json({signedIn:true},200,sessionCookie(fresh,900)) : json({error:'Invalid credentials or code'},401);
+    return issued ? json({signedIn:true,user:{id:user.id,email:user.email,role:'admin',sellerStatus:'none'}},200,sessionCookie(fresh,900)) : json({error:'Invalid credentials or code'},401);
   }
   if (action === 'login') {
     if (!(await passwordMatches(password, user?.credential)) || !user || !user.verified || user.suspended || user.role === 'admin') {
