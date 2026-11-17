@@ -494,7 +494,7 @@ function MainApp() {
 
   return (
     <div
-      className={`min-h-screen min-w-0 flex flex-col font-sans overflow-x-clip ${
+      className={`cnc-app min-h-screen min-w-0 flex flex-col font-sans overflow-x-clip ${
         currentTab === 'for-you' ? 'h-[100dvh] overflow-hidden bg-black p-0 m-0' : 'bg-white text-slate-900'
       }`}
     >
@@ -518,10 +518,11 @@ function MainApp() {
       />
 
       <main
+        data-cnc-route={currentTab}
         className={
           currentTab === 'for-you'
             ? 'w-full h-[100dvh] md:h-[100vh] p-0 m-0 overflow-hidden bg-black flex-1'
-            : 'flex-1 min-w-0 mx-auto max-w-7xl w-full px-3 pt-4 pb-24 sm:px-4 md:px-8 md:pt-6 md:pb-8'
+            : `cnc-page ${SELLER_CENTRE_TABS.has(currentTab) || ADMIN_TABS.has(currentTab) ? 'cnc-dashboard' : ''} flex-1 min-w-0 mx-auto max-w-7xl w-full px-3 pt-4 pb-24 sm:px-4 md:px-8 md:pt-6 md:pb-8`
         }
       >
         {renderMainContent()}

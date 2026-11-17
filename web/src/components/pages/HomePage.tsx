@@ -83,14 +83,11 @@ export default function HomePage({
   ];
 
   return (
-    <div className="space-y-10 pb-16">
+    <div className="space-y-7 pb-10">
       {/* HERO SECTION */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 items-stretch">
-        <section className="lg:col-span-8 relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#0c5c36] via-[#09472a] to-[#042415] p-6 sm:p-10 md:p-12 text-white shadow-xl flex flex-col justify-between">
+        <section className="lg:col-span-8 relative overflow-hidden rounded-2xl bg-[#084d2c] p-6 sm:p-8 text-white flex flex-col justify-between">
           <div className="relative z-10 max-w-xl space-y-4">
-            <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3.5 py-1 text-[11px] font-black tracking-wide text-emerald-200 border border-white/15">
-              <span className="uppercase">Nigeria&apos;s Live Shopping Marketplace</span>
-            </div>
 
             <h1 className="text-3xl font-black tracking-tight sm:text-5xl sm:leading-[1.12]">
               Watch live. <br />
@@ -99,7 +96,7 @@ export default function HomePage({
             </h1>
 
             <p className="text-xs sm:text-sm leading-relaxed text-emerald-100/90 max-w-md">
-              Shop from verified Nigerian sellers, watch live product demonstrations, and track orders across Nigeria.
+              Shop Nigerian products, discover sellers and watch live shopping.
             </p>
 
             <div className="flex flex-wrap items-center gap-3 pt-2">
@@ -108,22 +105,22 @@ export default function HomePage({
                 onClick={() => setCurrentTab('shop')}
                 className="flex items-center gap-2 rounded-full bg-orange-500 px-6 py-3 text-xs font-black text-white shadow-lg transition hover:bg-orange-600"
               >
-                <span>Start Shopping</span>
+                <span>Explore Shop</span>
                 <ArrowRight size={15} />
               </button>
 
-              <button
+              {activeLiveRooms.length > 0 && <button
                 type="button"
                 onClick={() => setCurrentTab('live')}
-                className="flex items-center gap-2 rounded-full bg-white/10 px-5 py-3 text-xs font-bold text-white border border-white/20 transition hover:bg-white/20"
+                className="flex items-center gap-2 rounded-xl bg-white/10 px-5 py-3 text-xs font-semibold text-white border border-white/20 transition hover:bg-white/20"
               >
                 <Play size={14} className="fill-white" />
                 <span>Watch Live</span>
-              </button>
+              </button>}
             </div>
 
             {/* Live Database Counts Only (Zero Fabricated Numbers) */}
-            <div className="mt-6 grid grid-cols-3 gap-4 border-t border-white/15 pt-5">
+            {(storefronts.length > 0 || publishedProducts.length > 0 || activeLiveRooms.length > 0) && <div className="mt-5 grid grid-cols-3 gap-3 border-t border-white/15 pt-4">
               <div>
                 <div className="text-xl sm:text-2xl font-black text-white">{storefronts.length}</div>
                 <div className="text-[11px] text-emerald-200/80">Verified Sellers</div>
@@ -136,11 +133,11 @@ export default function HomePage({
                 <div className="text-xl sm:text-2xl font-black text-white">{activeLiveRooms.length}</div>
                 <div className="text-[11px] text-emerald-200/80">Live Now</div>
               </div>
-            </div>
+            </div>}
           </div>
         </section>
 
-        <div className="lg:col-span-4 flex flex-col gap-4">
+        {(publishedProducts.length > 0 || activeLiveRooms.length > 0) && <div className="lg:col-span-4 flex flex-col gap-4">
           <button
             type="button"
             onClick={() => setCurrentTab('flash-deals')}
@@ -179,7 +176,7 @@ export default function HomePage({
               <Video size={48} />
             </div>
           </button>
-        </div>
+        </div>}
       </div>
 
       {/* SHOP BY CATEGORY */}
@@ -205,12 +202,11 @@ export default function HomePage({
                 onSelectCategory?.(cat.id);
                 setCurrentTab('shop');
               }}
-              className="group flex flex-col items-center justify-center rounded-2xl p-3 sm:p-4 text-white shadow-sm transition hover:-translate-y-1 text-center"
+              className="group flex min-h-24 flex-col items-center justify-center rounded-xl p-3 text-white transition-colors focus-visible:outline-2 text-center"
               style={{ backgroundColor: cat.bgHex }}
             >
               <span className="flex h-10 w-10 items-center justify-center text-2xl">{cat.icon}</span>
               <span className="mt-2 text-xs font-black tracking-tight leading-tight">{cat.name}</span>
-              <span className="hidden lg:block text-[10px] text-white/80 line-clamp-1 mt-0.5">{cat.subtitle}</span>
             </button>
           ))}
         </div>

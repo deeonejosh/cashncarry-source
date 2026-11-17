@@ -36,6 +36,7 @@ export default function ShopPage({
   useEffect(() => setSearchQuery(searchTerm), [searchTerm]);
   const [sortBy, setSortBy] = useState<'featured' | 'price-low' | 'price-high' | 'rating' | 'newest'>('featured');
   const [inStockOnly, setInStockOnly] = useState<boolean>(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const publishedProducts = useMemo(
     () => products.filter((p) => p.publication === 'published' && !p.archived),
@@ -87,14 +88,11 @@ export default function ShopPage({
   }, [publishedProducts, selectedCategory, searchQuery, sortBy, inStockOnly, visibleMaxPrice]);
 
   return (
-    <div className="space-y-8 pb-16">
-      <div className="rounded-3xl bg-[#0c5c36] p-5 sm:p-8 text-white shadow-md">
-        <h1 className="text-2xl font-black sm:text-3xl">Shop Marketplace</h1>
-        <p className="mt-1 text-xs text-emerald-100 sm:text-sm">
-          Browse real inventory published by verified Nigerian sellers.
-        </p>
+    <div className="space-y-5 pb-10">
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6 text-slate-900">
+        <h1 className="text-xl font-bold sm:text-2xl">Shop</h1>
 
-        <div className="mt-5 max-w-xl">
+        <div className="mt-4 max-w-2xl">
           <form onSubmit={(e) => { e.preventDefault(); onSearchCommit?.(searchQuery.trim()); }} className="relative">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
             <input
@@ -109,8 +107,11 @@ export default function ShopPage({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-4">
-        <aside className="space-y-5 rounded-3xl border border-slate-200 bg-white p-4 sm:p-6 shadow-sm h-fit">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-4">
+        {publishedProducts.length > 0 && <button type="button" aria-controls="cnc-shop-filters" aria-expanded={filtersOpen} onClick={() => setFiltersOpen((open) => !open)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-800 lg:hidden">
+          <SlidersHorizontal size={17} /> Filters
+        </button>}
+        <aside id="cnc-shop-filters" className={`${publishedProducts.length === 0 ? 'hidden' : filtersOpen ? 'block' : 'hidden lg:block'} h-fit space-y-5 rounded-2xl border border-slate-200 bg-white p-4`}>
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <div className="flex items-center gap-2 text-xs font-black text-slate-900 uppercase tracking-wider">
               <SlidersHorizontal size={15} className="text-[#0c5c36]" />
@@ -195,8 +196,8 @@ export default function ShopPage({
           </div>
         </aside>
 
-        <div className="space-y-6 lg:col-span-3">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className={`space-y-5 ${publishedProducts.length === 0 ? 'lg:col-span-4' : 'lg:col-span-3'}`}>
+          {publishedProducts.length > 0 && <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4">
             <div className="text-xs font-bold text-slate-600">
               Showing <b className="text-slate-900">{filteredProducts.length}</b> products
             </div>
@@ -219,7 +220,7 @@ export default function ShopPage({
                 <option value="newest">Newest</option>
               </select>
             </div>
-          </div>
+          </div>}
 
           {catalogState.status === 'error' ? (
             <div className="rounded-3xl border border-rose-200 bg-rose-50 p-10 text-center space-y-3">
@@ -239,14 +240,14 @@ export default function ShopPage({
               Loading marketplace products...
             </div>
           ) : filteredProducts.length === 0 ? (
-            <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-slate-200 bg-white p-16 text-center">
+            <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white px-5 py-12 text-center">
               <div className="flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 text-slate-400">
                 <Search size={32} />
               </div>
               <h3 className="mt-4 text-base font-black text-slate-800">
                 {publishedProducts.length === 0
-                  ? 'No products available yet. Check back soon for new arrivals.'
-                  : 'No matching products found'}
+                  ? 'No products yet'
+                  : 'No matching products'}
               </h3>
               {publishedProducts.length > 0 && (
                 <button

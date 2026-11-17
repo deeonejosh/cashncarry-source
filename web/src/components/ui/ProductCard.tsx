@@ -1,7 +1,7 @@
 import React from 'react';
 import { ProductItem } from '../../types';
 import { useStore } from '../../context/StoreContext';
-import { Heart, Star, ShoppingBag, Eye, CheckCircle2, Package } from 'lucide-react';
+import { Heart, Star, ShoppingBag, Package } from 'lucide-react';
 
 interface ProductCardProps {
   product: ProductItem;
@@ -19,14 +19,14 @@ export default function ProductCard({ product, onSelectProduct }: ProductCardPro
       : null;
 
   return (
-    <article className="group relative min-w-0 flex flex-col justify-between overflow-hidden rounded-[20px] border border-slate-200/80 bg-white p-2.5 sm:p-3 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-emerald-300 hover:shadow-xl">
+    <article className="cnc-product-card group relative min-w-0 flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white p-2.5 sm:p-3 transition-colors hover:border-emerald-300">
       <div>
         <div className="relative aspect-square w-full overflow-hidden rounded-2xl bg-slate-100">
           {product.image ? (
             <img
               src={product.image}
               alt={product.title}
-              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+              className="h-full w-full object-cover"
               loading="lazy"
             />
           ) : (
@@ -60,7 +60,7 @@ export default function ProductCard({ product, onSelectProduct }: ProductCardPro
               void toggleWishlist(product.id);
             }}
             className="absolute right-2.5 top-2.5 z-10 rounded-full bg-white/90 p-2 text-slate-700 shadow-sm backdrop-blur-sm transition hover:scale-110 hover:bg-white"
-            aria-label="Save to wishlist"
+            aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
           >
             <Heart
               size={16}
@@ -68,24 +68,11 @@ export default function ProductCard({ product, onSelectProduct }: ProductCardPro
             />
           </button>
 
-          <button
-            type="button"
-            onClick={() => onSelectProduct(product)}
-            className="absolute inset-x-3 bottom-3 flex sm:hidden sm:group-hover:flex items-center justify-center gap-1.5 rounded-xl bg-slate-900/85 py-2 text-xs font-bold text-white backdrop-blur-sm transition hover:bg-slate-900"
-          >
-            <Eye size={14} /> Quick View
-          </button>
         </div>
 
         <div className="pt-3">
-          <div className="flex items-center justify-between gap-1 text-[11px]">
-            <span className="truncate font-bold uppercase tracking-wider text-slate-400">
-              {product.brand || product.sellerName}
-            </span>
-            <span className="flex items-center gap-0.5 font-bold text-emerald-800 text-[10px]">
-              <CheckCircle2 size={11} className="text-emerald-600" />
-              Verified
-            </span>
+          <div className="truncate text-[11px] font-semibold text-slate-500">
+            {product.brand || product.sellerName}
           </div>
 
           <h3 className="mt-1 line-clamp-2 text-sm font-bold text-slate-900">
@@ -107,9 +94,7 @@ export default function ProductCard({ product, onSelectProduct }: ProductCardPro
                 </div>
                 <span className="text-[11px] text-slate-400">({product.reviews})</span>
               </>
-            ) : (
-              <span className="text-[11px] text-slate-400">No reviews yet</span>
-            )}
+            ) : null}
           </div>
         </div>
       </div>
@@ -126,6 +111,7 @@ export default function ProductCard({ product, onSelectProduct }: ProductCardPro
           )}
         </div>
 
+        <p className="mt-1 text-[11px] text-slate-500">Delivery shown at checkout</p>
         <div className="mt-2.5">
           <button
             type="button"
@@ -134,7 +120,7 @@ export default function ProductCard({ product, onSelectProduct }: ProductCardPro
               void addToCart(product, 1);
             }}
             disabled={product.stock <= 0}
-            className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-[#0c5c36] py-2 text-xs font-black text-white shadow-sm transition hover:bg-emerald-900 active:scale-[0.98] disabled:opacity-50"
+            className="flex w-full min-h-10 items-center justify-center gap-1.5 rounded-xl bg-[#0c5c36] px-3 py-2 text-xs font-bold text-white transition-colors hover:bg-emerald-900 disabled:opacity-50"
           >
             <ShoppingBag size={14} />
             <span>{product.stock > 0 ? 'Add to Cart' : 'Unavailable'}</span>

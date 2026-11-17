@@ -1,1 +1,28 @@
 @import "tailwindcss" source("../src");
+
+/* Cash N Carry: shared minimal interface. All rules preserve accessible labels and statuses. */
+:root { color-scheme: light; --cnc-green: #0c5c36; --cnc-orange: #ef6b00; --cnc-border: #e2e8f0; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: #fff; color: #0f172a; overflow-x: clip; }
+button, input, select, textarea, summary { -webkit-tap-highlight-color: transparent; }
+button:not(:disabled), a, summary { cursor: pointer; }
+button:disabled { cursor: not-allowed; }
+:where(button,a,input,select,textarea,summary,[role="tab"]):focus-visible { outline: 2px solid #0e6b38; outline-offset: 3px; }
+:where(input,select,textarea) { max-width: 100%; }
+:where(button,a) { touch-action: manipulation; }
+.cnc-page { min-width: 0; }
+.cnc-page :where(section,article,div) { min-width: 0; }
+.cnc-page :where(h1,h2,h3) { letter-spacing: -0.02em; text-wrap: balance; }
+.cnc-page :where(table) { width: 100%; border-collapse: separate; border-spacing: 0; }
+.cnc-page :where(th) { text-align: left; white-space: nowrap; }
+.cnc-page :where(img,video) { max-width: 100%; }
+.cnc-product-card { box-shadow: 0 1px 3px rgb(15 23 42 / .05); }
+.cnc-product-card:hover { box-shadow: 0 7px 20px rgb(15 23 42 / .08); }
+.cnc-dashboard :where(.shadow-xl) { box-shadow: 0 2px 12px rgb(15 23 42 / .06); }
+.cnc-dashboard :where(.rounded-3xl) { border-radius: 18px; }
+.cnc-dashboard :where(.shadow-lg) { box-shadow: 0 1px 6px rgb(15 23 42 / .08); }
+.cnc-dashboard :where(button) { min-height: 36px; }
+.cnc-footer-link { min-height: 40px; }
+@media(min-width:1024px) { .cnc-mobile-bottom { display:none!important; } }
+@media(max-width:1023px) { .cnc-mobile-bottom { display:block; } .cnc-dashboard { overflow-x:clip; } .cnc-dashboard :where(.overflow-x-auto) { overscroll-behavior-x:contain; } }
+@media(prefers-reduced-motion:reduce) { html { scroll-behavior:auto; } .cnc-page :where(*) { transition-duration:0.01ms!important; animation-duration:0.01ms!important; animation-iteration-count:1!important; } }
