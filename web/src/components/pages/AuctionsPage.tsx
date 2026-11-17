@@ -6,15 +6,17 @@ import { Gavel, Plus, AlertCircle, ShieldCheck, RefreshCw } from 'lucide-react';
 
 interface AuctionsPageProps {
   onOpenStorefront?: (sellerId: string) => void;
+  onOpenDeliverySettings: () => void;
 }
 
-export default function AuctionsPage({ onOpenStorefront }: AuctionsPageProps) {
+export default function AuctionsPage({ onOpenStorefront, onOpenDeliverySettings }: AuctionsPageProps) {
   const {
     auctions,
     auctionsState,
     reloadMarketplace,
     placeBid,
     currentUser,
+    addresses,
     isApprovedSeller,
     sellerProducts,
     createSellerAuction,
@@ -42,6 +44,10 @@ export default function AuctionsPage({ onOpenStorefront }: AuctionsPageProps) {
   const handleSubmitBid = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!biddingAuction) return;
+    if (!addresses.length) {
+      showToast('Save a delivery address once in Profile before bidding.', 'info');
+      return;
+    }
     const ok = await placeBid(biddingAuction.id, bidAmount);
     if (ok) {
       setBiddingAuction(null);
@@ -155,7 +161,7 @@ export default function AuctionsPage({ onOpenStorefront }: AuctionsPageProps) {
       {biddingAuction && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
           <div
-            className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl space-y-4"
+            className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-3xl bg-white p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] shadow-2xl space-y-4"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
@@ -170,6 +176,15 @@ export default function AuctionsPage({ onOpenStorefront }: AuctionsPageProps) {
 
             <p className="text-xs text-slate-600">{biddingAuction.title}</p>
 
+            {addresses.length === 0 && (
+              <div role="status" className="flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-950">
+                <p className="font-semibold">Save a delivery address once to bid in future auctions without repeating your details.</p>
+                <button type="button" onClick={onOpenDeliverySettings}
+                  className="self-start rounded-xl bg-amber-700 px-4 py-2 font-bold text-white hover:bg-amber-800">
+                  Open Profile — Add Address
+                </button>
+              </div>
+            )}
             <form onSubmit={handleSubmitBid} className="space-y-4">
               <div>
                 <label className="text-xs font-bold text-slate-700">Bid Amount in Naira (₦)</label>
@@ -194,7 +209,8 @@ export default function AuctionsPage({ onOpenStorefront }: AuctionsPageProps) {
 
               <button
                 type="submit"
-                className="w-full rounded-2xl bg-amber-600 py-3.5 text-xs font-black text-white hover:bg-amber-700 transition shadow-lg"
+                disabled={!addresses.length}
+                className="w-full rounded-2xl bg-amber-600 py-3.5 text-xs font-black text-white hover:bg-amber-700 transition shadow-lg disabled:opacity-45 disabled:cursor-not-allowed"
               >
                 Confirm Bid of ₦{bidAmount.toLocaleString('en-NG')}
               </button>
