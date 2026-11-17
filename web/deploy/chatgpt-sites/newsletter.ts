@@ -124,7 +124,7 @@ export async function newsletterRoute(request, env) {
     const action=unsubscribe?'Unsubscribe':'Confirm subscription';
     return nPage(action,'<p>'+ (unsubscribe ? 'Stop newsletter emails to this address?' :
       'Confirm that you want marketplace updates from Cash N Carry?')+'</p>'+
-      '<form action="'+url.pathname+'" method="post"><input type="hidden" name="token" value="'+nEscape(key)+'">'+
+      '<form action="'+url.pathname+'?token='+encodeURIComponent(key)+'" method="post"><input type="hidden" name="token" value="'+nEscape(key)+'">'+
       '<button type="submit">'+action+'</button></form>');
   }
   if (request.method!=='POST') return nResponse({error:'Method not allowed'},405);
