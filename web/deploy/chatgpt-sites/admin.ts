@@ -1,7 +1,7 @@
 import { currentAccount, readBody, type AuthEnvironment } from './new-auth';
 import { escape, page } from './catalog-pages';
 
-export async function adminRoute(request: Request, env: AuthEnvironment): Promise<Response | null> {
+export async function adminRoute(request: Request, env: AuthEnvironment & { KYC_UPLOADS_ENABLED?: string }): Promise<Response | null> {
   const url = new URL(request.url);
   if (!['/admin','/api/admin/moderation','/api/admin/overview','/api/admin/seller-applications','/api/admin/seller-applications/review'].includes(url.pathname)) return null;
   if (!env.AUTH_DB || !env.ADMIN_ACCOUNT_ID || !env.ADMIN_TOTP_SECRET_HEX) return null;
@@ -15,6 +15,7 @@ export async function adminRoute(request: Request, env: AuthEnvironment): Promis
     const counts=await db.prepare(
       "SELECT (SELECT COUNT(*) FROM cnc_auth_users) AS totalUsers,"+
       "(SELECT COUNT(*) FROM cnc_auth_users WHERE role='seller' AND verified=1 AND suspended=0) AS approvedSellers,"+
+      "(SELECT COUNT(*) FROM cnc_seller_applications WHERE status='pending') AS pendingApplications,"+
       "(SELECT COUNT(*) FROM cnc_seller_products WHERE publication='pending' AND archived=0) AS pendingProducts,"+
       "(SELECT COUNT(*) FROM cnc_seller_products WHERE publication='published' AND archived=0) AS publishedProducts,"+
       "(SELECT COUNT(*) FROM cnc_orders) AS totalOrders,"+
@@ -24,21 +25,56 @@ export async function adminRoute(request: Request, env: AuthEnvironment): Promis
       "a.user_id AS target_id,'' AS detail,datetime(a.created,'unixepoch') AS created "+
       "FROM cnc_auth_audit a JOIN cnc_auth_users u ON u.id=a.user_id ORDER BY a.id DESC LIMIT 20").all();
     return Response.json({
-      counts:{...counts,pendingApplications:0,openVideoReports:0},
+      counts:{...counts,openVideoReports:0},
       auditLogs:events.results,
-      capabilities:{sellerApplications:false,videoReports:false},
-      warnings:['Seller applications and video reports are not configured in this staging schema.'],
+      capabilities:{sellerApplications:true,videoReports:false},
+      warnings:[env.KYC_UPLOADS_ENABLED === 'true' ? 'Seller document review requires manual administrator verification.' : 'KYC document uploads are disabled. Verify applicant documents outside this staging environment before approving.'],
     },{headers:{'cache-control':'no-store'}});
   }
   if (url.pathname === '/api/admin/seller-applications') {
     if (request.method !== 'GET') return new Response(null,{status:405,headers:{allow:'GET'}});
-    return Response.json({applications:[],available:false,
-      warning:'Seller applications are not configured in this staging schema.'},
-      {headers:{'cache-control':'no-store'}});
+    const applications = await db.prepare(
+      "SELECT a.id,a.user_id,a.business_name,a.cac_number,a.business_type,a.state_location,"+
+      "a.phone,a.description,a.status,a.reviewer_notes,a.reviewed_at,a.created,a.updated,"+
+      "u.email,u.role,u.suspended,a.status AS user_seller_status "+
+      "FROM cnc_seller_applications a JOIN cnc_auth_users u ON u.id=a.user_id "+
+      "ORDER BY CASE a.status WHEN 'pending' THEN 0 WHEN 'approved' THEN 1 WHEN 'rejected' THEN 2 ELSE 3 END,a.updated DESC LIMIT 100"
+    ).all();
+    return Response.json({
+      applications:applications.results,
+      available:true,
+      warning:env.KYC_UPLOADS_ENABLED === 'true'
+        ? null : 'Uploaded KYC documents are unavailable. Independently verify business details before approval.'
+    },{headers:{'cache-control':'no-store'}});
   }
   if (url.pathname === '/api/admin/seller-applications/review') {
-    return Response.json({error:'Seller application review is not configured in this staging database.'},
-      {status:501,headers:{'cache-control':'no-store'}});
+    if (request.method !== 'POST') return new Response(null,{status:405,headers:{allow:'POST'}});
+    if (request.headers.get('origin') !== env.AUTH_ORIGIN) return Response.json({error:'Invalid request origin'},{status:403});
+    let body: Record<string, unknown>;
+    try { body=await readBody(request); }
+    catch { return Response.json({error:'Invalid review request'},{status:400}); }
+    const id=typeof body.applicationId==='string' ? body.applicationId.trim() : '';
+    const userId=typeof body.userId==='string' ? body.userId.trim() : '';
+    const action=body.decision;
+    const notes=typeof body.notes==='string' ? body.notes.trim() : '';
+    if (!/^[0-9a-f-]{36}$/i.test(id) || !userId || userId.length>128 ||
+        !['approve','reject','suspend'].includes(String(action)) || notes.length>1000) {
+      return Response.json({error:'Invalid application review'},{status:400});
+    }
+    const status=action==='approve' ? 'approved' : action==='reject' ? 'rejected' : 'suspended';
+    const from=action==='approve' ? "('pending','suspended')" :
+               action==='reject' ? "('pending')" : "('approved')";
+    const changed=await db.prepare(
+      "UPDATE cnc_seller_applications SET status=?,reviewer_id=?,reviewer_notes=?,"+
+      "reviewed_at=unixepoch(),updated=unixepoch() "+
+      "WHERE id=? AND user_id=? AND status IN "+from+" "+
+      "AND EXISTS (SELECT 1 FROM cnc_auth_users u WHERE u.id=? AND u.verified=1 AND "+
+      "u.role IN ('buyer','seller')) "+
+      "RETURNING id,user_id,status"
+    ).bind(status,account.id,notes,id,userId,userId).first<{id:string;user_id:string;status:string}>();
+    if (!changed) return Response.json({error:'Application changed or is ineligible'},{status:409});
+    return Response.json({updated:true,sellerStatus:status,applicationId:changed.id,
+      signInRequired:status!=='rejected'},{headers:{'cache-control':'no-store'}});
   }
 
   if (request.method === 'GET') {
