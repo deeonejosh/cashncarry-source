@@ -803,6 +803,38 @@ async function run() {
       assert.equal(giftCount?.n,1);
     });
 
+    await test('P1 video/live fail-closed, chat parameter compatibility and duplicate throttling', async () => {
+      const sellerCookie='__Host-cnc_session='+'4'.repeat(64);
+      const buyerCookie='__Host-cnc_session='+'5'.repeat(64);
+      const send=(route:string,cookie:string,body:unknown)=>mf.dispatchFetch(origin+route,{
+        method:'POST',headers:{origin,cookie,'content-type':'application/json'},body:JSON.stringify(body),
+      });
+      const fakeLive=await send('/api/v1/live',sellerCookie,{title:'Not a true broadcast',category:'Electronics'});
+      assert.equal(fakeLive.status,503);
+      assert.equal((await fakeLive.json() as any).code,'BROADCAST_NOT_CONFIGURED');
+      const fakeVideo=await send('/api/v1/videos',sellerCookie,{title:'Unverified',productId:'auction-product-fixture',videoUrl:'https://invalid.example/file.mp4'});
+      assert.equal(fakeVideo.status,503);
+      const rooms=await authDb.prepare('SELECT COUNT(*) AS n FROM cnc_live_room_state').first<{n:number}>();
+      assert.equal(rooms?.n,0,'Unconfigured live provider must not create phantom sessions');
+      const roomId='isolated-live-chat-fixture';
+      await authDb.prepare("INSERT INTO cnc_live_room_state(room_id,seller_id,seller_name,title,category,status) VALUES(?,?,?,'Isolated chat test','Tech','live')")
+        .bind(roomId,'auction-fixture-seller','Auction Benchmark Store').run();
+      const comment=await send('/api/v1/live/comments',buyerCookie,{roomId,body:'Test comment from user account'});
+      assert.equal(comment.status,201);
+      const dup=await send('/api/v1/live/comments',buyerCookie,{roomId,body:'Test comment from user account'});
+      assert.equal(dup.status,429);
+      const get=await mf.dispatchFetch(origin+'/api/v1/live/comments?roomId='+encodeURIComponent(roomId));
+      assert.equal(get.status,200,'Legacy roomId query should remain supported');
+      const data=await get.json() as any;
+      assert.equal(data.comments.length,1);
+      assert.equal(data.comments[0].author_name,'Member','Do not leak email-derived usernames');
+      const publicRooms=await mf.dispatchFetch(origin+'/api/v1/live');
+      assert.equal(publicRooms.status,200);
+      const payload=await publicRooms.json() as any;
+      assert.equal(payload.liveStreamingConfigured,false);
+      assert.equal(payload.rooms[0].viewer_count,null,'Do not fabricate viewer presence');
+    });
+
     await test('P1 live pinning requires seller ownership, published stock and active room; refresh cannot fabricate viewers', async () => {
       const roomId='isolated-product-pinning-fixture';
       const sellerId='auction-fixture-seller';
@@ -841,37 +873,6 @@ async function run() {
       assert.equal((await patch(buyerCookie,'join')).status,409,'Ended room must not count watchers');
     });
 
-    await test('P1 video/live fail-closed, chat parameter compatibility and duplicate throttling', async () => {
-      const sellerCookie='__Host-cnc_session='+'4'.repeat(64);
-      const buyerCookie='__Host-cnc_session='+'5'.repeat(64);
-      const send=(route:string,cookie:string,body:unknown)=>mf.dispatchFetch(origin+route,{
-        method:'POST',headers:{origin,cookie,'content-type':'application/json'},body:JSON.stringify(body),
-      });
-      const fakeLive=await send('/api/v1/live',sellerCookie,{title:'Not a true broadcast',category:'Electronics'});
-      assert.equal(fakeLive.status,503);
-      assert.equal((await fakeLive.json() as any).code,'BROADCAST_NOT_CONFIGURED');
-      const fakeVideo=await send('/api/v1/videos',sellerCookie,{title:'Unverified',productId:'auction-product-fixture',videoUrl:'https://invalid.example/file.mp4'});
-      assert.equal(fakeVideo.status,503);
-      const rooms=await authDb.prepare('SELECT COUNT(*) AS n FROM cnc_live_room_state').first<{n:number}>();
-      assert.equal(rooms?.n,0,'Unconfigured live provider must not create phantom sessions');
-      const roomId='isolated-live-chat-fixture';
-      await authDb.prepare("INSERT INTO cnc_live_room_state(room_id,seller_id,seller_name,title,category,status) VALUES(?,?,?,'Isolated chat test','Tech','live')")
-        .bind(roomId,'auction-fixture-seller','Auction Benchmark Store').run();
-      const comment=await send('/api/v1/live/comments',buyerCookie,{roomId,body:'Test comment from user account'});
-      assert.equal(comment.status,201);
-      const dup=await send('/api/v1/live/comments',buyerCookie,{roomId,body:'Test comment from user account'});
-      assert.equal(dup.status,429);
-      const get=await mf.dispatchFetch(origin+'/api/v1/live/comments?roomId='+encodeURIComponent(roomId));
-      assert.equal(get.status,200,'Legacy roomId query should remain supported');
-      const data=await get.json() as any;
-      assert.equal(data.comments.length,1);
-      assert.equal(data.comments[0].author_name,'Member','Do not leak email-derived usernames');
-      const publicRooms=await mf.dispatchFetch(origin+'/api/v1/live');
-      assert.equal(publicRooms.status,200);
-      const payload=await publicRooms.json() as any;
-      assert.equal(payload.liveStreamingConfigured,false);
-      assert.equal(payload.rooms[0].viewer_count,null,'Do not fabricate viewer presence');
-    });
 
   } finally {
     await mf.dispose();
