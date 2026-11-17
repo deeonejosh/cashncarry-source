@@ -38,6 +38,7 @@ export async function accountPage(request: Request, env: AuthEnvironment): Promi
 
   // One sign-in link for buyers, sellers and the owner. Admin MFA is enforced by authRoute.
   if (path === '/sign-in') {
+    const unifiedFlow = flows['/sign-in'];
     const unifiedForm = (message = '', status = 200) => {
       const nonce = Array.from(crypto.getRandomValues(new Uint8Array(32)),
         (byte) => byte.toString(16).padStart(2, '0')).join('');
@@ -45,9 +46,9 @@ export async function accountPage(request: Request, env: AuthEnvironment): Promi
         '<details><summary>Administrator? Enter authenticator code</summary>' +
         '<label for="code">Six-digit authenticator code</label>' +
         '<input id="code" name="code" type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code"></details>';
-      const inputs = flow.fields + adminCodeField +
+      const inputs = unifiedFlow.fields + adminCodeField +
         '<input type="hidden" name="admin_csrf" value="' + nonce + '">';
-      const res = form(flow.title, inputs, path, message, status);
+      const res = form(unifiedFlow.title, inputs, path, message, status);
       res.headers.append('set-cookie',
         '__Host-cnc_admin_csrf=' + nonce + '; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=900');
       res.headers.set('cache-control', 'no-store');
