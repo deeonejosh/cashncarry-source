@@ -416,7 +416,6 @@ function MainApp() {
       case 'auctions':
         return (
           <AuctionsPage
-            onCheckoutAuctionOrder={() => navigateTab('orders')}
             onOpenStorefront={handleOpenStorefront}
           />
         );
