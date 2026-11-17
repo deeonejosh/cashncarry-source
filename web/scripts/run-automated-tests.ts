@@ -716,6 +716,10 @@ async function run() {
         .bind(createHash('sha256').update(buyerToken).digest('hex'),buyerId,Date.now()+600000).run();
       await authDb.prepare("INSERT INTO cnc_seller_stores(owner,name,description) VALUES (?,?,'Benchmark only')")
         .bind(sellerId,'Auction Benchmark Store').run();
+      // A seller role without owner-approved onboarding is not enough.
+      await authDb.prepare(
+        "INSERT INTO cnc_seller_applications (id,user_id,business_name,phone,description,status) VALUES (?,?,?,'08000000000','Isolated approved seller fixture','approved')"
+      ).bind('auc-approved-seller-app',sellerId,'Auction Benchmark Store').run();
       const productId='auction-product-fixture';
       await authDb.prepare(
         "INSERT INTO cnc_seller_products(id,owner,name,price_minor,stock,archived,revision,publication) VALUES(?,?,?,10000,2,0,1,'published')"
@@ -724,6 +728,13 @@ async function run() {
       const action=(cookie:string,method:string,payload:unknown)=>mf.dispatchFetch(origin+'/api/auctions',{
         method,headers:{origin,cookie,'content-type':'application/json'},body:JSON.stringify(payload),
       });
+      // Revoke the application to prove authorization is not inferred from the
+      // unchanged role field, then restore the reviewed status for happy-path tests.
+      await authDb.prepare("UPDATE cnc_seller_applications SET status='rejected' WHERE user_id=?").bind(sellerId).run();
+      const notApproved=await action(sellCookie,'POST',{productId,startingBidKobo:10000,durationMinutes:60});
+      assert.equal(notApproved.status,403,'A seller with a rejected application cannot create auctions');
+      assert.equal((await notApproved.json() as any).code,'SELLER_APPROVAL_REQUIRED');
+      await authDb.prepare("UPDATE cnc_seller_applications SET status='approved' WHERE user_id=?").bind(sellerId).run();
       const created=await action(sellCookie,'POST',{productId,startingBidKobo:10000,durationMinutes:60});
       assert.equal(created.status,201,'A verified seller should create an auction with a single D1 stock reservation');
       const id=(await created.json() as any).auctionId as string;
