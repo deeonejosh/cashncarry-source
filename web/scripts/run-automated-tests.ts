@@ -735,6 +735,10 @@ async function run() {
       assert.equal(notApproved.status,403,'A seller with a rejected application cannot create auctions');
       assert.equal((await notApproved.json() as any).code,'SELLER_APPROVAL_REQUIRED');
       await authDb.prepare("UPDATE cnc_seller_applications SET status='approved' WHERE user_id=?").bind(sellerId).run();
+      // Approval intentionally invalidates prior login sessions in D1. Recreate
+      // an isolated session for the approved fixture, never a real user token.
+      await authDb.prepare('INSERT INTO cnc_auth_sessions(hash,user_id,expires,mfa) VALUES (?,?,?,0)')
+        .bind(createHash('sha256').update(sellerToken).digest('hex'),sellerId,Date.now()+600000).run();
       const created=await action(sellCookie,'POST',{productId,startingBidKobo:10000,durationMinutes:60});
       assert.equal(created.status,201,'A verified seller should create an auction with a single D1 stock reservation');
       const id=(await created.json() as any).auctionId as string;
