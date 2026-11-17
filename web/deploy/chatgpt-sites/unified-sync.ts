@@ -47,6 +47,8 @@ export async function unifiedSyncRoute(
   if (!db) return json({ error: 'Database unavailable' }, 503);
 
   const account = await currentAccount(request, env);
+  const streamEnv = env as AuthEnvironment & { STREAM_WHIP_URL?: string; STREAM_WHEP_URL?: string };
+  const streamingConfigured = Boolean(streamEnv.STREAM_WHIP_URL && streamEnv.STREAM_WHEP_URL);
 
   // Public GET endpoints (videos feed, active live rooms, product reviews)
   if (request.method === 'GET') {
@@ -80,16 +82,19 @@ export async function unifiedSyncRoute(
            FROM cnc_live_room_state ORDER BY (CASE WHEN status='live' THEN 0 ELSE 1 END), created DESC LIMIT 30`
         )
         .all();
-      return json({ rooms: results ?? [] });
+      return json({
+        rooms: (results ?? []).map((r: any) => ({ ...r, viewer_count: null })),
+        liveStreamingConfigured: streamingConfigured,
+      });
     }
 
     if (route === '/live/comments') {
-      const roomId = text(url.searchParams.get('room_id'), 128);
+      const roomId = text(url.searchParams.get('room_id') ?? url.searchParams.get('roomId'), 128);
       if (!roomId) return json({ error: 'room_id required' }, 400);
       const { results } = await db
         .prepare(
           `SELECT id, room_id, user_id, author_name, body, is_reaction, created
-           FROM cnc_live_comments WHERE room_id = ? ORDER BY created DESC LIMIT 60`
+           FROM cnc_live_comments WHERE room_id = ? ORDER BY created DESC, rowid DESC LIMIT 60`
         )
         .bind(roomId)
         .all();
@@ -335,6 +340,8 @@ export async function unifiedSyncRoute(
     const coverUrl = text(body.coverUrl ?? body.cover_url, 400);
     const videoUrl = text(body.videoUrl ?? body.video_url, 400);
     if (!title || !productId) return json({ error: 'title and productId required' }, 400);
+    // A URL supplied by a client is not proof of a verified media upload.
+    return json({ error: 'Verified video upload pipeline unavailable', code: 'VIDEO_UPLOAD_UNAVAILABLE' }, 503);
     if (videoUrl && !videoUrl.startsWith('https://')) {
       return json({ error: 'videoUrl must be https://' }, 400);
     }
@@ -389,25 +396,12 @@ export async function unifiedSyncRoute(
 
   if (route === '/live') {
     if (request.method === 'POST') {
-      if (account.role !== 'seller') return json({ error: 'Seller role required to start broadcast' }, 403);
-      const title = text(body.title, 160);
-      const category = text(body.category, 60) || 'Fashion';
-      const pinnedProductId = text(body.pinnedProductId ?? body.pinned_product_id, 128);
-      if (!title) return json({ error: 'Stream title required' }, 400);
-      const roomId = crypto.randomUUID();
-      const prof = await db
-        .prepare(`SELECT name FROM cnc_seller_stores WHERE owner = ?`)
-        .bind(account.id)
-        .first<{ name: string }>();
-      const sellerName = prof?.name || account.email.split('@')[0];
-      await db
-        .prepare(
-          `INSERT INTO cnc_live_room_state (room_id, seller_id, seller_name, title, category, status, pinned_product_id, created)
-           VALUES (?, ?, ?, ?, ?, 'live', ?, ?)`
-        )
-        .bind(roomId, account.id, sellerName, title, category, pinnedProductId, now)
-        .run();
-      return json({ success: true, roomId }, 201);
+      if (account.role !== 'seller') return json({ error: 'Seller role required to broadcast' }, 403);
+      // D1 alone cannot prove an actual camera/media session exists.
+      return json({
+        error: streamingConfigured ? 'Broadcast handshake not yet verified' : 'Streaming provider unavailable',
+        code: streamingConfigured ? 'BROADCAST_HANDSHAKE_REQUIRED' : 'BROADCAST_NOT_CONFIGURED',
+      }, 503);
     }
 
     if (request.method === 'PATCH') {
@@ -417,23 +411,37 @@ export async function unifiedSyncRoute(
         return json({ error: 'Valid roomId and action required' }, 400);
       }
       if (action === 'like') {
-        await db.prepare(`UPDATE cnc_live_room_state SET hearts_count = hearts_count + 1 WHERE room_id = ?`).bind(roomId).run();
-        return json({ success: true });
+        const updated = await db.prepare(
+          `UPDATE cnc_live_room_state SET hearts_count=hearts_count+1 WHERE room_id=? AND status='live' RETURNING hearts_count`
+        ).bind(roomId).first();
+        return updated ? json({ success: true }) : json({ error: 'Live room unavailable' }, 409);
       }
       if (action === 'join') {
-        await db.prepare(`UPDATE cnc_live_room_state SET viewer_count = viewer_count + 1 WHERE room_id = ? AND status = 'live'`).bind(roomId).run();
-        return json({ success: true });
+        // Do not increment the old counter on refresh: no presence tracking exists.
+        const room = await db.prepare(`SELECT room_id FROM cnc_live_room_state WHERE room_id=? AND status='live'`)
+          .bind(roomId).first();
+        return room ? json({ success: true, presenceTracked: false }) : json({ error: 'Live room unavailable' }, 409);
       }
       const room = await db.prepare(`SELECT seller_id FROM cnc_live_room_state WHERE room_id = ?`).bind(roomId).first<{ seller_id: string }>();
       if (!room || room.seller_id !== account.id) return json({ error: 'Host authorization required' }, 403);
       if (action === 'pin') {
         const pinnedId = text(body.pinnedProductId ?? body.pinned_product_id, 128);
-        await db.prepare(`UPDATE cnc_live_room_state SET pinned_product_id = ? WHERE room_id = ?`).bind(pinnedId, roomId).run();
-        return json({ success: true });
+        if (pinnedId) {
+          const eligible = await db.prepare(
+            `SELECT id FROM cnc_seller_products WHERE id=? AND owner=? AND publication='published' AND archived=0 AND stock>0`
+          ).bind(pinnedId, account.id).first();
+          if (!eligible) return json({ error: 'Only your published, in-stock products may be pinned' }, 409);
+        }
+        const updated = await db.prepare(
+          `UPDATE cnc_live_room_state SET pinned_product_id=? WHERE room_id=? AND seller_id=? AND status='live' RETURNING room_id`
+        ).bind(pinnedId, roomId, account.id).first();
+        return updated ? json({ success: true }) : json({ error: 'Live room unavailable' }, 409);
       }
       if (action === 'end') {
-        await db.prepare(`UPDATE cnc_live_room_state SET status = 'ended', ended_at = ? WHERE room_id = ?`).bind(now, roomId).run();
-        return json({ success: true, status: 'ended' });
+        const updated = await db.prepare(
+          `UPDATE cnc_live_room_state SET status='ended', ended_at=unixepoch() WHERE room_id=? AND seller_id=? AND status='live' RETURNING room_id`
+        ).bind(roomId, account.id).first();
+        return updated ? json({ success: true, status: 'ended' }) : json({ error: 'Live room already ended' }, 409);
       }
     }
   }
@@ -442,15 +450,22 @@ export async function unifiedSyncRoute(
     const roomId = text(body.roomId ?? body.room_id, 128);
     const commentBody = text(body.body ?? body.text, 300);
     if (!roomId || !commentBody) return json({ error: 'roomId and body required' }, 400);
+    const room = await db.prepare(`SELECT room_id FROM cnc_live_room_state WHERE room_id=? AND status='live'`)
+      .bind(roomId).first();
+    if (!room) return json({ error: 'Live room unavailable' }, 409);
+    const profile = await db.prepare(`SELECT display_name FROM cnc_user_profiles WHERE user_id=?`)
+      .bind(account.id).first<{display_name?:string}>();
+    const authorName = profile?.display_name?.trim().slice(0,80) || 'Member';
     const id = crypto.randomUUID();
-    const authorName = account.email.split('@')[0];
-    await db
-      .prepare(
-        `INSERT INTO cnc_live_comments (id, room_id, user_id, author_name, body, is_reaction, created) VALUES (?, ?, ?, ?, ?, 0, ?)`
-      )
-      .bind(id, roomId, account.id, authorName, commentBody, now)
-      .run();
-    return json({ success: true, id }, 201);
+    const inserted = await db.prepare(
+      `INSERT INTO cnc_live_comments (id,room_id,user_id,author_name,body,is_reaction,created)
+       SELECT ?,?,?,?,?,0,unixepoch()
+       WHERE (SELECT COUNT(*) FROM cnc_live_comments WHERE room_id=? AND user_id=? AND created>=unixepoch()-10)<5
+         AND NOT EXISTS (SELECT 1 FROM cnc_live_comments WHERE room_id=? AND user_id=? AND body=? AND created>=unixepoch()-2)
+       RETURNING id`
+    ).bind(id,roomId,account.id,authorName,commentBody,roomId,account.id,roomId,account.id,commentBody).first<{id:string}>();
+    return inserted ? json({ success: true, id }, 201)
+      : json({ error: 'Please slow down or avoid duplicate comments', code: 'CHAT_RATE_LIMITED' }, 429);
   }
 
   if (route === '/messages') {
