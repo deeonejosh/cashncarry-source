@@ -460,6 +460,91 @@ async function run() {
       assert.equal(likeJson.liked, true);
     });
 
+
+    await test('Owner setup: unauthenticated visitors cannot see authenticator secrets', async () => {
+      const response = await mf.dispatchFetch(origin + '/api/auth/owner-setup');
+      assert.equal(response.status, 403);
+      const body = await response.text();
+      assert.doesNotMatch(body, /otpauth:\/\//);
+      assert.doesNotMatch(body, /0011223344556677/);
+    });
+
+    await test('Owner setup: existing seller password and TOTP are required before privilege elevation', async () => {
+      const ownerId='staging-admin', email='owner.test@example.invalid';
+      const password='secure-staging-owner-password-123';
+      const salt=randomBytes(32).toString('hex');
+      const digest=await scryptAsync(new TextEncoder().encode(password), new TextEncoder().encode(salt), {
+        N:32768,r:8,p:3,dkLen:32,maxmem:64*1024*1024
+      });
+      const credential=salt+':'+Buffer.from(digest).toString('hex');
+      await authDb.prepare('INSERT INTO cnc_auth_users (id,email,credential,role,verified,suspended) VALUES (?,?,?,?,1,0)')
+        .bind(ownerId,email,credential,'seller').run();
+      const ownerToken='d'.repeat(64);
+      await authDb.prepare('INSERT INTO cnc_auth_sessions (hash,user_id,expires) VALUES (?,?,?)')
+        .bind(createHash('sha256').update(ownerToken).digest('hex'),ownerId,Date.now()+3600000).run();
+      const cookie='__Host-cnc_session='+ownerToken;
+      const get=await mf.dispatchFetch(origin+'/api/auth/owner-setup',{headers:{cookie}});
+      assert.equal(get.status,200);
+      assert.match(await get.text(),/Activate owner access/);
+      const wrongOrigin=await mf.dispatchFetch(origin+'/api/auth/owner-setup',{
+        method:'POST',headers:{cookie,origin:'https://attacker.invalid','content-type':'application/x-www-form-urlencoded'},
+        body:new URLSearchParams({step:'start',password}).toString()
+      });
+      assert.equal(wrongOrigin.status,403);
+      const wrongPassword=await mf.dispatchFetch(origin+'/api/auth/owner-setup',{
+        method:'POST',headers:{cookie,origin,'content-type':'application/x-www-form-urlencoded'},
+        body:new URLSearchParams({step:'start',password:'incorrect-staging-password'}).toString()
+      });
+      assert.equal(wrongPassword.status,401);
+      const start=await mf.dispatchFetch(origin+'/api/auth/owner-setup',{
+        method:'POST',headers:{cookie,origin,'content-type':'application/x-www-form-urlencoded'},
+        body:new URLSearchParams({step:'start',password}).toString()
+      });
+      assert.equal(start.status,200);
+      const setupHtml=await start.text();
+      assert.match(setupHtml,/otpauth:\/\/totp\//);
+      const before=await authDb.prepare('SELECT role FROM cnc_auth_users WHERE id=?').bind(ownerId).first<{role:string}>();
+      assert.equal(before?.role,'seller');
+
+      const secret=Buffer.from('00112233445566778899aabbccddeeff00112233','hex');
+      const otp=()=>{
+        const counter=Buffer.alloc(8);
+        counter.writeBigUInt64BE(BigInt(Math.floor(Date.now()/30000)));
+        const mac=createHmac('sha1',secret).update(counter).digest();
+        const offset=mac[mac.length-1]&15;
+        return String((mac.readUInt32BE(offset)&0x7fffffff)%1000000).padStart(6,'0');
+      };
+      const complete=await mf.dispatchFetch(origin+'/api/auth/owner-setup',{
+        method:'POST',headers:{cookie,origin,'content-type':'application/x-www-form-urlencoded'},
+        body:new URLSearchParams({step:'confirm',password,code:otp()}).toString()
+      });
+      assert.equal(complete.status,200);
+      assert.match(await complete.text(),/Owner access activated/);
+      const after=await authDb.prepare('SELECT role FROM cnc_auth_users WHERE id=?').bind(ownerId).first<{role:string}>();
+      assert.equal(after?.role,'admin');
+      const stale=await mf.dispatchFetch(origin+'/api/auth/me',{headers:{cookie}});
+      assert.equal(stale.status,401,'Previous seller session must be invalidated');
+
+      const signedIn=await mf.dispatchFetch(origin+'/api/auth/admin-login',{
+        method:'POST',headers:{origin,'content-type':'application/json'},
+        body:JSON.stringify({email,password,code:otp()})
+      });
+      assert.equal(signedIn.status,200);
+      const signedInBody:any=await signedIn.json();
+      assert.equal(signedInBody.user?.role,'admin');
+      const adminCookie=signedIn.headers.get('set-cookie')?.split(';')[0]||'';
+      assert.match(adminCookie,/^__Host-cnc_session=[a-f0-9]{64}$/);
+      const me=await mf.dispatchFetch(origin+'/api/auth/me',{headers:{cookie:adminCookie}});
+      assert.equal(me.status,200);
+      assert.equal((await me.json() as any).user?.role,'admin');
+      const browserAdmin=await mf.dispatchFetch(origin+'/api/admin/moderation',{headers:{cookie:adminCookie}});
+      assert.equal(browserAdmin.status,200);
+      const nativeAdmin=await mf.dispatchFetch(origin+'/api/admin/moderation',{
+        headers:{cookie:adminCookie,'x-client-type':'mobile'}
+      });
+      assert.equal(nativeAdmin.status,403);
+    });
+
   } finally {
     await mf.dispose();
   }
