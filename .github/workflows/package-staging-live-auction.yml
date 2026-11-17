@@ -1,0 +1,61 @@
+name: Package isolated livestream auction staging worker release
+on:
+  push:
+    branches: [fix/staging-livestream-auction-20261117]
+    paths: ['.github/workflows/package-staging-live-auction.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: cnc-packaged-live-auction-v54
+  cancel-in-progress: false
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+      - name: TypeScript check
+        run: npm run lint
+      - name: Isolated Miniflare D1 tests
+        run: npm test
+      - name: Generate verified production frontend
+        run: npm run build
+      - name: Bundle real Cloudflare Worker backend
+        run: npm run bundle:worker
+      - name: Record exact artifact hashes
+        run: |
+          sha256sum dist/index.html dist/assets/index-*.js dist/assets/index-*.css dist/_worker.js | tee /tmp/cnc-artifacts.sha256
+          test "$(find dist/assets -maxdepth 1 -name 'index-*.js' | wc -l)" -eq 1
+          test "$(find dist/assets -maxdepth 1 -name 'index-*.css' | wc -l)" -eq 1
+      - name: Publish immutable source-built artifacts (NOT Cloudflare deployment)
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git switch -c artifact/staging-live-auction-v54-20261117
+          git add -f dist/index.html dist/assets/index-*.js dist/assets/index-*.css dist/_worker.js
+          cp /tmp/cnc-artifacts.sha256 dist/release-sha256.txt
+          git add -f dist/release-sha256.txt
+          git commit -m 'build(private staging): verified media/auction safety candidate; payments and streams remain disabled'
+          git push origin HEAD:refs/heads/artifact/staging-live-auction-v54-20261117
+      - name: Upload bundle evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: cnc-live-auction-v54-release-bundle
+          path: |
+            web/dist/index.html
+            web/dist/assets/index-*.js
+            web/dist/assets/index-*.css
+            web/dist/_worker.js
+            web/dist/release-sha256.txt
+          retention-days: 30
