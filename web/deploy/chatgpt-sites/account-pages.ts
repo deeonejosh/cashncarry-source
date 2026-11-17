@@ -33,6 +33,91 @@ export async function accountPage(request: Request, env: AuthEnvironment): Promi
   const path = url.pathname === '/login' ? '/sign-in' : url.pathname;
   if (!env.AUTH_DB || env.AUTH_ORIGIN !== url.origin || url.protocol !== 'https:') return null;
   const flow = flows[path as keyof typeof flows];
+
+  if (path === '/admin/sign-in') return redirect('/sign-in');
+
+  // One sign-in link for buyers, sellers and the owner. Admin MFA is enforced by authRoute.
+  if (path === '/sign-in') {
+    const unifiedForm = (message = '', status = 200) => {
+      const nonce = Array.from(crypto.getRandomValues(new Uint8Array(32)),
+        (byte) => byte.toString(16).padStart(2, '0')).join('');
+      const adminCodeField =
+        '<details><summary>Administrator? Enter authenticator code</summary>' +
+        '<label for="code">Six-digit authenticator code</label>' +
+        '<input id="code" name="code" type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code"></details>';
+      const inputs = flow.fields + adminCodeField +
+        '<input type="hidden" name="admin_csrf" value="' + nonce + '">';
+      const res = form(flow.title, inputs, path, message, status);
+      res.headers.append('set-cookie',
+        '__Host-cnc_admin_csrf=' + nonce + '; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=900');
+      res.headers.set('cache-control', 'no-store');
+      return res;
+    };
+
+    if (request.method === 'GET') return unifiedForm();
+    if (request.method !== 'POST') return new Response(null, { status: 405, headers: {allow:'GET, POST'} });
+
+    let values: Record<string, unknown>;
+    try { values = await readBody(request); }
+    catch { return unifiedForm('Invalid sign-in form. Please try again.', 400); }
+
+    const origin = request.headers.get('origin');
+    const referer = request.headers.get('referer');
+    if ((origin && origin !== 'null' && origin !== env.AUTH_ORIGIN) ||
+        request.headers.get('sec-fetch-site') === 'cross-site') {
+      return unifiedForm('Sign in using this staging website.', 403);
+    }
+    if (referer) {
+      try {
+        if (new URL(referer).origin !== env.AUTH_ORIGIN)
+          return unifiedForm('Sign in using this staging website.', 403);
+      } catch { return unifiedForm('Invalid sign-in source.', 403); }
+    }
+
+    const supplied = typeof values.admin_csrf === 'string' ? values.admin_csrf : '';
+    const stored = (request.headers.get('cookie') || '').split(';').map((s) => s.trim())
+      .find((s) => s.startsWith('__Host-cnc_admin_csrf='))
+      ?.slice('__Host-cnc_admin_csrf='.length) || '';
+    if (!/^[a-f0-9]{64}$/.test(supplied) || !/^[a-f0-9]{64}$/.test(stored))
+      return unifiedForm('Security check expired. Please submit the new form.', 403);
+    let difference = 0;
+    for (let i = 0; i < 64; i++)
+      difference |= supplied.charCodeAt(i) ^ stored.charCodeAt(i);
+    if (difference !== 0)
+      return unifiedForm('Security check expired. Please submit the new form.', 403);
+
+    const email = typeof values.email === 'string' ? values.email.trim() : '';
+    const password = typeof values.password === 'string' ? values.password : '';
+    const code = typeof values.code === 'string' ? values.code : '';
+    const canonicalEmail = email.trim().toLowerCase();
+    const accountRole = canonicalEmail.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(canonicalEmail)
+      ? await env.AUTH_DB.prepare('SELECT role FROM cnc_auth_users WHERE email=?')
+        .bind(canonicalEmail).first<{role:string}>() : null;
+    const isAdmin = accountRole?.role === 'admin';
+
+    const headers = new Headers(request.headers);
+    headers.set('origin', env.AUTH_ORIGIN);
+    headers.set('content-type', 'application/x-www-form-urlencoded');
+    headers.delete('content-length');
+    headers.delete('authorization');
+    headers.delete('x-client-type');
+    const apiUrl = new URL(isAdmin ? '/api/auth/admin-login' : '/api/auth/login', url);
+    const forwarded = new Request(apiUrl, {
+      method: 'POST', headers,
+      body: new URLSearchParams({ email, password, code }).toString(),
+    });
+    const signedIn = await authRoute(forwarded, env);
+    if (!signedIn.ok) {
+      const message = signedIn.status === 429 ? 'Too many attempts. Please try again later.'
+        : signedIn.status === 503 ? 'Sign-in temporarily unavailable.'
+        : 'Sign-in failed. Check your password and, if you are an Admin, your authenticator code.';
+      return unifiedForm(message, signedIn.status);
+    }
+    const sessionCookie = signedIn.headers.get('set-cookie');
+    if (!sessionCookie) return unifiedForm('Unable to start a session.', 503);
+    return redirect(isAdmin ? '/admin'
+      : accountRole?.role === 'seller' ? '/seller-centre' : '/shop', sessionCookie);
+  }
   if (flow || path === '/sign-out') {
     if (request.method === 'GET' && flow) return form(flow.title, flow.fields, path);
     if (request.method !== 'POST') return new Response(null, {status:405,headers:{allow:'POST'}});
