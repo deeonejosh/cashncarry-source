@@ -152,7 +152,11 @@ export default {
     } catch { return reply({ error: 'Coin service temporarily unavailable' }, 503); }
     if (env.AUTH_DB && url.pathname === '/api/auth/owner-setup') {
       try { return await ownerSetupRoute(request, env); }
-      catch { return reply({ error: 'Owner setup temporarily unavailable' },503); }
+      catch (error) {
+        // Opt-in local benchmark diagnostics; do not log credentials, cookies, tokens or request bodies.
+        if (env.BENCH_DIAGNOSTICS === 'enabled') console.error('Owner setup error type:', error instanceof Error ? error.name : 'UnknownError');
+        return reply({ error: 'Owner setup temporarily unavailable' },503);
+      }
     }
     if (env.AUTH_DB && url.pathname.startsWith('/api/auth/')) {
       try { return await authRoute(request, env); }
