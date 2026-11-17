@@ -25,7 +25,7 @@ export default function PolicyPage({ initialSection = 'terms', onBack }: PolicyP
           </button>
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-              <h1 className="text-2xl md:text-3xl font-black tracking-tight">Legal & Consumer Protection</h1>
+              <h1 className="text-2xl md:text-3xl font-black tracking-tight">Legal & Policies</h1>
               <p className="text-xs md:text-sm text-emerald-200/90 font-medium">
                 Policy information is under legal review. Statutory consumer rights remain applicable.
               </p>

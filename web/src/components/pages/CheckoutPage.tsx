@@ -89,7 +89,7 @@ export default function CheckoutPage({ onSuccessOrder, onBackToCart }: CheckoutP
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
         <ShoppingBag size={48} className="text-slate-300" />
-        <h2 className="mt-4 text-lg font-black text-slate-800">No items ready for checkout</h2>
+        <h2 className="mt-4 text-lg font-black text-slate-800">Cart is empty</h2>
         <button
           onClick={onBackToCart}
           className="mt-5 rounded-full bg-[#0c5c36] px-6 py-2.5 text-xs font-bold text-white hover:bg-emerald-900"

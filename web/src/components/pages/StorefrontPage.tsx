@@ -109,9 +109,6 @@ export default function StorefrontPage({
                   </span>
                 )}
               </div>
-              {sellerMeta.description && (
-                <p className="text-xs sm:text-sm text-emerald-100/90 max-w-2xl">{sellerMeta.description}</p>
-              )}
               <div className="flex flex-wrap items-center gap-4 text-xs text-emerald-100 pt-1">
                 <span className="inline-flex items-center gap-1">
                   <MapPin size={13} /> {sellerMeta.location}, Nigeria

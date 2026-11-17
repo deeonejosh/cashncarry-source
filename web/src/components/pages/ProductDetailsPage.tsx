@@ -394,7 +394,7 @@ export default function ProductDetailsPage({
           {activeTab === 'shipping' && (
             <div className="space-y-3">
               <h4 className="font-black text-slate-800">Nationwide Fulfilment</h4>
-              <p>Orders are fulfilled directly by the verified seller with tracking updates recorded in your Orders view.</p>
+              <p>Sellers fulfil orders. Track delivery in Orders.</p>
             </div>
           )}
 

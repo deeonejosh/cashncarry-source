@@ -161,7 +161,7 @@ export default function ProfilePage({ onNavigate }: ProfilePageProps) {
               <p className="text-xs text-slate-600 max-w-xl">
                 {currentUser.bio ||
                   (currentUser.authenticated
-                    ? 'Manage your Cash N Carry Nigeria account, delivery addresses, and orders.'
+                    ? 'Manage your account and orders.'
                     : 'Sign in to save your cart, track deliveries, or apply to sell.')}
               </p>
 
@@ -349,7 +349,7 @@ export default function ProfilePage({ onNavigate }: ProfilePageProps) {
             <div>
               <h3 className="text-sm font-black text-slate-900">Seller Centre Management</h3>
               <p className="text-xs text-slate-600">
-                Your seller account is approved. Publish products, upload shoppable videos, and broadcast livestreams.
+                Your seller account is approved.
               </p>
             </div>
           </div>
@@ -417,7 +417,7 @@ export default function ProfilePage({ onNavigate }: ProfilePageProps) {
               <div>
                 <h3 className="text-sm font-black text-slate-900">Become a Seller</h3>
                 <p className="text-xs text-slate-600">
-                  Apply for a verified merchant account to list products, run auctions, post For You videos, and go live.
+                  Apply to sell products and go live.
                 </p>
               </div>
             </div>
@@ -585,7 +585,7 @@ export default function ProfilePage({ onNavigate }: ProfilePageProps) {
           <div>
             <div className="font-black text-slate-900">Account & Session Synchronization</div>
             <p className="text-slate-600">
-              Web and Android sessions share authenticated identity, wishlist, follows, orders, and seller permissions.
+              Your account is synced across devices.
             </p>
           </div>
         </div>
