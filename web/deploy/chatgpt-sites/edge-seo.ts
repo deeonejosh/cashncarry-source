@@ -1,5 +1,4 @@
-import { products, categories, sellers } from '../../src/lib/data';
-import type { CatalogDatabase } from './catalog';
+import { readProduct, type CatalogDatabase } from './catalog';
 
 interface EdgeSEOContext {
   url: URL;
@@ -52,28 +51,40 @@ export async function resolveEdgeSEO({ url, db, baseUrl }: EdgeSEOContext): Prom
   const productMatch = /^\/(?:product|products)\/([^/]+)$/.exec(pathname);
   if (productMatch) {
     const rawId = decodeURIComponent(productMatch[1]);
-    let product: any = products.find((p) => p.slug === rawId || p.id === rawId);
+    // Resolve public metadata through the same authorised catalog query as the API.
+    // No static/demo products, fuzzy matches, unpublished items or unverified stores.
+    let product: {
+      id: string;
+      slug: string;
+      title: string;
+      brand: string;
+      price: number;
+      description: string;
+      image: string;
+      category: string;
+    } | null = null;
 
-    if (!product && db) {
+    if (db) {
       try {
-        const { results } = await db
-          .prepare('SELECT p.id, p.name, p.description, p.category, p.price, p.image FROM products p WHERE p.id = ? OR p.name LIKE ? LIMIT 1')
-          .bind(rawId, `%${rawId}%`)
-          .all<any>();
-        if (results && results[0]) {
-          product = {
-            id: results[0].id,
-            slug: results[0].id,
-            title: results[0].name,
-            brand: 'Verified Vendor',
-            price: results[0].price,
-            description: results[0].description,
-            image: results[0].image,
-            category: results[0].category,
-          };
+        const record = await readProduct(db, rawId);
+        if (record) {
+          const item = record as Record<string, unknown>;
+          const price = Number(item.price);
+          if (Number.isFinite(price) && price > 0) {
+            product = {
+              id: String(item.id),
+              slug: String(item.id),
+              title: String(item.name || ''),
+              brand: 'Verified seller',
+              price,
+              description: String(item.description || ''),
+              image: String(item.image || ''),
+              category: String(item.category || ''),
+            };
+          }
         }
       } catch {
-        // Fallback to static catalog
+        // Catalog unavailable: return generic metadata without revealing products.
       }
     }
 
