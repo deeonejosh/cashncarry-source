@@ -3,8 +3,8 @@
 **Audit date:** 17 November 2026 (UTC)  
 **Priority:** P0  
 **Source branch:** `fix/staging-livestream-auction-20261117`  
-**Tested repair commit:** `7f4822717a5ebcf5138b5acdb6e57b154f60c1b8`  
-**CI evidence:** https://github.com/deeonejosh/cashncarry-source/actions/runs/44180413555  
+**Tested repair commit:** `88581a022cdf2bd264c85e554e12d3ca23391e17`  
+**CI evidence:** https://github.com/deeonejosh/cashncarry-source/actions/runs/44186705250  
 **Private staging URL:** https://cashncarry-d1-staging-worker.cashncarry-workforce-2026.workers.dev/  
 **Release decision:** **NO DEPLOY — unresolved P0 auction winner settlement and unconfigured live media.**  
 **Production:** **UNCHANGED.** The existing private staging Worker remains version **53**, ID `e4a8d185-5726-4b6e-9733-372265a8b44e`, at 100% traffic. No production or private staging database writes were performed by this audit.
@@ -76,9 +76,9 @@ A new file `web/deploy/chatgpt-sites/migrations/0021_auction_wallet_integrity_co
 
 ## 5. Reproducible testing
 
-**Latest green run:** https://github.com/deeonejosh/cashncarry-source/actions/runs/44180413555
+**Latest green run:** https://github.com/deeonejosh/cashncarry-source/actions/runs/44186705250
 
-- GitHub Actions: Node 22 `npm ci` → TypeScript `npm run lint` → 23 isolated Miniflare/D1 tests → production `npm run build` → static frontend UI audit. **23 tests passed; 0 failed.** Build and audit passed.
+- GitHub Actions: Node 22 `npm ci` → TypeScript `npm run lint` → 24 isolated Miniflare/D1 tests → production `npm run build` → static frontend UI audit. **24 tests passed; 0 failed.** Build and audit passed.
 - Dedicated test fixtures exist only inside temporary CI D1, not populated Cloudflare staging.
 - Auction test: seller creation, one-unit stock reservation, no own bid, stale duplicate rejection, two competing HTTP bids, persisted highest-bid consistency, early-close rejection, idempotent close, one-time unsold stock release, payment fail-closed.
 - Gift test: fake isolated 100-coin fixture, gift debit, replay once, insufficient balance, forbidden credit, aggregate ledger consistency.
@@ -122,8 +122,21 @@ These are **conservative assurance-coverage points, NOT product quality or funct
 
 **P0 release gate remains CLOSED**: (1) no completed, supported and quoted auction winner payment/order flow; (2) no verified authenticated Stream media publish/playback, reconnect and recording; (3) no authenticated multi-user buyer/seller browser tests or full end-to-end payment tests. Important P1/P2 gaps also remain: live viewer presence, bid/chat event fan-out, end-time scheduling, gifting animation, moderation, upload pipeline and mobile camera screens. A real provider and consented staging accounts are required to test these correctly. We did **not** switch on real payments or issue virtual paid orders.
 
-**Action completed:** A dedicated repair branch was created, 12 source/test/CI files changed, code committed and 23 isolated regressions plus frontend checks passed. **No Worker version was deployed and no D1 mutation or migration was executed on the private staging environment**, per the explicit instruction not to deploy with unresolved P0 defects. The prior private staging deployment **v53** is unchanged, and production is untouched.
+**Action completed:** A dedicated repair branch was created, 13 source/test/CI files changed, code committed and 24 isolated regressions plus frontend checks passed. **No Worker version was deployed and no D1 mutation or migration was executed on the private staging environment**, per the explicit instruction not to deploy with unresolved P0 defects. The prior private staging deployment **v53** is unchanged, and production is untouched.
 
 **Next release criteria:** Confirm actual media provider/credentials and camera test devices; implement a dedicated auction-order reservation mechanism and confirmed shipping fees without reusing the cart trigger; implement idempotent payment reconciliation and end-time settlement; verify isolated browser accounts and D1 backups; perform multi-session auth, chat, bid and checkout acceptance; then deploy tested repair code as a new private Worker version while preserving all 14 existing secret/database bindings and rollback.
 
 **No fake features, payment success, viewer counts or staging deployment claims.**
+
+
+## 9. Follow-up regression and live-shopping checkout repair — 17 November 2026, 22:07 UTC
+
+**Latest clean CI:** [GitHub Actions #44186705250](https://github.com/deeonejosh/cashncarry-source/actions/runs/44186705250); **24 of 24 isolated backend tests passing**, TypeScript lint, production Vite build, and static frontend audit successful. Tested source commit `88581a022cdf2bd264c85e554e12d3ca23391e17`.
+
+This follow-up verifies additional pinning and audience-presence controls using isolated Miniflare D1 records, without touching existing staging data. New assertions prove a buyer cannot pin a seller product; unknown products cannot be pinned; an active host can pin and unpin their own published product; ended rooms cannot be pinned or joined; repeated joins do not artificially increment persisted viewers.
+
+Frontend improvements correct an actual workflow break: the pinned-product **Buy Now** action used to open checkout even when authentication or the cart API had failed. The `StoreContext.addToCart` function now returns a success flag; `LiveShoppingPage` only proceeds to checkout on an accepted backend cart mutation. Failed product pinning and stream-ending operations now provide visible error messages, and chat display names use the backend's `author_name` field rather than falling back to generic identities when a verified name exists.
+
+Additional changed files: `web/src/context/StoreContext.tsx` (cart success contract and comment author mapping). The existing live page and test file were further updated. No remote staging deployment, database migrations, production changes, payment activation, media provider configuration, genuine browser screenshots or authenticated end-to-end checks occurred.
+
+**Release decision remains NO DEPLOY:** a fully implemented and verified winner-payment/shipping state machine and actual livestream media transport are still missing. This report describes validated code and temporary test D1 only. The previously deployed private staging Worker v53 remains the accessible baseline; do not mistake the new GitHub branch for deployed code.
