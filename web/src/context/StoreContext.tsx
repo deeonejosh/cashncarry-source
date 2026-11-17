@@ -977,7 +977,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     imageUrl?: string;
     featured?: boolean;
   }) => {
-    const res = await api.mutateSellerProduct({ action: 'update', ...input });
+    const revision = sellerProducts.find((item) => item.id === input.id)?.revision;
+    if (!revision) return { ok: false, error: 'Product changed. Reload listings and try again.' };
+    const res = await api.mutateSellerProduct({ action: 'update', revision, ...input });
     if (!res.ok) return { ok: false, error: res.error || 'Could not update product.' };
     await refreshSellerData();
     showToast('Product updated.', 'success');
@@ -985,7 +987,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const submitSellerProductForReview = async (id: string) => {
-    const res = await api.mutateSellerProduct({ action: 'submit', id });
+    const revision = sellerProducts.find((item) => item.id === id)?.revision;
+    if (!revision) return { ok: false, error: 'Product changed. Reload listings and try again.' };
+    const res = await api.mutateSellerProduct({ action: 'submit', id, revision });
     if (!res.ok) return { ok: false, error: res.error || 'Submit failed.' };
     await refreshSellerData();
     showToast('Submitted for admin moderation review.', 'success');
@@ -993,7 +997,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const unpublishSellerProduct = async (id: string) => {
-    const res = await api.mutateSellerProduct({ action: 'unpublish', id });
+    const revision = sellerProducts.find((item) => item.id === id)?.revision;
+    if (!revision) return { ok: false, error: 'Product changed. Reload listings and try again.' };
+    const res = await api.mutateSellerProduct({ action: 'unpublish', id, revision });
     if (!res.ok) return { ok: false, error: res.error || 'Unpublish failed.' };
     await refreshSellerData();
     await reloadMarketplace();
@@ -1002,7 +1008,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const archiveSellerProduct = async (id: string) => {
-    const res = await api.mutateSellerProduct({ action: 'archive', id });
+    const revision = sellerProducts.find((item) => item.id === id)?.revision;
+    if (!revision) return { ok: false, error: 'Product changed. Reload listings and try again.' };
+    const res = await api.mutateSellerProduct({ action: 'archive', id, revision });
     if (!res.ok) return { ok: false, error: res.error || 'Archive failed.' };
     await refreshSellerData();
     await reloadMarketplace();
