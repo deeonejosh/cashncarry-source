@@ -8,7 +8,7 @@
 
 ## Executive status
 
-**SOURCE REPAIR COMMITTED; FULL BUILD / NEW DEPLOYMENT NOT PERFORMED.** The newest reviewed extracted web/ and app/ source tree and assets have now been committed to the isolated branch in commit 3a7b4bc2414b694f32085c1482edec273f3f6ae7. The fixes have been applied and regression-tested against the extracted local copy. The previously deployed Cloudflare Worker remains in place. A new build must pass lint, tests and authenticated browser checks before replacing it. Never claim that a local patch is already deployed.
+**SOURCE REPAIR COMMITTED; WEB CI AND ISOLATED BROWSER TESTS PASSED; NEW STAGING DEPLOYMENT NOT PERFORMED.** The newest reviewed extracted web/ and app/ source tree and assets have now been committed to the isolated branch in commit 3a7b4bc2414b694f32085c1482edec273f3f6ae7. The source fixes have passed CI web compilation and isolated browser tests, although Android and hosted end-to-end gates remain blocked. The previously deployed Cloudflare Worker remains in place. A new build must pass lint, tests and authenticated browser checks before replacing it. Never claim that a local patch is already deployed.
 
 ## Architecture
 
@@ -71,7 +71,7 @@ This is a code-derived inventory, not a claim that all routes have passed live b
 - PASS: 8 additional offline workflow-release regression tests.
 - PASS: source UI audit finds 26 tabs, 26 navigation targets, 298 JSX buttons, 25 forms, **zero inert buttons detected**. This is a static check, not a click-through of every button.
 - PASS: node --check on the browser-smoke script.
-- BLOCKED: npm ci --offline returned ENOTCACHED (missing esbuild), so TypeScript lint, production Vite build, Miniflare backend suite and full browser tests did not run.
+- Local npm ci --offline was blocked by ENOTCACHED, but a **GitHub Actions runner with dependencies passed npm ci, TypeScript lint, 16 Miniflare/D1 tests, Vite production build, and local Chromium desktop/mobile browser smoke across 26 routes** (see verified CI section below).
 - BLOCKED: Android Gradle wrapper executable/JAR and SDK/build environment missing; no APK/emulator test.
 - BLOCKED: Cloudflare Access sign-in browser capture, Resend delivery receipt, real camera/media, third-party supplier integrations, and sandbox payments were not verified.
 
@@ -92,10 +92,29 @@ No supplier has granted verified API access. Import deduplication, admin approva
 ## Deployment and remaining blockers
 
 1. DONE: The extracted web/, app/, gradle/ and scripts/ source plus reviewed fixes are committed to fix/staging-workflow-audit at 3a7b4bc2414b694f32085c1482edec273f3f6ae7.
-2. Run CI with functioning npm/Gradle dependencies: lint, test, build, Miniflare D1 migration/API smoke, Android tests, responsive/browser tests, security/role tests.
+2. DONE for WEB in GitHub Actions: install, lint, 16 isolated Worker/D1 tests, production build, 26-route Chromium smoke at desktop/mobile. Android Gradle and hosted authenticated workflows remain blocked.
 3. Back up staging before any database migration; do not modify the existing verified seller or session.
 4. Obtain an authenticated Cloudflare Access browser session and secure owner admin/MFA configuration; use disposable test users.
 5. Preserve the already-approved staging UI/footer; never overwrite it with an older ZIP bundle.
 6. Deploy only after gates pass, then verify route loads, workflow clicks, identity/role boundaries, runtime logs and the exact commit/version.
 
-**Deployment status for this NEW audited source: NOT DEPLOYED (blocked by build and end-to-end verification).** The existing private staging deployment remains unchanged. **Production was untouched.**
+**Deployment status for this NEW audited source: NOT DEPLOYED (blocked by Android build, hosted Access/authenticated E2E, admin MFA, and shipping/provider dependencies).** The existing private staging deployment remains unchanged. **Production was untouched.**
+
+## Additional verified repairs and CI evidence — 17 November 2026
+
+Source branch: `fix/staging-workflow-audit`. Audited source + image assets committed; latest tested web-source commit: `e2402c38b705ee26ed4a462867a46440b36e4820`. [CI run 44039384529](https://github.com/deeonejosh/cashncarry-source/actions/runs/44039384529).
+
+**PASS — Web CI:** npm ci; TypeScript lint; **16/16 isolated Miniflare/D1 tests** for auth, staged payments/webhooks, coins, auctions, KYC fail-closed, video/comment APIs, catalog security/SEO and SQL migrations; Vite production build; static customer UI release gate; Chromium smoke at **1440×900** and **390×844** across 26 React tabs, auth/role guards, empty states and zero unexpected browser console/page errors or horizontal overflow. Earlier local offline Python checks also passed **57/57**.
+
+**FAIL — Android CI:** newest supplied source has empty `build.gradle.kts`, `settings.gradle.kts`, `gradle/libs.versions.toml`, and missing Gradle wrapper scripts/JAR. No Android APK/device or Android-to-web authenticated session verification can be claimed. The CI job now fails early with an explicit build-configuration error.
+
+**Further source fixes beyond the initial UI repair:**
+- `web/deploy/chatgpt-sites/edge-seo.ts`: removed obsolete demo-product imports and insecure fuzzy product lookup; uses the published product catalog query that excludes inactive listings and unverified/suspended shops. Escaped seller metadata for safe HTML and JSON-LD output.
+- `web/scripts/run-automated-tests.ts`: new assertions confirm visibility restriction and prevent seller-controlled HTML or script-context injection.
+- `web/public/assets/aistudio/*`: removed five orphaned editor files, including the V17 staging export HTML, from the publishable frontend. Canonical brand logos remain.
+- `web/package.json`, `web/package-lock.json`: corrected Vite 8/esbuild dependency incompatibility.
+- `web/scripts/verify-staging-browser.mjs`: verifies anonymous buyer/seller/admin access denials and distinguishes expected guest API 401s from unexpected asset/network or browser errors.
+- `.github/workflows/verify-staging-workflow-audit.yml`: isolated branch checks, **no production/staging deployment job**.
+- `.github/workflows/repair-staging-lockfile.yml`: branch-scoped lockfile regeneration performed once; no deployment.
+
+**Release gate remains CLOSED.** No full-source deployment to Cloudflare took place in this audit. Existing staging Worker remains `4771ec1f-247d-42ab-8811-6acbf2949ddb` (deployed at 04:17 UTC). Browser CI is local/isolated, not a hosted Cloudflare Access authenticated E2E. Staging still requires a backup before any migration, admin-owner MFA bindings, a private authenticated test session, Android reconstruction, and real provider/shipping integration tests. Payment/coin/KYC flags remain disabled. **No production changes or staging database writes were made.**
