@@ -4,6 +4,7 @@ import { flutterwaveRoute, type PaymentEnvironment } from './flutterwave';
 import { streamRoute, type StreamEnvironment } from './stream';
 import { kycRoute, type KycEnvironment } from './kyc';
 import { adminRoute } from './admin';
+import { ownerSetupRoute } from './owner-setup';
 import { ordersRoute } from './orders';
 import { marketplaceRoute } from './marketplace';
 import { accountPage } from './account-pages';
@@ -144,6 +145,10 @@ export default {
       const coin = await coinsRoute(request, env);
       if (coin) return coin;
     } catch { return reply({ error: 'Coin service temporarily unavailable' }, 503); }
+    if (env.AUTH_DB && url.pathname === '/api/auth/owner-setup') {
+      try { return await ownerSetupRoute(request, env); }
+      catch { return reply({ error: 'Owner setup temporarily unavailable' },503); }
+    }
     if (env.AUTH_DB && url.pathname.startsWith('/api/auth/')) {
       try { return await authRoute(request, env); }
       catch { return reply({ error: 'Authentication temporarily unavailable' }, 503); }
