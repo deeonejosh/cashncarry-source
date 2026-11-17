@@ -284,18 +284,18 @@ async function run() {
       const csrfRes = await mf.dispatchFetch(origin + '/api/coins', {
         method: 'POST',
         headers: { origin: 'https://evil.example', cookie: buyerCookie, 'content-type': 'application/json' },
-        body: JSON.stringify({ action: 'credit', requestId: 'r1', recipientId: 'staging-buyer' }),
+        body: JSON.stringify({ action: 'credit', requestId: 'staging-credit-replay', recipientId: 'staging-buyer' }),
       });
       assert.equal(csrfRes.status, 403);
 
       const creditRes = await mf.dispatchFetch(origin + '/api/coins', {
         method: 'POST',
         headers: { origin, cookie: buyerCookie, 'content-type': 'application/json' },
-        body: JSON.stringify({ action: 'credit', requestId: 'r1', recipientId: 'staging-buyer' }),
+        body: JSON.stringify({ action: 'credit', requestId: 'staging-credit-replay', recipientId: 'staging-buyer' }),
       });
       assert.equal(creditRes.status, 503);
       const json: any = await creditRes.json();
-      assert.equal(json.code, 'COINS_DISABLED');
+      assert.equal(json.code, 'COIN_CREDIT_NOT_AUTHORIZED');
     });
 
     await test('Auctions Guard: Winner checkout blocked (503) & bad Origin rejected (403)', async () => {
@@ -715,6 +715,133 @@ async function run() {
       }) as any);
       assert.equal(repeated.status,409,'Stale product revision must fail without overwriting current status');
 
+    });
+
+
+    await test('P0 auction D1 trigger contract: reserve once, reject stale bids, close once and restore unsold stock once', async () => {
+      const sellerId='auction-fixture-seller',buyerId='auction-fixture-buyer';
+      const sellerToken='4'.repeat(64),buyerToken='5'.repeat(64);
+      await authDb.prepare("INSERT INTO cnc_auth_users(id,email,credential,role,verified,suspended) VALUES (?,?,'','seller',1,0)")
+        .bind(sellerId,'auction-fixture-seller@example.invalid').run();
+      await authDb.prepare("INSERT INTO cnc_auth_users(id,email,credential,role,verified,suspended) VALUES (?,?,'','buyer',1,0)")
+        .bind(buyerId,'auction-fixture-buyer@example.invalid').run();
+      await authDb.prepare('INSERT INTO cnc_auth_sessions(hash,user_id,expires,mfa) VALUES(?,?,?,0)')
+        .bind(createHash('sha256').update(sellerToken).digest('hex'),sellerId,Date.now()+600000).run();
+      await authDb.prepare('INSERT INTO cnc_auth_sessions(hash,user_id,expires,mfa) VALUES(?,?,?,0)')
+        .bind(createHash('sha256').update(buyerToken).digest('hex'),buyerId,Date.now()+600000).run();
+      await authDb.prepare("INSERT INTO cnc_seller_stores(owner,name,description) VALUES (?,?,'Benchmark only')")
+        .bind(sellerId,'Auction Benchmark Store').run();
+      const productId='auction-product-fixture';
+      await authDb.prepare(
+        "INSERT INTO cnc_seller_products(id,owner,name,price_minor,stock,archived,revision,publication) VALUES(?,?,?,10000,2,0,1,'published')"
+      ).bind(productId,sellerId,'Auction Benchmark Product').run();
+      const sellCookie='__Host-cnc_session='+sellerToken,buyCookie='__Host-cnc_session='+buyerToken;
+      const action=(cookie:string,method:string,payload:unknown)=>mf.dispatchFetch(origin+'/api/auctions',{
+        method,headers:{origin,cookie,'content-type':'application/json'},body:JSON.stringify(payload),
+      });
+      const created=await action(sellCookie,'POST',{productId,startingBidKobo:10000,durationMinutes:60});
+      assert.equal(created.status,201,'A verified seller should create an auction with a single D1 stock reservation');
+      const id=(await created.json() as any).auctionId as string;
+      const reserved=await authDb.prepare('SELECT stock FROM cnc_seller_products WHERE id=?').bind(productId).first<{stock:number}>();
+      assert.equal(reserved?.stock,1,'Auction reservation must decrement exactly one unit');
+      const illegalSellerBid=await action(sellCookie,'PATCH',{action:'bid',id,amountKobo:10000});
+      assert.equal(illegalSellerBid.status,403);
+      const first=await action(buyCookie,'PATCH',{action:'bid',id,amountKobo:10000});
+      assert.equal(first.status,200);
+      const stale=await action(buyCookie,'PATCH',{action:'bid',id,amountKobo:10000});
+      assert.equal(stale.status,409,'Stale or repeated bids must never be persisted');
+      const bidRaces=await Promise.all([
+        action(buyCookie,'PATCH',{action:'bid',id,amountKobo:10100}),
+        action(buyCookie,'PATCH',{action:'bid',id,amountKobo:10200}),
+      ]);
+      for (const res of bidRaces) assert.ok([200,409].includes(res.status),'Concurrent requests must commit or reject cleanly');
+      const accepted=bidRaces.filter(x=>x.status===200).length;
+      const records=await authDb.prepare('SELECT COUNT(*) AS n,MAX(amount_kobo) AS max_bid FROM cnc_bids WHERE auction_id=?')
+        .bind(id).first<{n:number;max_bid:number}>();
+      const saved=await authDb.prepare('SELECT current_bid_kobo,winner_id FROM cnc_auctions WHERE id=?')
+        .bind(id).first<{current_bid_kobo:number;winner_id:string}>();
+      assert.equal(records?.n,1+accepted,'Rejected bids must not appear in bid history');
+      assert.equal(saved?.current_bid_kobo,records?.max_bid,'Persisted highest bid must equal maximum valid bid');
+      assert.equal(saved?.winner_id,buyerId);
+      const early=await action(sellCookie,'PATCH',{action:'close',id});
+      assert.equal(early.status,409,'Seller cannot prematurely close the auction');
+      await authDb.prepare('UPDATE cnc_auctions SET ends_at=unixepoch()-1 WHERE id=?').bind(id).run();
+      assert.equal((await action(sellCookie,'PATCH',{action:'close',id})).status,200);
+      assert.equal((await action(sellCookie,'PATCH',{action:'close',id})).status,200);
+      const stockAfterSold=await authDb.prepare('SELECT stock FROM cnc_seller_products WHERE id=?').bind(productId).first<{stock:number}>();
+      assert.equal(stockAfterSold?.stock,1,'Closing a won auction must not restore reserved stock');
+      const unsoldCreated=await action(sellCookie,'POST',{productId,startingBidKobo:10000,durationHours:1});
+      assert.equal(unsoldCreated.status,201,'The UI durationHours payload is accepted');
+      const unsoldId=(await unsoldCreated.json() as any).auctionId as string;
+      const afterSecondReserve=await authDb.prepare('SELECT stock FROM cnc_seller_products WHERE id=?').bind(productId).first<{stock:number}>();
+      assert.equal(afterSecondReserve?.stock,0);
+      await authDb.prepare('UPDATE cnc_auctions SET ends_at=unixepoch()-1 WHERE id=?').bind(unsoldId).run();
+      assert.equal((await action(sellCookie,'PATCH',{action:'close',id:unsoldId})).status,200);
+      assert.equal((await action(sellCookie,'PATCH',{action:'close',id:unsoldId})).status,200);
+      const afterReturn=await authDb.prepare('SELECT stock FROM cnc_seller_products WHERE id=?').bind(productId).first<{stock:number}>();
+      assert.equal(afterReturn?.stock,1,'Unsold stock restored exactly once');
+      const checkout=await action(buyCookie,'PATCH',{action:'checkout',id});
+      assert.equal(checkout.status,503,'No unquoted auction order or synthetic payment success');
+      const orderCount=await authDb.prepare("SELECT COUNT(*) AS n FROM cnc_orders WHERE request_id LIKE 'req-auc-%'").first<{n:number}>();
+      assert.equal(orderCount?.n,0);
+    });
+
+    await test('P0 gifts: replay-safe, transactional balance checks and direct minting disabled', async () => {
+      const senderId='auction-fixture-buyer',receiverId='auction-fixture-seller',token='5'.repeat(64);
+      const post=(payload:unknown)=>mf.dispatchFetch(origin+'/api/coins',{
+        method:'POST',headers:{origin,cookie:'__Host-cnc_session='+token,'content-type':'application/json'},
+        body:JSON.stringify(payload),
+      });
+      await authDb.prepare(
+        "INSERT INTO cnc_coin_ledger(id,user_id,delta,reason,idempotency_key) VALUES (?,?,100,'Isolated test promotional credit',?)"
+      ).bind('isolated-coin-credit',senderId,'isolated-credit-20261117').run();
+      const requestId='gift-benchmark-0001';
+      const gift={action:'gift',requestId,recipientId:receiverId,gift:'star'};
+      const first=await post(gift);
+      assert.equal(first.status,200,'100-coin gift should settle against isolated balance');
+      const replay=await post(gift);
+      assert.equal(replay.status,200);
+      assert.equal((await replay.json() as any).duplicated,true,'Retry must be idempotent even after coins are spent');
+      const insufficient=await post({...gift,requestId:'gift-benchmark-0002',gift:'rose'});
+      assert.equal(insufficient.status,409);
+      const mint=await post({action:'credit',requestId:'credit-unverified-0001',recipientId:senderId,coins:5000});
+      assert.equal(mint.status,503);
+      const bal=await authDb.prepare('SELECT COALESCE(SUM(delta),0) AS balance FROM cnc_coin_ledger WHERE user_id=?').bind(senderId).first<{balance:number}>();
+      const giftCount=await authDb.prepare('SELECT COUNT(*) AS n FROM cnc_gifts WHERE sender_id=?').bind(senderId).first<{n:number}>();
+      assert.equal(bal?.balance,0);
+      assert.equal(giftCount?.n,1);
+    });
+
+    await test('P1 video/live fail-closed, chat parameter compatibility and duplicate throttling', async () => {
+      const sellerCookie='__Host-cnc_session='+'4'.repeat(64);
+      const buyerCookie='__Host-cnc_session='+'5'.repeat(64);
+      const send=(route:string,cookie:string,body:unknown)=>mf.dispatchFetch(origin+route,{
+        method:'POST',headers:{origin,cookie,'content-type':'application/json'},body:JSON.stringify(body),
+      });
+      const fakeLive=await send('/api/v1/live',sellerCookie,{title:'Not a true broadcast',category:'Electronics'});
+      assert.equal(fakeLive.status,503);
+      assert.equal((await fakeLive.json() as any).code,'BROADCAST_NOT_CONFIGURED');
+      const fakeVideo=await send('/api/v1/videos',sellerCookie,{title:'Unverified',productId:'auction-product-fixture',videoUrl:'https://invalid.example/file.mp4'});
+      assert.equal(fakeVideo.status,503);
+      const rooms=await authDb.prepare('SELECT COUNT(*) AS n FROM cnc_live_room_state').first<{n:number}>();
+      assert.equal(rooms?.n,0,'Unconfigured live provider must not create phantom sessions');
+      const roomId='isolated-live-chat-fixture';
+      await authDb.prepare("INSERT INTO cnc_live_room_state(room_id,seller_id,seller_name,title,category,status) VALUES(?,?,?,'Isolated chat test','Tech','live')")
+        .bind(roomId,'auction-fixture-seller','Auction Benchmark Store').run();
+      const comment=await send('/api/v1/live/comments',buyerCookie,{roomId,body:'Test comment from user account'});
+      assert.equal(comment.status,201);
+      const dup=await send('/api/v1/live/comments',buyerCookie,{roomId,body:'Test comment from user account'});
+      assert.equal(dup.status,429);
+      const get=await mf.dispatchFetch(origin+'/api/v1/live/comments?roomId='+encodeURIComponent(roomId));
+      assert.equal(get.status,200,'Legacy roomId query should remain supported');
+      const data=await get.json() as any;
+      assert.equal(data.comments.length,1);
+      assert.equal(data.comments[0].author_name,'Member','Do not leak email-derived usernames');
+      const publicRooms=await mf.dispatchFetch(origin+'/api/v1/live');
+      assert.equal(publicRooms.status,200);
+      const payload=await publicRooms.json() as any;
+      assert.equal(payload.liveStreamingConfigured,false);
+      assert.equal(payload.rooms[0].viewer_count,null,'Do not fabricate viewer presence');
     });
 
   } finally {
