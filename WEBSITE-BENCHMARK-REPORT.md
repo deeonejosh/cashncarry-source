@@ -1,0 +1,133 @@
+# CASH N CARRY NIGERIA — WEBSITE BENCHMARK REPORT
+
+**Date:** 17 November 2026  
+**Status:** PRELIMINARY / RELEASE NOT APPROVED  
+**Repository:** https://github.com/deeonejosh/cashncarry-source  
+**Benchmark branch:** `fix/staging-ai-benchmark-20261117`  
+**Source basis:** `fix/staging-workflow-audit` at `d571c5e80d80fd3b547c5e820d9469b09d2db16b`  
+**Private staging:** https://cashncarry-d1-staging-worker.cashncarry-workforce-2026.workers.dev/  
+**Verified existing staging Worker:** `f5675b32-e4c2-4c49-ba5a-a3398761e626`  
+**Staging deployment from this benchmark:** **NOT PERFORMED** — critical regression gate is failing.
+
+## Executive summary
+
+This is an evidence-based interim report, not a claim that the entire marketplace is tested. The actual repository was inspected and a separate automated benchmark branch created. Its GitHub Actions setup runs source checks, Playwright desktop and mobile screenshots, Axe accessibility scans, and Lighthouse CI, storing report artifacts. The earlier source-branch CI failed 1 of 18 backend/security tests; an Android build configuration check also failed.
+
+Cloudflare Browser Rendering was directed at the real private staging URL but returned **Cloudflare Access sign-in**, not the marketplace. This correctly protects the private staging site; it also blocks uncredentialed end-to-end verification of Buyer, Seller and Admin actions. No unauthorised login bypass has been attempted.
+
+## 1. Discovered React application routes
+
+Read directly from the `switch (currentTab)` entries in `web/src/App.tsx`. These are **26 existing frontend page states**, not 26 independently verified live pages.
+
+| Route/tab | Domain | Live authenticated test | Per-page benchmark score |
+|---|---|---|---|
+| home | Buyer | BLOCKED by Access | NOT SCORED |
+| for-you | Video/social | BLOCKED by Access | NOT SCORED |
+| shop | Buyer | BLOCKED by Access | NOT SCORED |
+| product-detail | Buyer | BLOCKED by Access | NOT SCORED |
+| checkout | Buyer/payment | BLOCKED; payments disabled | NOT SCORED |
+| checkout-complete | Buyer | BLOCKED | NOT SCORED |
+| orders | Buyer | BLOCKED | NOT SCORED |
+| profile | Identity | BLOCKED | NOT SCORED |
+| live | Livestream | BLOCKED; no live rooms | NOT SCORED |
+| auctions | Auctions | BLOCKED | NOT SCORED |
+| coins | Gifting/wallet | BLOCKED; purchases disabled | NOT SCORED |
+| flash-deals | Buyer | BLOCKED; no products | NOT SCORED |
+| wishlist | Buyer | BLOCKED | NOT SCORED |
+| shipments | Fulfilment | BLOCKED | NOT SCORED |
+| messages | Messaging | BLOCKED | NOT SCORED |
+| notifications | Messaging | BLOCKED | NOT SCORED |
+| returns | Post-purchase | BLOCKED | NOT SCORED |
+| seller-dashboard | Seller Centre | BLOCKED; requires seller session | NOT SCORED |
+| seller-products | Seller Centre | BLOCKED; requires seller session | NOT SCORED |
+| seller-orders | Seller Centre | BLOCKED; requires seller session | NOT SCORED |
+| seller-kyc | Seller Centre | BLOCKED; uploads disabled | NOT SCORED |
+| seller-settlements | Seller Centre | BLOCKED | NOT SCORED |
+| admin-dashboard | Admin Console | BLOCKED; Admin MFA required | NOT SCORED |
+| email-marketing | Admin Console | BLOCKED; Admin MFA required | NOT SCORED |
+| storefront | Seller storefront | BLOCKED; no sellers | NOT SCORED |
+| policies | Legal/help | BLOCKED by Access | NOT SCORED |
+
+The Worker also maps descriptive URL aliases to these page states. An alias is not counted as a new application page.
+
+## 2. Backend and storage inventory
+
+Inspected: `worker.ts`, `new-auth.ts`, `unified-sync.ts`, `orders.ts`, `marketplace.ts`, `auctions.ts`, `coins.ts`, `stream.ts`, `kyc.ts`, `admin.ts`, `newsletter.ts`, and `flutterwave.ts`.
+
+Implemented endpoint families include `/api/health`, `/api/auth/*`, `/api/v1/*`, `/api/orders`, `/api/checkout`, `/api/payments/*`, `/api/seller/*`, `/api/admin/*`, `/api/auctions`, `/api/coins`, `/api/live/cloudflare/*`, `/api/sellers/kyc`, and `/api/newsletter/*`. Individual API behaviours need authenticated and integration tests before certification.
+
+Cloudflare staging bindings confirmed from the Worker settings: `AUTH_DB` and `DB` point to D1 `9a2cdbee-e030-4b10-908b-b10b8142d2aa`. `PAYMENTS_ENABLED=false`, `COINS_PURCHASES_ENABLED=false`, `KYC_UPLOADS_ENABLED=false`, and `FLW_MODE=disabled`. This inspection involved no production mutation or payments.
+
+The D1 database has **43 non-internal tables**, with one Admin user, zero seller products, zero orders, zero short videos and zero newsletter subscribers at inspection. These are actual staging records, not seeded demonstration data.
+
+## 3. Automated regression baseline
+
+Source branch GitHub Actions run: https://github.com/deeonejosh/cashncarry-source/actions/runs/44112516309
+
+| Check | Evidence-based result |
+|---|---|
+| Source inventory | PASSED |
+| Backend/security integration | **17 PASSED, 1 FAILED** |
+| Owner setup security regression | **FAILED**: HTTP 503 received where the test expected HTTP 200 |
+| Android source/build configuration | **FAILED**: repository-root `build.gradle.kts` missing or empty |
+| Desktop/mobile screenshot artifact from the original workflow | **BLOCKED**: web job stopped at failing regression; no screenshots uploaded |
+| Private deployed website UI | **BLOCKED** by Cloudflare Access without a test session |
+| Live third-party payments and supplier integration | NOT TESTED; real transactions prohibited |
+
+The failing test is specifically `Owner setup: existing seller password and TOTP are required before privilege elevation`. This is a failing automated test, not proof of a bypass or of failure in the separately patched running Worker.
+
+## 4. Weighted benchmark (100-point rubric)
+
+| Category | Weight | Certified score | Evidence status |
+|---|---:|---|---|
+| UI/UX Design | 20 | Not scored | Local screenshot benchmark pending evidence review |
+| Workflow Functionality | 20 | Not scored | Existing regression suite not fully passing; no complete authenticated E2E |
+| Mobile Responsiveness | 15 | Not scored | Playwright screenshots/overflow audit configured, not certified |
+| Backend and API Reliability | 15 | Not scored | Some integration tests passed, owner test failed |
+| Security | 10 | Not scored | Fail-closed staging flags verified; owner regression failed |
+| Performance | 10 | Not scored | Lighthouse CI collecting lab data |
+| Accessibility | 10 | Not scored | Axe audit collecting evidence |
+| **Total** | **100** | **NOT CERTIFIED / 100** | **No points awarded for tests not completed** |
+
+A numeric product-quality score would be fabricated at this point. The benchmark CI will produce per-route evidence, which must be inspected before grading and comparing scores.
+
+## 5. Verified defects and blockers
+
+| Priority | Finding | Verification | Status |
+|---|---|---|---|
+| P0 | Owner activation regression test returns HTTP 503 instead of 200 | GitHub CI run `44112516309` | UNRESOLVED; deployment blocked |
+| P1 | Repository Android Gradle root configuration absent/empty | Android job log | BLOCKED |
+| P1 | Local source and deployed staging Worker contain independently patched auth/UI behaviour; replacing the Worker from source risks regression | Inspected GitHub source and Cloudflare Worker | REQUIRES RECONCILIATION |
+| P1 | No authenticated browser session available to test actual staging | Cloudflare Browser Rendering opened Access sign-in | BLOCKED |
+| P2 | The original GitHub workflow did not upload screenshots when regression failed earlier in the job | CI action log | TEST INFRASTRUCTURE IMPROVED on isolated benchmark branch |
+| P2 | Comprehensive Lighthouse and Axe evidence was not configured in baseline workflow | Repo/workflow inspection | BENCHMARK CI ADDED on isolated branch |
+
+## 6. Changes made during this benchmark
+
+Dedicated branch `fix/staging-ai-benchmark-20261117` was created. Changes are limited to benchmarking and diagnostics:
+
+- `web/scripts/website-benchmark.mjs`: discovers frontend route cases; collects desktop/mobile screenshots, basic layout/HTTP/JS error checks and Axe accessibility evidence in JSON/Markdown.
+- `web/lighthouserc.json`: Lighthouse CI collection for local home and Shop previews; filesystem report output.
+- `.github/workflows/benchmark-private-staging.yml`: runs source build, lint, backend tests, Playwright/Axe and Lighthouse; uploads evidence.
+- `.github/workflows/benchmark-auth-regression.yml`: independent fast owner regression check.
+- `web/deploy/chatgpt-sites/worker.ts` and `web/scripts/run-automated-tests.ts`: optional benchmark-only diagnostics and targeted test messages. **These diagnostic changes are not deployed** and must be reviewed/removed before a release.
+
+No production changes were made. Existing staging was inspected read-only; the benchmark branch has **not** been deployed to the staging Worker.
+
+## 7. Follow-up verification gates
+
+1. Complete and review the running isolated browser/Lighthouse/Axe CI evidence and screenshots.
+2. Identify and fix the Owner setup HTTP 503 regression in source without weakening passwords, CSRF, TOTP or role checks.
+3. Re-run backend regression suite until all critical tests pass.
+4. Address missing Android Gradle configuration independently; do not claim APK tests passed.
+5. Obtain authorised staging test sessions if complete Buyer/Seller/Admin journeys are required. Do not bypass Cloudflare Access.
+6. Reconcile actual staging Worker changes with the approved source branch, back up isolated staging data, then deploy only a tested release candidate.
+7. Perform post-deployment HTTP, mobile, desktop, security, accessibility and performance smoke checks; capture before/after evidence.
+
+## 8. Linked evidence
+
+- [Existing staging backend/source CI (17/18)](https://github.com/deeonejosh/cashncarry-source/actions/runs/44112516309)
+- [Isolated Playwright/Axe/Lighthouse benchmark run](https://github.com/deeonejosh/cashncarry-source/actions/runs/44120802783)
+- [Current benchmark branch](https://github.com/deeonejosh/cashncarry-source/tree/fix/staging-ai-benchmark-20261117)
+
+**Final release decision: BLOCKED.** Do not deploy the benchmark branch to staging while the critical Owner/Admin test is failing or while the deployed Worker changes remain unreconciled with source.
