@@ -63,12 +63,11 @@ jobs:
       - name: Install test Chromium
         run: node node_modules/playwright-core/cli.js install chromium
       - name: Local browser smoke (run if the script exists)
-        env:
         run: |
           set -euo pipefail
           if test -f scripts/verify-staging-browser.mjs; then
             node --check scripts/verify-staging-browser.mjs
-            CNC_TEST_CHROMIUM="$(node -e \"console.log(require('playwright-core').chromium.executablePath())\")" node scripts/verify-staging-browser.mjs
+            CNC_TEST_CHROMIUM="$(node -p "require('playwright-core').chromium.executablePath()")" node scripts/verify-staging-browser.mjs
           else
             echo "::error::Missing browser smoke test; do not mark release approved"
             exit 1
