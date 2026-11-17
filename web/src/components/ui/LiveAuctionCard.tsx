@@ -8,7 +8,6 @@ interface LiveAuctionCardProps {
   currentUserId: string;
   paymentsEnabled: boolean;
   onPlaceBid: (auctionId: string, amount: number) => void;
-  onClaimWin: (auctionId: string) => void;
   onInspectSeller?: (sellerId: string) => void;
 }
 
@@ -17,7 +16,6 @@ export default function LiveAuctionCard({
   currentUserId,
   paymentsEnabled,
   onPlaceBid,
-  onClaimWin,
   onInspectSeller,
 }: LiveAuctionCardProps) {
   const [nowMs, setNowMs] = useState(() => Date.now());
@@ -118,17 +116,11 @@ export default function LiveAuctionCard({
             </button>
           </div>
         ) : isWinning ? (
-          <button
-            type="button"
-            onClick={() => onClaimWin(auction.id)}
-            className="flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-xl bg-[#0E6B38] px-4 text-xs font-black text-white transition hover:bg-[#084B26]"
-          >
-            {paymentsEnabled ? (
-              <>
-                <Trophy size={14} />
-                <span>Claim Win & Checkout</span>
-              </>
-            ) : (
+          <div role="status" className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-amber-50 px-4 py-2.5 text-xs font-bold text-amber-900 border border-amber-200">
+            <AlertCircle size={14} />
+            <span>Highest bid — winner checkout not yet available</span>
+          </div>
+        ) : (
               <>
                 <AlertCircle size={14} />
                 <span>Won — Online Payments Disabled</span>
