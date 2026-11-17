@@ -1,0 +1,42 @@
+name: Cash N Carry Livestream Auction private-staging regression
+on:
+  push:
+    branches: [fix/staging-livestream-auction-20261117]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: cnc-live-auction-benchmark
+  cancel-in-progress: true
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+      - name: TypeScript check
+        run: npm run lint
+      - name: Isolated Miniflare/D1 security and workflow regressions
+        run: npm test
+      - name: Build staging frontend and run UI static audit
+        run: npm run build
+      - name: Upload evidence without deploying
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cnc-live-auction-qa
+          path: |
+            web/reports/
+            web/dist/
+          if-no-files-found: warn
+          retention-days: 14
