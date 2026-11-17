@@ -47,7 +47,7 @@ export default function ShipmentsPage({ initialTracking = '' }: ShipmentsPagePro
     <div className="space-y-8 pb-16">
       <div className="rounded-3xl bg-[#0c5c36] p-8 text-white shadow-lg space-y-4">
         <div>
-          <span className="rounded-full bg-white/20 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-emerald-200">
+          <span className="rounded-full bg-white/10 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-white">
             ORDER & LOGISTICS TRACKING
           </span>
           <h1 className="mt-2 text-2xl font-black sm:text-3xl">Tracking</h1>
@@ -69,7 +69,7 @@ export default function ShipmentsPage({ initialTracking = '' }: ShipmentsPagePro
           </div>
           <button
             type="submit"
-            className="rounded-2xl bg-orange-500 px-5 text-xs font-black text-white hover:bg-orange-600 shadow"
+            className="rounded-2xl bg-orange-700 px-5 text-xs font-black text-white hover:bg-orange-800 shadow"
           >
             Track
           </button>
