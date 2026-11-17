@@ -116,11 +116,11 @@ try {
 
   const tabsToVerify = [
     { tab: 'home', text: 'Cash N Carry' },
-    { tab: 'shop', text: 'Shop Marketplace' },
+    { tab: 'shop', text: 'Shop' },
     { tab: 'orders', text: 'Account Sign In Required' },
     { tab: 'coins', text: 'Coin purchases are currently unavailable' },
-    { tab: 'auctions', text: 'Live Marketplace Auctions' },
-    { tab: 'live', text: 'No one is live right now.' },
+    { tab: 'auctions', text: 'Auctions' },
+    { tab: 'live', text: 'No live streams' },
     { tab: 'seller-kyc', text: 'Account Sign In Required' },
     { tab: 'seller-settlements', text: 'Sign In Required' },
     { tab: 'admin-dashboard', text: 'Administrator Access Required' },
@@ -141,6 +141,8 @@ try {
     'Run Automated Staging Diagnostic',
   ];
 
+  const screenshotDir = path.resolve('reports/uiux/screenshots');
+  fs.mkdirSync(screenshotDir, {recursive:true});
   const viewports = [
     { name: 'desktop', width: 1440, height: 900 },
     { name: 'mobile', width: 390, height: 844 },
@@ -202,6 +204,10 @@ try {
           `[${vp.name}] Anonymous sellers must not access KYC or settlements`
         );
       }
+      if (entry.tab === 'shop') {
+        assert.equal((await page.locator('main[data-cnc-route="shop"] h1').innerText()).trim(), 'Shop',
+          `[${vp.name}] Shop heading should match the simplified route`);
+      }
       if (entry.tab === 'admin-dashboard') {
         assert.ok(bodyText.includes('Administrator Access Required'), 'Admin route should reject anonymous users');
       }
@@ -219,6 +225,7 @@ try {
         scrollWidth: document.documentElement.scrollWidth, innerWidth: window.innerWidth,
       }));
       assert.ok(scrollWidth <= innerWidth + 1, `[${vp.name}] Horizontal overflow: ${tab}`);
+      await page.screenshot({path:path.join(screenshotDir,`${vp.name}-${tab}.png`),fullPage:false});
       if (tab === 'admin-dashboard' || tab === 'email-marketing') {
         assert.ok(/Access Required|Administrator|Sign In|Access Denied/i.test(body),
           `[${vp.name}] Admin tab not protected: ${tab}`);
