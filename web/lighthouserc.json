@@ -1,0 +1,26 @@
+{
+  "ci": {
+    "collect": {
+      "url": [
+        "http://127.0.0.1:4173/",
+        "http://127.0.0.1:4173/?tab=shop"
+      ],
+      "numberOfRuns": 1,
+      "startServerCommand": "npm run preview -- --host 127.0.0.1 --port 4173 --strictPort",
+      "startServerReadyPattern": "Local:",
+      "settings": {
+        "chromeFlags": "--headless --no-sandbox --disable-dev-shm-usage",
+        "onlyCategories": [
+          "performance",
+          "accessibility",
+          "best-practices",
+          "seo"
+        ]
+      }
+    },
+    "upload": {
+      "target": "filesystem",
+      "outputDir": "./reports/benchmark/lighthouse"
+    }
+  }
+}
