@@ -1,5 +1,6 @@
 import React from 'react';
 import BrandLogo from './BrandLogo';
+import NewsletterSignup from './NewsletterSignup';
 import { useStore } from '../../context/StoreContext';
 
 type FooterLink = { label: string; tab: string; section?: 'terms'|'privacy'|'returns'|'escrow'|'seller-code' };
@@ -29,7 +30,7 @@ const sections: FooterSection[] = [
 ];
 
 export default function Footer({setCurrentTab,onSelectPolicy}:{setCurrentTab:(tab:string)=>void;onSelectPolicy:(section:'terms'|'privacy'|'returns'|'escrow'|'seller-code')=>void}) {
-  const {isApprovedSeller} = useStore();
+  const {isApprovedSeller,isAdmin} = useStore();
   const go=(tab:string,section?:FooterLink['section'])=>{
     if(tab==='policies') onSelectPolicy(section || 'terms');
     else setCurrentTab(tab);
@@ -48,6 +49,7 @@ export default function Footer({setCurrentTab,onSelectPolicy}:{setCurrentTab:(ta
       className="inline-flex min-h-10 items-center rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-xs font-bold text-emerald-900 hover:border-emerald-500 hover:bg-emerald-100">{title}</button>;
   return <footer className="cnc-site-footer border-t border-slate-200 bg-[#f8faf9] pb-28 pt-8 text-slate-700 lg:pb-12 lg:pt-12">
     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      {!isAdmin && !isApprovedSeller && <div className="mb-8"><NewsletterSignup onPrivacy={() => go('policies','privacy')} /></div>}
       <div className="flex flex-col gap-5 border-b border-slate-200 pb-6 lg:flex-row lg:items-center lg:justify-between">
         <div className="max-w-md space-y-2"><BrandLogo/><p className="text-sm leading-6 text-slate-500">Shop and sell across Nigeria.</p></div>
       </div>
