@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useStore } from '../../context/StoreContext';
 import { NIGERIAN_STATES } from '../../lib/design-tokens';
 import {
@@ -22,9 +22,10 @@ import {
 
 interface ProfilePageProps {
   onNavigate?: (tab: string) => void;
+  initialAddressSetup?: boolean;
 }
 
-export default function ProfilePage({ onNavigate }: ProfilePageProps) {
+export default function ProfilePage({ onNavigate, initialAddressSetup = false }: ProfilePageProps) {
   const {
     currentUser,
     isApprovedSeller,
@@ -41,7 +42,18 @@ export default function ProfilePage({ onNavigate }: ProfilePageProps) {
     showToast,
   } = useStore();
 
-  const [showAddressForm, setShowAddressForm] = useState(false);
+  const [showAddressForm, setShowAddressForm] = useState(initialAddressSetup);
+
+  useEffect(() => {
+    if (!initialAddressSetup) return;
+    setShowAddressForm(true);
+    const raf = window.requestAnimationFrame(() => {
+      document.getElementById('delivery-addresses')?.scrollIntoView({
+        behavior: 'smooth', block: 'start',
+      });
+    });
+    return () => window.cancelAnimationFrame(raf);
+  }, [initialAddressSetup]);
   const [recipient, setRecipient] = useState('');
   const [phone, setPhone] = useState('');
   const [line, setLine] = useState('');
@@ -459,7 +471,7 @@ export default function ProfilePage({ onNavigate }: ProfilePageProps) {
       )}
 
       {/* Saved Nigerian Delivery Addresses */}
-      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
+      <div id="delivery-addresses" className="scroll-mt-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2 text-sm font-black text-slate-900">
             <MapPin size={18} className="text-[#0E6B38]" />
