@@ -191,6 +191,7 @@ async function run() {
       ORDER_RESERVATIONS: 'enabled',
       ADMIN_ACCOUNT_ID: 'staging-admin',
       ADMIN_TOTP_SECRET_HEX: '00112233445566778899aabbccddeeff00112233',
+      BENCH_DIAGNOSTICS: 'enabled',
     },
   });
 
