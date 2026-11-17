@@ -443,7 +443,7 @@ class ApiClient {
   }
 
   async getAdminSellerApplications() {
-    return this.requestJson<{ applications?: ApiSellerApplication[] }>('/api/admin/seller-applications');
+    return this.requestJson<{ applications?: ApiSellerApplication[]; available?: boolean; warning?: string }>('/api/admin/seller-applications');
   }
 
   async reviewSellerApplication(input: {
