@@ -1,0 +1,58 @@
+name: Cash N Carry isolated website benchmark
+on:
+  push:
+    branches:
+      - fix/staging-ai-benchmark-20261117
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  benchmark:
+    name: source, Playwright, Axe, Lighthouse CI
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Install locked source dependencies
+        run: npm ci --no-audit --no-fund
+      - name: TypeScript verification
+        id: lint
+        continue-on-error: true
+        run: npm run lint
+      - name: Backend and security regression suite
+        id: regressions
+        continue-on-error: true
+        run: npm test
+      - name: Build isolated frontend
+        id: build
+        run: npm run build
+      - name: Install Chromium
+        run: node node_modules/playwright-core/cli.js install chromium
+      - name: Install independent audit-only tools
+        run: npm install --no-save --package-lock=false @axe-core/playwright @lhci/cli
+      - name: Run all discovered route checks and screenshot desktop/mobile
+        id: browser
+        continue-on-error: true
+        run: node scripts/website-benchmark.mjs
+      - name: Lighthouse CI in isolated preview
+        id: lighthouse
+        continue-on-error: true
+        run: npx lhci collect --config=./lighthouserc.json
+      - name: Upload audit evidence, screenshot gallery and Lighthouse reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cashncarry-ai-benchmark-evidence
+          path: |
+            web/reports/benchmark/
+            web/.lighthouseci/
+          if-no-files-found: warn
+          retention-days: 14
