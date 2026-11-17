@@ -152,7 +152,15 @@ export default {
     try {
       const auction = await auctionsRoute(request, env);
       if (auction) return auction;
-    } catch { return reply({ error: 'Auctions temporarily unavailable' }, 503); }
+    } catch (error) {
+      // Isolated CI diagnostics only. Never expose database details in API replies.
+      if ((env as Environment & { BENCH_DIAGNOSTICS?: string }).BENCH_DIAGNOSTICS === 'enabled') {
+        console.error('Auction benchmark diagnostic:', error instanceof Error
+          ? (error.name + ': ' + error.message.replace(/(?:password|secret|token|cookie|credential)/gi, '[redacted]').slice(0, 350))
+          : 'UnknownError');
+      }
+      return reply({ error: 'Auctions temporarily unavailable' }, 503);
+    }
     try {
       const coin = await coinsRoute(request, env);
       if (coin) return coin;
