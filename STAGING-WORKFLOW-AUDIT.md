@@ -8,7 +8,7 @@
 
 ## Executive status
 
-**SOURCE REPAIR PARTIALLY COMPLETED. FULL REBUILD / NEW DEPLOYMENT NOT PERFORMED.** The repository's current branches store ZIP archives and some staging functions, but do not contain the newly reviewed extracted web/ and app/ source tree. The fixes have been applied and regression-tested against the extracted local copy. The previously deployed Cloudflare Worker remains in place. A new build must pass lint, tests and authenticated browser checks before replacing it. Never claim that a local patch is already deployed.
+**SOURCE REPAIR COMMITTED; FULL BUILD / NEW DEPLOYMENT NOT PERFORMED.** The newest reviewed extracted web/ and app/ source tree and assets have now been committed to the isolated branch in commit 3a7b4bc2414b694f32085c1482edec273f3f6ae7. The fixes have been applied and regression-tested against the extracted local copy. The previously deployed Cloudflare Worker remains in place. A new build must pass lint, tests and authenticated browser checks before replacing it. Never claim that a local patch is already deployed.
 
 ## Architecture
 
@@ -49,7 +49,7 @@ This is a code-derived inventory, not a claim that all routes have passed live b
 5. **Unsupported legal compliance claim:** web/src/components/pages/PolicyPage.tsx now identifies the policy as awaiting legal review rather than declaring regulatory compliance certified.
 6. **Brittle tests:** scripts/test_customer_surface_and_workflows.py no longer relies on an obsolete exact button count; new scripts/test_workflow_release_regressions.py adds eight source regression checks.
 
-**Location of repaired full-source files:** a companion cleaned ZIP artifact prepared in this audit. These source files are not yet uploaded into the GitHub branch, which still lacks extracted web/ and app/ directories.
+**Location of repaired full-source files:** a companion cleaned ZIP artifact prepared in this audit. These source files are now committed to the isolated GitHub branch; the staged website has not been rebuilt from this commit.
 
 ## Workflow validation matrix
 
@@ -91,7 +91,7 @@ No supplier has granted verified API access. Import deduplication, admin approva
 
 ## Deployment and remaining blockers
 
-1. Commit the newest extracted web/, app/, gradle/ and scripts/ source plus reviewed fixes to the isolated branch. The current ZIP-only GitHub source is not yet a reproducible checkout of the latest version.
+1. DONE: The extracted web/, app/, gradle/ and scripts/ source plus reviewed fixes are committed to fix/staging-workflow-audit at 3a7b4bc2414b694f32085c1482edec273f3f6ae7.
 2. Run CI with functioning npm/Gradle dependencies: lint, test, build, Miniflare D1 migration/API smoke, Android tests, responsive/browser tests, security/role tests.
 3. Back up staging before any database migration; do not modify the existing verified seller or session.
 4. Obtain an authenticated Cloudflare Access browser session and secure owner admin/MFA configuration; use disposable test users.
