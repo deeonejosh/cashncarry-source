@@ -6,6 +6,7 @@ import path from 'node:path';
 import { build } from 'esbuild';
 import { Miniflare } from 'miniflare';
 import { renderAuthEmail } from '../deploy/chatgpt-sites/auth-email';
+import { resolveEdgeSEO } from '../deploy/chatgpt-sites/edge-seo';
 
 console.log('🧪 Starting Cash N Carry Automated Staging & Backend Quality Suite...');
 
@@ -116,6 +117,33 @@ async function run() {
 
     const robots = fs.readFileSync(path.resolve('public/robots.txt'), 'utf8');
     assert.ok(robots.includes('Disallow: /'), 'Private staging must block all crawlers');
+  });
+
+  // Public search snippets must not expose demo or private/inactive listings.
+  await test('Catalog SEO: product metadata uses only published verified active inventory', async () => {
+    const sqlSeen: string[] = [];
+    const db = {
+      prepare(sql: string) {
+        sqlSeen.push(sql);
+        return {
+          bind(..._values: (string | number)[]) {
+            return { all: async () => ({ results: [] }) };
+          },
+        };
+      },
+    };
+    const result = await resolveEdgeSEO({
+      url: new URL('https://staging.example.test/products/private-product'),
+      db,
+    });
+    assert.equal(result.ogType, 'website', 'An unavailable product must not be exposed as a product');
+    assert.equal(sqlSeen.length, 1);
+    assert.match(sqlSeen[0], /JOIN stores s ON s.id = p.store/);
+    assert.match(sqlSeen[0], /p.active = 1/);
+    assert.match(sqlSeen[0], /s.verified = 1/);
+    assert.match(sqlSeen[0], /s.suspended = 0/);
+    assert.match(sqlSeen[0], /p.id = \?/);
+    assert.doesNotMatch(sqlSeen[0], /name LIKE/i, 'No fuzzy private-catalog lookups');
   });
 
   // 5. Real Miniflare Worker + D1 Staging Guard Integration Tests
