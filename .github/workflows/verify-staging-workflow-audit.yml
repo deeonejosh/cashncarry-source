@@ -82,6 +82,13 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
+      - name: Check Android build configuration is complete before installing SDK
+        run: |
+          set -euo pipefail
+          for file in build.gradle.kts settings.gradle.kts gradle/libs.versions.toml app/build.gradle.kts; do
+            test -s "$file" || { echo "::error::Android Gradle configuration missing or empty: $file"; exit 1; }
+          done
+          test -f gradlew && test -f gradle/wrapper/gradle-wrapper.jar || { echo "::error::Android Gradle wrapper incomplete: cannot claim an APK build"; exit 1; }
       - uses: android-actions/setup-android@v3
       - uses: gradle/actions/setup-gradle@v4
       - name: Build and test the staging debug Android app only
