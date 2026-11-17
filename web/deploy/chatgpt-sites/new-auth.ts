@@ -237,9 +237,9 @@ export async function authRoute(request: Request, env: AuthEnvironment) {
   if (!eligible) return json({ error: 'Invalid or expired token' }, 400);
   const replacement = await credential(password);
   const results = await db.batch([
-    db.prepare(`UPDATE cnc_auth_users SET credential=?,verified=1,role=CASE WHEN verified=0 THEN ? ELSE role END WHERE id=? AND suspended=0 AND role IN ('buyer','seller') AND verified=?
+    db.prepare(`UPDATE cnc_auth_users SET credential=?,verified=1 WHERE id=? AND suspended=0 AND role IN ('buyer','seller') AND verified=?
       AND EXISTS (SELECT 1 FROM cnc_auth_tokens WHERE hash=? AND user_id=cnc_auth_users.id AND purpose=? AND expires>?) RETURNING id`)
-      .bind(replacement,body.role === 'seller' ? 'seller' : 'buyer',eligible.id,action === 'verify' ? 0 : 1,hash,purpose,Date.now()),
+      .bind(replacement,eligible.id,action === 'verify' ? 0 : 1,hash,purpose,Date.now()),
     db.prepare('DELETE FROM cnc_auth_sessions WHERE user_id=? AND changes()=1').bind(eligible.id),
     db.prepare('DELETE FROM cnc_auth_tokens WHERE hash=?').bind(hash),
   ]) as {results: unknown[]}[];
