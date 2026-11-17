@@ -1,12 +1,12 @@
 # Cash N Carry Nigeria — Website AI Benchmark Report
 
 **Date:** 17 November 2026
-**Status:** Repairs committed, benchmarked locally; private staging deployment **BLOCKED** pending authenticated acceptance and build reconciliation.
+**Status:** **TARGETED VERIFIED FIXES DEPLOYED TO PRIVATE STAGING**; full source replacement and authenticated end-to-end acceptance remain outstanding.
 **Repository:** https://github.com/deeonejosh/cashncarry-source
 **Benchmark branch:** `fix/staging-ai-benchmark-20261117`
 **Latest tested source commit:** `0d28b46c8310cc80c8fe5878fd45fa237483e43a`
 **Staging URL:** https://cashncarry-d1-staging-worker.cashncarry-workforce-2026.workers.dev/
-**Unchanged staging Worker version:** `f5675b32-e4c2-4c49-ba5a-a3398761e626` (verified 17 November)
+**Current staging Worker version:** `aabc32b0-fa02-4b4c-951d-7cfa000fe364` (deployed 17 November; previous `f5675b32-e4c2-4c49-ba5a-a3398761e626`)
 **Production changed:** NO.
 
 ## Executive summary
@@ -136,11 +136,11 @@ The local automated presentation gate independently passed **52/52**. E2E workfl
 | Real video streaming, gift and auction purchases | BLOCKED | Missing real room/order fixtures and disabled coin purchases |
 | Banggood/Nigerian supplier live API import | NOT TESTED | No authorised API credentials or supplier approvals verified |
 | Native Android APK build and emulator | FAILED | Missing root Gradle configuration |
-| Full website stage deployment from latest benchmark commit | NOT PERFORMED | Protected E2E gate and source/deployed Worker mismatch |
+| Targeted benchmark fixes to existing private staging Worker | DEPLOYED | Accessible colour fixes, category tiles and compatible Admin moderation query; verified active asset hashes |\n| Full rebuild/replacement from latest benchmark commit | NOT PERFORMED | Existing worker includes independent staging authentication, newsletter and asset integrations |
 
 ## 8. Deployment decision and next verifiable gates
 
-**Release status: BLOCKED / NOT DEPLOYED.** Staging Worker version remains `f5675b32-e4c2-4c49-ba5a-a3398761e626` from before the benchmark. The repaired code remains committed to the separate Git benchmark branch.
+**Targeted patch status: DEPLOYED TO PRIVATE STAGING.** Cloudflare Worker `aabc32b0-fa02-4b4c-951d-7cfa000fe364` now serves tested contrast improvements in the original React bundle and CSS plus the Admin moderation clean-schema compatibility fix. Uploaded JS KV SHA-256 prefix `376ecd2aea550f45c593499521b38b72` (601599 bytes); CSS `6df890964d57267da3b3fb20f4e92d0d` (79096 bytes). Both assets were read back and independently checksum-verified. Cloudflare readback confirms the Worker is active, retains both staging D1 bindings `9a2cdbee-e030-4b10-908b-b10b8142d2aa`, Admin MFA and newsletter routes, and keeps payments, coin purchases and KYC uploads disabled. The previous Worker version and KV assets remain available for rollback. **The entire GitHub branch was not deployed as a wholesale replacement**, because doing so could remove staging-specific integrations.
 
 The next release requires authenticated staging test access (without disabling Access), reconciliation of the existing hand-patched staging Worker/assets with repository source, removal of benchmark-only diagnostics, isolation/backup confirmation, and a repeat of post-deployment smoke checks. No production DNS, Cloudflare production Worker, production D1 records or live payment keys were modified.
 
@@ -151,3 +151,13 @@ The next release requires authenticated staging test access (without disabling A
 - [Baseline owner/Admin regression, 17/18](https://github.com/deeonejosh/cashncarry-source/actions/runs/44112516309)
 - [Successful owner/Admin regression, 18/18](https://github.com/deeonejosh/cashncarry-source/actions/runs/44123264147)
 - Final raw zipped Playwright screenshots, Axe violation evidence and Lighthouse HTML/JSON are attached to this answer.
+
+## 10. Post-deployment verification (17 November 2026)
+
+- **PASSED:** Updated staging Worker version verified through Cloudflare deployment API.
+- **PASSED:** Active asset manifest references the patched JavaScript and CSS KV hashes; both assets are checksum-verified after upload.
+- **PASSED:** Staging D1 query for Admin moderation is syntactically valid; schema-compatibility fallback preserves the existing `category` field when present.
+- **PASSED:** MFA, newsletter and management-shell code retained; isolated staging D1 and disabled real-transaction flags reconfirmed.
+- **BLOCKED:** Authenticated browser smoke tests on the deployed Worker, owing to the private Cloudflare Access gate and absent authorized test session.
+- **NOT TESTED:** Native APK and real transaction/livestream/dropshipping workflows on deployed staging.
+- **PRODUCTION:** Untouched. No DNS, payments, production Workers or production databases modified.
