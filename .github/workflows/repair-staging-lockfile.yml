@@ -1,0 +1,48 @@
+name: Repair staging npm lockfile (isolated branch)
+
+on:
+  push:
+    branches:
+      - fix/staging-workflow-audit
+    paths:
+      - web/package.json
+      - web/package-lock.json
+
+permissions:
+  contents: write
+
+concurrency:
+  group: repair-staging-lockfile
+  cancel-in-progress: false
+
+jobs:
+  regenerate-staging-lockfile:
+    if: github.ref == 'refs/heads/fix/staging-workflow-audit'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout the isolated repair branch only
+        uses: actions/checkout@v4
+        with:
+          ref: fix/staging-workflow-audit
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Regenerate lockfile to satisfy Vite peer dependencies
+        working-directory: web
+        run: |
+          set -euo pipefail
+          npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+          npm ls esbuild --package-lock-only
+      - name: Commit only the lockfile to the repair branch
+        run: |
+          set -euo pipefail
+          git add web/package-lock.json
+          if git diff --cached --quiet; then
+            echo "Lockfile already matches package manifest."
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m "fix(staging): align npm lockfile with Vite 8 peer dependencies"
+          git push origin HEAD:fix/staging-workflow-audit
