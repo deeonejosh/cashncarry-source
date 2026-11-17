@@ -68,6 +68,10 @@ jobs:
           if test -f scripts/verify-staging-browser.mjs; then
             node --check scripts/verify-staging-browser.mjs
             CNC_TEST_CHROMIUM="$(node -p "require('playwright-core').chromium.executablePath()")" node scripts/verify-staging-browser.mjs
+          else
+            echo "::error::Missing browser smoke test; do not mark release approved"
+            exit 1
+          fi
       - name: Attach 26-route mobile and desktop screenshot gallery
         if: always()
         uses: actions/upload-artifact@v4
@@ -76,10 +80,6 @@ jobs:
           path: web/reports/uiux/screenshots/
           if-no-files-found: warn
           retention-days: 7
-          else
-            echo "::error::Missing browser smoke test; do not mark release approved"
-            exit 1
-          fi
 
   android:
     needs: source-inventory
