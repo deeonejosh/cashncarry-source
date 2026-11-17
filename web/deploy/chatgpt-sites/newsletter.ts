@@ -89,7 +89,7 @@ export async function newsletterRoute(request, env) {
       '<body style="background:#f7faf8;font-family:Arial,sans-serif;color:#173427;padding:20px">'+
       '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"><tr><td align="center">'+
       '<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width:550px;background:#fff;border:1px solid #e2ece5;border-radius:14px">'+
-      '<tr><td bgcolor="#ffffff" style="background-color:#ffffff;padding:18px 26px;border-bottom:3px solid #075a37"><img src="https://www.cashncarryng.com/brand/logo.png" width="180" height="60" border="0" alt="Cash N Carry Nigeria" style="display:block;width:180px;height:60px;border:0"></td></tr>'+
+      '<tr><td bgcolor="#ffffff" style="background-color:#ffffff;padding:18px 26px;border-bottom:3px solid #075a37"><img src="https://raw.githubusercontent.com/deeonejosh/cashncarry-source/7191c33393d67cd344cbb2b48cf6743a82352a38/web/public/brand/logo.png" width="180" height="60" border="0" alt="Cash N Carry Nigeria" style="display:block;width:180px;height:60px;border:0"></td></tr>'+
       '<tr><td style="padding:26px"><h1 style="font-size:24px">Confirm your email</h1>'+
       '<p style="line-height:1.6;color:#46564e">Please confirm your email address before receiving marketplace news, offers and livestream updates.</p>'+
       '<p><a href="'+safeLink+'" style="display:inline-block;padding:14px 22px;background:#075a37;color:white;text-decoration:none;border-radius:10px">Confirm subscription</a></p>'+
