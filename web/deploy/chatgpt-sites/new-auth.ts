@@ -174,6 +174,10 @@ export async function authRoute(request: Request, env: AuthEnvironment) {
     return issued ? json({signedIn:true,user:{id:user.id,email:user.email,role:'admin',sellerStatus:'none'}},200,sessionCookie(fresh,900)) : json({error:'Invalid credentials or code'},401);
   }
   if (action === 'login') {
+    if (user?.role === 'admin' && user.id === env.ADMIN_ACCOUNT_ID && user.verified && !user.suspended &&
+        await passwordMatches(password, user.credential)) {
+      return json({error:'Authenticator code required', mfaRequired:true}, 401);
+    }
     if (!(await passwordMatches(password, user?.credential)) || !user || !user.verified || user.suspended || user.role === 'admin') {
       return json({ error: 'Invalid credentials or account unavailable' }, 401);
     }
