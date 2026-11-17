@@ -155,6 +155,17 @@ export async function auctionsRoute(request: Request, env: AuctionEnvironment): 
       if (account.role !== 'buyer') return json({ error: 'Only buyers can place bids' }, 403);
       if (auction.seller === account.id) return json({ error: 'Cannot bid on your own auction' }, 403);
       if (auction.closed_at || now >= auction.ends_at) return json({ error: 'Auction is ended' }, 409);
+      // One-time setup: reuse an existing buyer-owned address across auctions.
+      // The winning delivery quote and any tokenised payment method are
+      // separately required at checkout; never collect/store raw card numbers.
+      const shippingSetup = await db.prepare(
+        `SELECT id FROM cnc_buyer_addresses WHERE user_id=? LIMIT 1`
+      ).bind(account.id).first();
+      if (!shippingSetup)
+        return json({
+          error: 'Save a delivery address in your Profile before bidding',
+          code: 'BUYER_ADDRESS_REQUIRED',
+        }, 409);
 
       const amountKobo = body.amountKobo;
       const minRequired = auction.current_bid_kobo ? auction.current_bid_kobo + 100 : auction.starting_bid_kobo;
