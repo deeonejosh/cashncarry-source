@@ -6,6 +6,9 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: cnc-isolated-website-benchmark
+  cancel-in-progress: true
 jobs:
   benchmark:
     name: source, Playwright, Axe, Lighthouse CI
