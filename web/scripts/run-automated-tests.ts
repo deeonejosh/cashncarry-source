@@ -803,6 +803,44 @@ async function run() {
       assert.equal(giftCount?.n,1);
     });
 
+    await test('P1 live pinning requires seller ownership, published stock and active room; refresh cannot fabricate viewers', async () => {
+      const roomId='isolated-product-pinning-fixture';
+      const sellerId='auction-fixture-seller';
+      const productId='auction-product-fixture';
+      await authDb.prepare("INSERT INTO cnc_live_room_state(room_id,seller_id,seller_name,title,category,status) VALUES(?,?,?,'Private test pin room','Tech','live')")
+        .bind(roomId,sellerId,'Auction Benchmark Store').run();
+      const sellerCookie='__Host-cnc_session='+'4'.repeat(64);
+      const buyerCookie='__Host-cnc_session='+'5'.repeat(64);
+      const patch=(cookie:string,action:string,pinnedProductId?:string)=>mf.dispatchFetch(origin+'/api/v1/live',{
+        method:'PATCH',headers:{origin,cookie,'content-type':'application/json'},
+        body:JSON.stringify({action,roomId,pinnedProductId}),
+      });
+      const buyerPin=await patch(buyerCookie,'pin',productId);
+      assert.equal(buyerPin.status,403,'Buyer must not pin a seller product');
+      const arbitrary=await patch(sellerCookie,'pin','somebody-elses-product');
+      assert.equal(arbitrary.status,409,'Unknown product must be rejected');
+      const published=await patch(sellerCookie,'pin',productId);
+      assert.equal(published.status,200,'Host can pin own published in-stock product');
+      const pinned=await authDb.prepare('SELECT pinned_product_id FROM cnc_live_room_state WHERE room_id=?').bind(roomId)
+        .first<{pinned_product_id:string}>();
+      assert.equal(pinned?.pinned_product_id,productId);
+      const joinA=await patch(buyerCookie,'join');
+      const joinB=await patch(buyerCookie,'join');
+      assert.equal(joinA.status,200);
+      assert.equal(joinB.status,200);
+      const presence=await authDb.prepare('SELECT viewer_count FROM cnc_live_room_state WHERE room_id=?').bind(roomId)
+        .first<{viewer_count:number}>();
+      assert.equal(presence?.viewer_count,1,'Two refresh-style joins must not artificially increment viewers');
+      const unpin=await patch(sellerCookie,'pin','');
+      assert.equal(unpin.status,200);
+      const unpinned=await authDb.prepare('SELECT pinned_product_id FROM cnc_live_room_state WHERE room_id=?').bind(roomId)
+        .first<{pinned_product_id:string}>();
+      assert.equal(unpinned?.pinned_product_id,'');
+      assert.equal((await patch(sellerCookie,'end')).status,200);
+      assert.equal((await patch(sellerCookie,'pin',productId)).status,409,'Ended room must not allow product pinning');
+      assert.equal((await patch(buyerCookie,'join')).status,409,'Ended room must not count watchers');
+    });
+
     await test('P1 video/live fail-closed, chat parameter compatibility and duplicate throttling', async () => {
       const sellerCookie='__Host-cnc_session='+'4'.repeat(64);
       const buyerCookie='__Host-cnc_session='+'5'.repeat(64);
