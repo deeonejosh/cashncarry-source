@@ -727,6 +727,12 @@ async function run() {
       const created=await action(sellCookie,'POST',{productId,startingBidKobo:10000,durationMinutes:60});
       assert.equal(created.status,201,'A verified seller should create an auction with a single D1 stock reservation');
       const id=(await created.json() as any).auctionId as string;
+      const listed=await mf.dispatchFetch(origin+'/api/auctions',{headers:{cookie:buyCookie}});
+      assert.equal(listed.status,200,'Auction listing query must match actual D1 schema');
+      const auctionEntry=(await listed.json() as any).auctions.find((item:any)=>item.id===id);
+      assert.equal(auctionEntry?.sellerId,sellerId);
+      assert.equal(auctionEntry?.productId,productId);
+      assert.equal(auctionEntry?.bidsCount,0);
       const reserved=await authDb.prepare('SELECT stock FROM cnc_seller_products WHERE id=?').bind(productId).first<{stock:number}>();
       assert.equal(reserved?.stock,1,'Auction reservation must decrement exactly one unit');
       const illegalSellerBid=await action(sellCookie,'PATCH',{action:'bid',id,amountKobo:10000});
