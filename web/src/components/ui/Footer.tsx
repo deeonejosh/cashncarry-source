@@ -49,8 +49,7 @@ export default function Footer({setCurrentTab,onSelectPolicy}:{setCurrentTab:(ta
   return <footer className="cnc-site-footer border-t border-slate-200 bg-[#f8faf9] pb-28 pt-8 text-slate-700 lg:pb-12 lg:pt-12">
     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
       <div className="flex flex-col gap-5 border-b border-slate-200 pb-6 lg:flex-row lg:items-center lg:justify-between">
-        <div className="max-w-md space-y-2"><BrandLogo/><p className="text-sm leading-6 text-slate-500">Discover products from Nigerian merchants. Shop, sell and explore live shopping in one place.</p></div>
-        <button type="button" onClick={()=>go('seller-kyc')} className="cnc-footer-sell-button inline-flex min-h-11 w-fit items-center justify-center rounded-xl bg-emerald-900 px-5 py-3 text-sm font-extrabold text-white shadow-sm">Become a seller</button>
+        <div className="max-w-md space-y-2"><BrandLogo/><p className="text-sm leading-6 text-slate-500">Shop and sell across Nigeria.</p></div>
       </div>
       <div className="cnc-footer-mobile mt-6 space-y-4 lg:hidden">
         <div className="flex flex-wrap gap-2">{quick('Terms','terms')}{quick('Privacy','privacy')}{quick('Returns','returns')}</div>

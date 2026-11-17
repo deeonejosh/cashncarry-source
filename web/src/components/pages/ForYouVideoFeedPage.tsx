@@ -162,7 +162,7 @@ export default function ForYouVideoFeedPage({
   if (videosState.status === 'loading') {
     return (
       <div className="flex h-full flex-col items-center justify-center bg-slate-950 text-white p-6">
-        <p className="text-sm font-semibold text-slate-300">Loading For You videos...</p>
+        <p className="text-sm font-semibold text-slate-300">Loading videos...</p>
       </div>
     );
   }
@@ -171,7 +171,7 @@ export default function ForYouVideoFeedPage({
     return (
       <div className="flex h-full flex-col items-center justify-center bg-slate-950 text-white p-6 text-center space-y-4">
         <AlertCircle size={40} className="text-rose-400" />
-        <h2 className="text-lg font-black">Unable to load For You feed</h2>
+        <h2 className="text-lg font-black">Video unavailable</h2>
         <p className="text-xs text-slate-300 max-w-xs">{videosState.error}</p>
         <div className="flex gap-3">
           <button
@@ -212,8 +212,8 @@ export default function ForYouVideoFeedPage({
         </div>
         <h2 className="text-xl font-black text-white">
           {feedMode === 'following'
-            ? 'No videos from followed sellers yet.'
-            : 'No videos have been posted yet.'}
+            ? 'No videos yet.'
+            : 'No videos yet.'}
         </h2>
         <p className="text-xs text-slate-400 max-w-xs">
           {feedMode === 'following'

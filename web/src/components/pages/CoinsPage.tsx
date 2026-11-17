@@ -83,7 +83,7 @@ export default function CoinsPage() {
           </div>
 
           <p className="text-xs text-slate-500">
-            Support approved Nigerian sellers during livestreams using your verified coin balance.
+            Use coins to support sellers during live streams.
           </p>
 
           {storefronts.length === 0 ? (

@@ -19,7 +19,7 @@ export default function CheckoutCompletePage({
     return (
       <div className="mx-auto max-w-lg py-16 text-center space-y-4">
         <Package size={44} className="mx-auto text-slate-300" />
-        <h1 className="text-xl font-black text-slate-900">No recent order selected</h1>
+        <h1 className="text-xl font-black text-slate-900">Order unavailable</h1>
         <p className="text-xs text-slate-500">
           View your account order history or continue browsing products.
         </p>
@@ -122,7 +122,7 @@ export default function CheckoutCompletePage({
       </div>
 
       <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
-        <h3 className="text-sm font-black text-slate-900">Items in this Order</h3>
+        <h3 className="text-sm font-black text-slate-900">Order items</h3>
         <div className="divide-y divide-slate-100">
           {order.items.map((item) => (
             <div key={item.productId} className="flex items-center justify-between py-3">
