@@ -24,7 +24,7 @@ export async function auctionsRoute(request: Request, env: AuctionEnvironment): 
       .prepare(
         `SELECT a.id, a.seller, a.product_id, a.title, a.starting_bid_kobo, a.current_bid_kobo,
                 a.winner_id, a.ends_at, a.closed_at, a.order_id, a.created,
-                s.name AS store_name, p.image_url,
+                s.name AS store_name, p.image AS image_url,
                 (SELECT COUNT(*) FROM cnc_bids b WHERE b.auction_id=a.id) AS bids_count
          FROM cnc_auctions a
          LEFT JOIN cnc_seller_stores s ON s.owner=a.seller
