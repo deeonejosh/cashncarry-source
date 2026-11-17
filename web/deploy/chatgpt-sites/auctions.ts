@@ -24,9 +24,11 @@ export async function auctionsRoute(request: Request, env: AuctionEnvironment): 
       .prepare(
         `SELECT a.id, a.seller, a.product_id, a.title, a.starting_bid_kobo, a.current_bid_kobo,
                 a.winner_id, a.ends_at, a.closed_at, a.order_id, a.created,
-                s.name as store_name
+                s.name AS store_name, p.image_url,
+                (SELECT COUNT(*) FROM cnc_bids b WHERE b.auction_id=a.id) AS bids_count
          FROM cnc_auctions a
-         LEFT JOIN cnc_seller_stores s ON s.owner = a.seller
+         LEFT JOIN cnc_seller_stores s ON s.owner=a.seller
+         LEFT JOIN cnc_seller_products p ON p.id=a.product_id
          WHERE a.closed_at IS NULL OR a.winner_id = ?
          ORDER BY a.ends_at DESC LIMIT 50`
       )
@@ -37,6 +39,10 @@ export async function auctionsRoute(request: Request, env: AuctionEnvironment): 
       paymentsEnabled: env.PAYMENTS_ENABLED === 'true',
       auctions: (results || []).map((a: any) => ({
         id: a.id,
+        sellerId: a.seller,
+        productId: a.product_id,
+        image: a.image_url || '',
+        bidsCount: a.bids_count || 0,
         title: a.title,
         startingBid: (a.starting_bid_kobo / 100).toFixed(2),
         currentBid: a.current_bid_kobo ? (a.current_bid_kobo / 100).toFixed(2) : null,
@@ -44,7 +50,10 @@ export async function auctionsRoute(request: Request, env: AuctionEnvironment): 
         closedAt: a.closed_at ? new Date(a.closed_at * 1000).toISOString() : null,
         storefrontName: a.store_name || 'Verified Seller',
         own: viewerId !== null && a.seller === viewerId,
-        winning: viewerId !== null && a.winner_id === viewerId,
+        // Do not expose another buyer's account identifier or imply the auction has settled.
+        winnerId: viewerId !== null && a.winner_id === viewerId ? viewerId : null,
+        ended: Boolean(a.closed_at) || now >= a.ends_at,
+        winning: viewerId !== null && a.winner_id === viewerId && (Boolean(a.closed_at) || now >= a.ends_at),
         orderId: viewerId !== null && a.winner_id === viewerId ? a.order_id : null,
       })),
     });
@@ -60,10 +69,17 @@ export async function auctionsRoute(request: Request, env: AuctionEnvironment): 
     let body: any;
     try { body = await readBody(request); } catch { return json({ error: 'Invalid JSON' }, 400); }
 
-    const { productId, startingBidKobo, durationMinutes } = body || {};
-    if (!productId || typeof startingBidKobo !== 'number' || startingBidKobo < 100 || typeof durationMinutes !== 'number' || durationMinutes < 1) {
-      return json({ error: 'Valid productId, startingBidKobo and durationMinutes required' }, 400);
+    const { productId, startingBidKobo } = body || {};
+    // The existing UI submits durationHours; older mobile clients use durationMinutes.
+    const durationMinutes = body?.durationMinutes ?? (Number(body?.durationHours) * 60);
+    if (typeof productId !== 'string' || productId.length > 128 ||
+        !Number.isSafeInteger(startingBidKobo) || startingBidKobo < 100 || startingBidKobo > 100000000000 ||
+        !Number.isSafeInteger(durationMinutes) || durationMinutes < 1 || durationMinutes > 10080) {
+      return json({ error: 'Valid product, amount and auction duration (1 minute to 7 days) required' }, 400);
     }
+    // Fail closed on a database lacking the atomic reservation trigger.
+    const guard = await db.prepare("SELECT name FROM sqlite_master WHERE type='trigger' AND name='cnc_auction_reserve_product'").first();
+    if (!guard) return json({ error: 'Auction stock protection unavailable', code: 'AUCTION_GUARD_MISSING' }, 503);
 
     // Verify product ownership and stock >= 1
     const product = await db
@@ -79,15 +95,19 @@ export async function auctionsRoute(request: Request, env: AuctionEnvironment): 
     const now = Math.floor(Date.now() / 1000);
     const endsAt = now + durationMinutes * 60;
 
-    await db.batch([
-      db.prepare(`UPDATE cnc_seller_products SET stock = stock - 1, revision = revision + 1 WHERE id = ?`).bind(productId),
-      db.prepare(
+    // The database AFTER INSERT trigger reserves exactly one unit atomically.
+    // Never decrement inventory here as well.
+    try {
+      await db.prepare(
         `INSERT INTO cnc_auctions (id, seller, product_id, title, starting_bid_kobo, current_bid_kobo, ends_at, created)
          VALUES (?, ?, ?, ?, ?, NULL, ?, ?)`
-      ).bind(auctionId, account.id, productId, product.name, startingBidKobo, endsAt, now),
-    ]);
-
-    return json({ success: true, auctionId }, 201);
+      ).bind(auctionId, account.id, productId, product.name, startingBidKobo, endsAt, now).run();
+    } catch (error) {
+      if (error instanceof Error && /CNC_AUCTION_(?:STOCK|PRODUCT)_UNAVAILABLE|CHECK constraint failed/.test(error.message))
+        return json({ error: 'Product is no longer eligible or in stock', code: 'AUCTION_STOCK_UNAVAILABLE' }, 409);
+      throw error;
+    }
+    return json({ success: true, auctionId, id: auctionId }, 201);
   }
 
   if (request.method === 'PATCH') {
@@ -125,88 +145,58 @@ export async function auctionsRoute(request: Request, env: AuctionEnvironment): 
       if (auction.seller === account.id) return json({ error: 'Cannot bid on your own auction' }, 403);
       if (auction.closed_at || now >= auction.ends_at) return json({ error: 'Auction is ended' }, 409);
 
-      const amountKobo = Number(body.amountKobo);
+      const amountKobo = body.amountKobo;
       const minRequired = auction.current_bid_kobo ? auction.current_bid_kobo + 100 : auction.starting_bid_kobo;
-      if (!Number.isFinite(amountKobo) || amountKobo < minRequired) {
-        return json({ error: `Bid must be at least ${(minRequired / 100).toFixed(2)} NGN` }, 400);
-      }
+      if (!Number.isSafeInteger(amountKobo) || amountKobo > 100000000000 || amountKobo < minRequired)
+        return json({ error: `Bid must be a valid whole-kobo amount, at least ${(minRequired / 100).toFixed(2)} NGN` }, 400);
 
+      // The BEFORE INSERT validation and AFTER INSERT highest-bid update are one SQLite
+      // transaction. A competing stale bid is rejected, never recorded as a losing winner.
+      const bidGuard = await db.prepare("SELECT COUNT(*) AS n FROM sqlite_master WHERE type='trigger' AND name IN ('cnc_bid_validate','cnc_bid_update_auction')").first<{n:number}>();
+      if (bidGuard?.n !== 2) return json({ error: 'Atomic bidding unavailable', code: 'BID_GUARD_MISSING' }, 503);
       const bidId = crypto.randomUUID();
-      await db.batch([
-        db.prepare(
-          `INSERT INTO cnc_bids (id, auction_id, bidder_id, amount_kobo, created) VALUES (?, ?, ?, ?, ?)`
-        ).bind(bidId, auction.id, account.id, amountKobo, now),
-        db.prepare(
-          `UPDATE cnc_auctions SET current_bid_kobo = ?, winner_id = ? WHERE id = ? AND (current_bid_kobo IS NULL OR current_bid_kobo < ?)`
-        ).bind(amountKobo, account.id, auction.id, amountKobo),
-      ]);
-
+      try {
+        await db.prepare(
+          `INSERT INTO cnc_bids (id, auction_id, bidder_id, amount_kobo, created) VALUES (?, ?, ?, ?, unixepoch())`
+        ).bind(bidId, auction.id, account.id, amountKobo).run();
+      } catch (error) {
+        if (error instanceof Error && /CNC_BID_REJECTED|constraint failed/i.test(error.message))
+          return json({ error: 'Bid rejected: auction ended or a higher bid was already accepted', code: 'BID_CONFLICT' }, 409);
+        throw error;
+      }
       return json({ success: true, bidId, currentBidKobo: amountKobo });
     }
 
     if (action === 'close') {
-      if (auction.seller !== account.id && account.role !== 'admin') {
+      if (auction.seller !== account.id && account.role !== 'admin')
         return json({ error: 'Unauthorized to close auction' }, 403);
-      }
-      if (!auction.closed_at) {
-        if (!auction.winner_id) {
-          // No bids - restore stock
-          await db.batch([
-            db.prepare(`UPDATE cnc_auctions SET closed_at = ? WHERE id = ?`).bind(now, auction.id),
-            db.prepare(`UPDATE cnc_seller_products SET stock = stock + 1, revision = revision + 1 WHERE id = ?`).bind(auction.product_id),
-          ]);
-        } else {
-          await db.prepare(`UPDATE cnc_auctions SET closed_at = ? WHERE id = ?`).bind(now, auction.id).run();
-        }
-      }
-      return json({ success: true, closed: true });
+      if (!auction.closed_at && now < auction.ends_at && account.role !== 'admin')
+        return json({ error: 'Auction cannot close before its scheduled end', code: 'AUCTION_NOT_ENDED' }, 409);
+      const closeGuard = await db.prepare("SELECT name FROM sqlite_master WHERE type='trigger' AND name='cnc_auction_close_no_bid'").first();
+      if (!closeGuard) return json({ error: 'Auction release protection unavailable', code: 'AUCTION_GUARD_MISSING' }, 503);
+      // The AFTER UPDATE trigger restores unsold inventory exactly once.
+      const updated = await db.prepare(
+        `UPDATE cnc_auctions SET closed_at=unixepoch()
+         WHERE id=? AND closed_at IS NULL AND (ends_at<=unixepoch() OR ?='admin') RETURNING id`
+      ).bind(auction.id, account.role).first();
+      return updated || auction.closed_at
+        ? json({ success: true, closed: true, alreadyClosed: !updated })
+        : json({ error: 'Auction has not ended', code: 'AUCTION_NOT_ENDED' }, 409);
     }
 
     if (action === 'checkout') {
-      if (env.PAYMENTS_ENABLED !== 'true') {
-        return json({
-          error: 'Payments temporarily unavailable — auction checkout settlement is disabled in staging',
-          code: 'PAYMENTS_DISABLED',
-          paymentsEnabled: false,
-        }, 503);
-      }
-      if (account.role !== 'buyer' || auction.winner_id !== account.id) {
+      if (account.role !== 'buyer' || auction.winner_id !== account.id)
         return json({ error: 'Only the winning bidder can checkout' }, 403);
-      }
-      if (auction.order_id) return json({ success: true, orderId: auction.order_id });
-
-      const addressId = typeof body.addressId === 'string' ? body.addressId : '';
-      const addr = addressId
-        ? await db
-            .prepare(`SELECT id, recipient, line, city, state FROM cnc_buyer_addresses WHERE id = ? AND user_id = ?`)
-            .bind(addressId, account.id)
-            .first<{ id: string; recipient: string; line: string; city: string; state: string }>()
-        : null;
-      if (!addr) {
-        return json({ error: 'Valid buyer delivery address required' }, 400);
-      }
-      const deliveryAddress = JSON.stringify({
-        recipient: addr.recipient,
-        line: addr.line,
-        city: addr.city,
-        state: addr.state,
-      });
-      const orderId = 'order-' + crypto.randomUUID();
-      const requestId = 'req-auc-' + auction.id;
-
-      await db.batch([
-        db.prepare(
-          `INSERT INTO cnc_orders (id, buyer, request_id, address_id, delivery_address, status, created)
-           VALUES (?, ?, ?, ?, ?, 'awaiting_payment', ?)`
-        ).bind(orderId, account.id, requestId, addr.id, deliveryAddress, now),
-        db.prepare(
-          `INSERT INTO cnc_order_items (order_id, product_id, seller, name, quantity, price_minor)
-           VALUES (?, ?, ?, ?, 1, ?)`
-        ).bind(orderId, auction.product_id, auction.seller, auction.title, auction.current_bid_kobo),
-        db.prepare(`UPDATE cnc_auctions SET closed_at = COALESCE(closed_at, ?), order_id = ? WHERE id = ?`).bind(now, orderId, auction.id),
-      ]);
-
-      return json({ success: true, orderId });
+      if (!auction.closed_at && now < auction.ends_at)
+        return json({ error: 'Auction is still running' }, 409);
+      // IMPORTANT: cnc_orders has a cart-reservation trigger. A winner bid is not
+      // a cart item; inserting an order here risks incorrect reservation/charges.
+      // Do not create synthetic payment success or bypass required shipping quotes.
+      return json({
+        error: 'Auction winner checkout requires a dedicated order reservation and verified shipping quote',
+        code: 'AUCTION_SETTLEMENT_NOT_CONFIGURED',
+        paymentsEnabled: false,
+      }, 503);
     }
 
     return json({ error: 'Unsupported auction action' }, 400);
