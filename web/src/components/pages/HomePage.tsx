@@ -103,7 +103,7 @@ export default function HomePage({
               <button
                 type="button"
                 onClick={() => setCurrentTab('shop')}
-                className="flex items-center gap-2 rounded-full bg-orange-500 px-6 py-3 text-xs font-black text-white shadow-lg transition hover:bg-orange-600"
+                className="flex items-center gap-2 rounded-full bg-orange-700 px-6 py-3 text-xs font-black text-white shadow-lg transition hover:bg-orange-800"
               >
                 <span>Explore Shop</span>
                 <ArrowRight size={15} />
@@ -525,7 +525,7 @@ export default function HomePage({
             <button
               type="button"
               onClick={() => setCurrentTab('seller-kyc')}
-              className="rounded-full bg-orange-500 px-6 py-3 text-xs font-black text-white hover:bg-orange-600 transition shadow-lg"
+              className="rounded-full bg-orange-700 px-6 py-3 text-xs font-black text-white hover:bg-orange-800 transition shadow-lg"
             >
               {currentUser.sellerStatus === 'pending' ? 'Application Pending →' : 'Start Selling →'}
             </button>
