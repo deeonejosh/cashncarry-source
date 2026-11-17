@@ -21,7 +21,8 @@ export async function coinsRoute(request: Request, env: CoinsEnvironment): Promi
   const account = await currentAccount(request, env);
   if (!account) return json({ error: 'Sign-in required' }, 401);
 
-  const purchasesEnabled = env.PAYMENTS_ENABLED === 'true' && env.COINS_PURCHASES_ENABLED === 'true';
+  // Credit purchases must stay unavailable until verified payment reconciliation exists.
+  const purchasesEnabled = false;
 
   if (request.method === 'GET') {
     const balanceRow = await db
@@ -54,15 +55,18 @@ export async function coinsRoute(request: Request, env: CoinsEnvironment): Promi
     try { body = await readBody(request); } catch { return json({ error: 'Invalid JSON' }, 400); }
 
     const { action, requestId, recipientId } = body || {};
-    if (!requestId || !recipientId || !['credit', 'gift'].includes(action)) {
+    if (typeof requestId !== 'string' || !/^[a-zA-Z0-9_-]{12,100}$/.test(requestId) ||
+        typeof recipientId !== 'string' || recipientId.length < 1 || recipientId.length > 128 ||
+        !['credit', 'gift'].includes(action)) {
       return json({ error: 'Valid action (credit/gift), requestId and recipientId required' }, 400);
     }
 
-    if (action === 'credit' && !purchasesEnabled) {
+    // A self-reported purchase or promo cannot mint currency. No direct user-facing
+    // credit route exists until a verified provider webhook / owner-only issuance ledger.
+    if (action === 'credit') {
       return json({
-        error: 'Payments and coin purchases are temporarily unavailable in staging',
-        code: 'COINS_DISABLED',
-        purchasesEnabled: false,
+        error: 'Direct coin credits are unavailable: verified payment or owner-approved promotion required',
+        code: 'COIN_CREDIT_NOT_AUTHORIZED', purchasesEnabled: false,
       }, 503);
     }
 
@@ -75,39 +79,12 @@ export async function coinsRoute(request: Request, env: CoinsEnvironment): Promi
       .bind(recipientId)
       .first<{ id: string; role: string; suspended: number }>();
 
-    if (!recipient || recipient.suspended !== 0) {
+    if (!recipient || recipient.suspended !== 0 || recipient.role !== 'seller') {
       return json({ error: 'Recipient account unavailable' }, 404);
     }
 
     const now = Math.floor(Date.now() / 1000);
     const key = `${action}:${account.id}:${requestId}`;
-
-    if (action === 'credit') {
-      const coins = Number(body.coins);
-      if (!Number.isInteger(coins) || coins < 1 || coins > 10000) {
-        return json({ error: 'Coins must be between 1 and 10000' }, 400);
-      }
-
-      const existing = await db
-        .prepare(`SELECT id, user_id, delta FROM cnc_coin_ledger WHERE idempotency_key = ?`)
-        .bind(key)
-        .first<{ id: string; user_id: string; delta: number }>();
-
-      if (existing) {
-        return json({ success: true, duplicated: true });
-      }
-
-      const ledgerId = crypto.randomUUID();
-      await db
-        .prepare(
-          `INSERT INTO cnc_coin_ledger (id, user_id, delta, reason, idempotency_key, created)
-           VALUES (?, ?, ?, 'Verified coin credit', ?, ?)`
-        )
-        .bind(ledgerId, recipientId, coins, key, now)
-        .run();
-
-      return json({ success: true, balanceAdded: coins }, 201);
-    }
 
     if (action === 'gift') {
       const giftType = body.gift as keyof typeof gifts;
@@ -117,46 +94,51 @@ export async function coinsRoute(request: Request, env: CoinsEnvironment): Promi
 
       const cost = gifts[giftType];
 
-      // Check current balance
-      const balanceRow = await db
-        .prepare(`SELECT COALESCE(SUM(delta), 0) as balance FROM cnc_coin_ledger WHERE user_id = ?`)
-        .bind(account.id)
-        .first<{ balance: number }>();
-
-      const currentBalance = balanceRow?.balance ?? 0;
-      if (currentBalance < cost) {
-        return json({ error: `Insufficient coin balance. Required: ${cost}, available: ${currentBalance}` }, 409);
-      }
-
-      // Check gift idempotency
-      const existingGift = await db
-        .prepare(`SELECT id FROM cnc_gifts WHERE request_key = ?`)
-        .bind(key)
-        .first<{ id: string }>();
-
+      // Idempotent replay must be evaluated before balance: a completed gift may
+      // already have consumed the last coins.
+      const existingGift = await db.prepare(`SELECT id, receiver_id, gift_type FROM cnc_gifts WHERE request_key = ?`)
+        .bind(key).first<{ id: string; receiver_id: string; gift_type: string }>();
       if (existingGift) {
+        if (existingGift.receiver_id !== recipientId || existingGift.gift_type !== giftType)
+          return json({ error: 'Request ID already used for a different gift', code: 'GIFT_IDEMPOTENCY_CONFLICT' }, 409);
         return json({ success: true, giftId: existingGift.id, duplicated: true });
       }
+      const coinGuard = await db.prepare("SELECT name FROM sqlite_master WHERE type='trigger' AND name='cnc_coin_prevent_overdraft'").first();
+      if (!coinGuard) return json({ error: 'Coin wallet protection unavailable', code: 'WALLET_GUARD_MISSING' }, 503);
 
       const giftId = crypto.randomUUID();
       const debitKey = `${key}:debit`;
       const creditKey = `${key}:credit`;
 
-      await db.batch([
-        db.prepare(
-          `INSERT INTO cnc_gifts (id, sender_id, receiver_id, gift_type, amount, request_key, created)
-           VALUES (?, ?, ?, ?, ?, ?, ?)`
-        ).bind(giftId, account.id, recipientId, giftType, cost, key, now),
-        db.prepare(
-          `INSERT INTO cnc_coin_ledger (id, user_id, delta, reason, idempotency_key, created)
-           VALUES (?, ?, ?, ?, ?, ?)`
-        ).bind(crypto.randomUUID(), account.id, -cost, `Sent ${giftType} gift`, debitKey, now),
-        db.prepare(
-          `INSERT INTO cnc_coin_ledger (id, user_id, delta, reason, idempotency_key, created)
-           VALUES (?, ?, ?, ?, ?, ?)`
-        ).bind(crypto.randomUUID(), recipientId, cost, `Received ${giftType} gift`, creditKey, now),
-      ]);
-
+      // D1 batch is transactional. The verified overdraft trigger checks the debit
+      // under the SQLite write lock, not against a stale preflight balance.
+      try {
+        await db.batch([
+          db.prepare(
+            `INSERT INTO cnc_gifts (id, sender_id, receiver_id, gift_type, amount, request_key, created)
+             VALUES (?, ?, ?, ?, ?, ?, ?)`
+          ).bind(giftId, account.id, recipientId, giftType, cost, key, now),
+          db.prepare(
+            `INSERT INTO cnc_coin_ledger (id, user_id, delta, reason, idempotency_key, created)
+             VALUES (?, ?, ?, ?, ?, ?)`
+          ).bind(crypto.randomUUID(), account.id, -cost, `Sent ${giftType} gift`, debitKey, now),
+          db.prepare(
+            `INSERT INTO cnc_coin_ledger (id, user_id, delta, reason, idempotency_key, created)
+             VALUES (?, ?, ?, ?, ?, ?)`
+          ).bind(crypto.randomUUID(), recipientId, cost, `Received ${giftType} gift`, creditKey, now),
+        ]);
+      } catch (error) {
+        if (error instanceof Error && /CNC_INSUFFICIENT_COINS/.test(error.message))
+          return json({ error: 'Insufficient coin balance', code: 'INSUFFICIENT_COINS' }, 409);
+        if (error instanceof Error && /UNIQUE constraint failed/.test(error.message)) {
+          const existing = await db.prepare('SELECT id,receiver_id,gift_type FROM cnc_gifts WHERE request_key=?')
+            .bind(key).first<{id:string;receiver_id:string;gift_type:string}>();
+          if (existing && existing.receiver_id === recipientId && existing.gift_type === giftType)
+            return json({ success: true, giftId: existing.id, duplicated: true });
+          return json({ error: 'Duplicate gift request', code: 'GIFT_IDEMPOTENCY_CONFLICT' }, 409);
+        }
+        throw error;
+      }
       return json({ success: true, giftId, giftType, cost });
     }
 
