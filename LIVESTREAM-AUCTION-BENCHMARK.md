@@ -152,3 +152,27 @@ Additional changed files: `web/src/context/StoreContext.tsx` (cart success contr
 **Current source checkout:** `fix/staging-livestream-auction-20261117`. Additional source edits after the seller-approval CI proof were submitted to [GitHub Actions](https://github.com/deeonejosh/cashncarry-source/actions?query=branch%3Afix%2Fstaging-livestream-auction-20261117), but this section does not claim their run is green until confirmed. No authenticated multi-account browser screenshots, WebRTC transport, provider streaming credentials or Flutterwave sandbox payments were supplied or claimed.
 
 **Release gate remains CLOSED; private staging stays v53, production untouched.** Remote D1 remains unchanged and financial flags remain off. No real payment, order, stream or user account was created as part of these CI fixtures.
+
+## 11. Safety-gated private staging deployment — 17 November 2026, 22:55 UTC
+
+**LATEST STATUS SUPERSEDES THE PRE-RELEASE `NO DEPLOY` TEXT ABOVE:** The user subsequently explicitly instructed deployment. The tested source repair was released to the **existing private staging Worker only**, with all real-money and media integrations deliberately remaining disabled. This is a **staging safety-patch deployment**, not a claim of complete, operational auction settlement or livestream broadcasting.
+
+- Worker: `cashncarry-d1-staging-worker`
+- Deployment: `869d551d-9701-4913-ad05-b90e9837071f`, created `2026-11-17T22:55:42.11378Z`
+- Active version: **54** `a1133ace-90c5-424c-af47-f514fca72dca` at **100% traffic**, verified by a fresh Cloudflare API readback.
+- Rollback: **version 53** `e4a8d185-5726-4b6e-9733-372265a8b44e` remains available with its existing content-hashed KV assets.
+- Source commit for this release: `de2f6643593b34ed3e51d7daefa30c1a34c4d97e` on `fix/staging-livestream-auction-20261117`.
+- Immutable build artifacts committed to separate branch `artifact/staging-live-auction-v54-20261117`, commit `f9ec40c95b12d68c43c8621a3d4f727dd8b0835b`.
+- Package-build CI: https://github.com/deeonejosh/cashncarry-source/actions/runs/44194177613 — locked dependencies, TypeScript, isolated Miniflare/D1 regressions, Vite frontend build and bundled Cloudflare Worker **all passed**.
+- Asset read-back SHA-256:
+  - `/index.html`: `86edd20731f2e59a283cd8daf2b3bae0c3f5e276ba84836ec7ca5ad4bddd200e`
+  - `/assets/index-D7VKA8iq.js`: `d495d10c54d38ae2848854e291838a948da9afac41868cf05e48218999e6ae98`
+  - `/assets/index-uvdl1fkh.css`: `a25a7fb15bf5883b5152e0cb296a317feffaf4688c043e6a6ac51b9c68d51057`
+  - Bundled `backend.mjs`: `ad821d7515397f52a7881b350c3a7c6dc302311addfe16e20435bc0cda8aa41f`
+- Inherited all **14 Cloudflare bindings** in strict mode, with no missing or additional bindings. `PAYMENTS_ENABLED=false`, `COINS_PURCHASES_ENABLED=false`, `KYC_UPLOADS_ENABLED=false`, `FLW_MODE=disabled`. No configured WHIP/WHEP or Cloudflare Stream credentials were discovered.
+- D1 was inspected **read-only** before and after deployment. All eight aggregate counts (seller applications, stores, seller products, auctions, bids, orders, gifts, live rooms) remained **zero**. No remote D1 migrations `0021` through `0023` were applied and no D1 data was seeded. Therefore, the approved-seller public-store synchronization migration is **not live in staging** and that remaining path still requires a database backup and migration review.
+- Post-deployment API readback confirmed current asset manifest, preferred bundle name, and required safety-guard error codes `BUYER_ADDRESS_REQUIRED`, `SELLER_APPROVAL_REQUIRED`, `AUCTION_SETTLEMENT_NOT_CONFIGURED`, `BROADCAST_NOT_CONFIGURED`, `COIN_CREDIT_NOT_AUTHORIZED`.
+
+**Known limitations:** Authentic multi-user seller/buyer browser sessions, live-camera publish/playback, realtime event fanout, actual viewer counts, automated winner settlement, quoted shipping fees, Flutterwave sandbox checkout/webhooks, Android WebView QA, and performance measurements remain **BLOCKED / NOT TESTED**. The new Worker prevents unconfigured broadcasts and unsafe winner payments from pretending to succeed. These features are NOT operational just because the guarded release is installed. Cloudflare Access may prevent public anonymous browser smoke tests.
+
+**Production DNS, Worker and database: unchanged. Private staging safety patch: deployed. Full product release gate: still closed.**
