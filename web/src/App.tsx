@@ -540,7 +540,7 @@ function MainApp() {
         onOpenEmailPreview={isAdmin ? () => navigateTab('email-marketing') : undefined}
       />
 
-      {currentTab !== 'for-you' && (
+      {currentTab !== 'for-you' && !ADMIN_TABS.has(currentTab) && !SELLER_TABS.has(currentTab) && (
         <MobileNav
           currentTab={currentTab}
           setCurrentTab={navigateTab}
