@@ -80,21 +80,49 @@ export async function marketplaceRoute(request: Request, env: Environment): Prom
         if (!changed) return respond(409,'Product unavailable or changed');
       } else {
         const name = text(body.name);
-        const price = integer(body.price_minor,1,1000000000), stock = integer(body.stock,0,1000000);
-        if (!name || name.length > 160 || price === null || stock === null) return respond(400,'Invalid product details');
+        const price = integer(body.priceMinor ?? body.price_minor,1,1000000000);
+        const stock = integer(body.stock,0,1000000);
+        const categoryInput = typeof body.category === 'string' ? text(body.category) : null;
+        const descriptionInput = typeof body.description === 'string' ? text(body.description) : null;
+        const imageInput = typeof body.imageUrl === 'string' ? text(body.imageUrl) :
+          typeof body.image === 'string' ? text(body.image) : null;
+        const brandInput = typeof body.brand === 'string' ? text(body.brand) : null;
+        const compareInput = body.compareAtMinor ?? body.compare_at_minor;
+        const compare = compareInput === undefined || compareInput === null ? null :
+          integer(compareInput,0,1000000000);
+        if (!name || name.length > 160 || price === null || stock === null ||
+            (categoryInput !== null && categoryInput.length > 80) ||
+            (descriptionInput !== null && descriptionInput.length > 2000) ||
+            (brandInput !== null && brandInput.length > 100) ||
+            (imageInput !== null && (imageInput.length > 1000 ||
+               (imageInput && !/^https:\/\/[a-z\d.-]+(?:\/|$)/i.test(imageInput)))) ||
+            (compareInput !== undefined && compareInput !== null && compare === null)) {
+          return respond(400,'Invalid product details');
+        }
         if (body.action === 'create') {
-          if (!/^[a-f0-9-]{36}$/.test(id)) return respond(400,'Invalid product request ID');
-          const created = await db.prepare(`INSERT INTO cnc_seller_products (id,owner,name,price_minor,stock)
-            SELECT ?,owner,?,?,? FROM cnc_seller_stores WHERE owner=? ON CONFLICT(id) DO NOTHING RETURNING id`)
-            .bind(id,name,price,stock,owner).first();
+          if (!/^[a-f0-9-]{36}$/i.test(id)) return respond(400,'Invalid product request ID');
+          const created = await db.prepare(
+            "INSERT INTO cnc_seller_products "+
+            "(id,owner,name,price_minor,stock,category,description,image,brand,compare_at_minor,featured,created) "+
+            "SELECT ?,owner,?,?,?,?,?,?,?,?,0,unixepoch() FROM cnc_seller_stores WHERE owner=? "+
+            "ON CONFLICT(id) DO NOTHING RETURNING id"
+          ).bind(id,name,price,stock,categoryInput || 'uncategorized',descriptionInput || '',
+            imageInput || '',brandInput || '',compare ?? price,owner).first();
           if (!created) return respond(409,'Create a store first or reload before retrying');
         } else {
           if (body.action !== 'update' || !id || revision === null) return respond(400,'Invalid product revision');
-          const changed = await db.prepare(`UPDATE cnc_seller_products SET name=?,price_minor=?,stock=?,publication='draft',revision=revision+1
-            WHERE id=? AND owner=? AND revision=? AND archived=0 AND ? + COALESCE((
-              SELECT SUM(i.quantity) FROM cnc_order_items i JOIN cnc_orders o ON o.id=i.order_id
-              WHERE i.product_id=cnc_seller_products.id AND o.status='awaiting_payment'
-            ),0)<=1000000 RETURNING id`).bind(name,price,stock,id,owner,revision,stock).first();
+          const changed = await db.prepare(
+            "UPDATE cnc_seller_products SET name=?,price_minor=?,stock=?,"+
+            "category=COALESCE(?,category),description=COALESCE(?,description),"+
+            "image=COALESCE(?,image),brand=COALESCE(?,brand),"+
+            "compare_at_minor=COALESCE(?,compare_at_minor),"+
+            "publication='draft',revision=revision+1 "+
+            "WHERE id=? AND owner=? AND revision=? AND archived=0 AND ? + COALESCE(("+
+              "SELECT SUM(i.quantity) FROM cnc_order_items i JOIN cnc_orders o ON o.id=i.order_id "+
+              "WHERE i.product_id=cnc_seller_products.id AND o.status='awaiting_payment'"+
+            "),0)<=1000000 RETURNING id"
+          ).bind(name,price,stock,categoryInput,descriptionInput,imageInput,brandInput,
+            compare,id,owner,revision,stock).first();
           if (!changed) return respond(409,'Product unavailable or changed');
         }
       }
@@ -125,7 +153,7 @@ export async function marketplaceRoute(request: Request, env: Environment): Prom
       <button>Save store profile</button></form><p><a href="/seller/products">Manage product drafts</a></p>`);
   }
   if (path === '/seller/products') {
-    const {results:items} = await db.prepare(`SELECT id,name,price_minor,stock,revision,publication FROM cnc_seller_products
+    const {results:items} = await db.prepare(`SELECT id,owner,name,description,category,brand,price_minor,compare_at_minor,stock,image AS image_url,featured,revision,publication,created FROM cnc_seller_products
       WHERE owner=? AND archived=0 ORDER BY rowid DESC LIMIT 50`).bind(owner).all<Item>();
     if (api) return result({items});
     const fields = (item?:Item) => `<label>Product name <input name="name" maxlength="160" required value="${escape(item?.name)}"></label>
