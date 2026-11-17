@@ -42,3 +42,24 @@ Before deploying the remaining UI: obtain authenticated Access session, reconcil
 - Read-only staging D1 checks reconfirmed **zero** seller applications, seller storefronts, seller products, public products, orders and short videos.
 - A separate local Playwright attempt could not execute because Chromium refused the loopback HTTP server with `ERR_BLOCKED_BY_ADMINISTRATOR`. **No local browser pass should be claimed for this exact build.** GitHub CI did not run authenticated hosted-staging E2E either.
 - **Release remains blocked:** Active staging Cloudflare Worker deployment was independently reconfirmed as version `b3f642f1-a10c-449c-b9ec-b5607ca25d9c`, not the frontend candidate. A staged, rollback-ready KV asset and Worker manifest update plus authorised Access browser checks are required before claiming deployment. Keep private Access and all real transaction safeguards in place.
+
+
+## Private staging frontend release — 17 November 2026 20:45 UTC
+
+**DEPLOYED:** the CI-tested frontend from source commit `15f802b8b230aee49f8e7e3140ec7c92837f4455` is now active on the existing private Worker. This update supersedes the earlier *undeployed frontend candidate* note above; the authenticated E2E release gate remains outstanding.
+
+- GitHub validation: [seller workflow benchmark CI](https://github.com/deeonejosh/cashncarry-source/actions/runs/44168492058) and [exact asset rebuild/checksum gate](https://github.com/deeonejosh/cashncarry-source/actions/runs/44171925686), both successful.
+- Asset-only delivery branch: `artifact/staging-ui-repair-15f802b8` at commit `065d5961de67daadff6fb9eaf057f14837f26697`, generated from the reviewed staging source.
+- New immutable KV assets written and SHA-256 checksum-verified after readback:
+  - `/index.html`: `047ba81387935697020956cbe549c8a59df01dd018259f32318b5aa94e0526d1`
+  - `/assets/index-CFB2SPus.js`: `f61532c37e9e089a9b81ae153bb0cedccecb3bb93e0118a7931c23679b0fb4fe`
+  - `/assets/index-DFKFiQbB.css`: `d2a09b304cbeadca26fee3b6f3618fd027d3784a587003eb19a164f88f8e3653`
+- New Cloudflare Worker **version 53** `e4a8d185-5726-4b6e-9733-372265a8b44e` was uploaded as a separate version, with *only* the frontend asset map and preferred bundle reference changed in `stage-entry.mjs`. The existing `backend.mjs` was preserved byte-for-byte.
+- All **14 bindings** (including private owner MFA, Resend and D1) were inherited strictly; readback shows no lost or newly added bindings. `PAYMENTS_ENABLED=false`, `COINS_PURCHASES_ENABLED=false`, `KYC_UPLOADS_ENABLED=false`, `FLW_MODE=disabled`.
+- Deployment `38258e66-5a94-4076-a1b2-3450498a95f8`, created `2026-11-17T20:45:23.794884Z`, was confirmed serving version 53 at **100%** via a fresh Cloudflare API readback.
+- Read-back of the active JS KV asset confirms the expected product concurrency error message is present and the prior `QA Suite`, `V17 Staging ZIP` and `Chidi Okafor` strings are absent. These are asset checks, not authenticated browser proof.
+- Post-deployment, staging D1 read-only aggregate counts remained zero for applications, seller products, public products, orders and short videos. No D1 writes, migrations, DNS edits, Access-policy updates, production Worker changes or production payment changes occurred.
+- **Rollback:** prior Worker **version 52** `b3f642f1-a10c-449c-b9ec-b5607ca25d9c` and its content-hashed KV assets remain available; rollback is a new 100% deployment pointing to that version. No rollback has been needed.
+- **Still not verified:** browser/API acceptance authenticated through Cloudflare Access, Seller Centre click-through, owner MFA login, live Resend receipt, Android, fulfilment and third-party/payment/livestream workflows. Do not claim those have passed until tested by an authorised private-staging session.
+
+**Production: untouched. Private staging UI release: completed, with restricted E2E acceptance outstanding.**
