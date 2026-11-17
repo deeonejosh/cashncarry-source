@@ -124,9 +124,9 @@ export default function MessagesPage({ onNavigateOrder }: MessagesPageProps) {
   return (
     <div className="space-y-4 pb-20">
       <div>
-        <h1 className="text-xl sm:text-2xl font-black text-slate-900">Messages & Inquiries</h1>
+        <h1 className="text-xl sm:text-2xl font-black text-slate-900">Messages</h1>
         <p className="text-xs text-slate-500">
-          Direct buyer-seller communication stored securely on your account.
+          Messages with sellers.
         </p>
       </div>
 

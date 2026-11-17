@@ -42,9 +42,9 @@ export default function OrdersPage({ onTrackOrder, onOpenReturns }: OrdersPagePr
   return (
     <div className="space-y-8 pb-16">
       <div>
-        <h1 className="text-2xl font-black text-slate-900 sm:text-3xl">My Orders & Purchases</h1>
+        <h1 className="text-2xl font-black text-slate-900 sm:text-3xl">Orders</h1>
         <p className="mt-1 text-xs text-slate-500 sm:text-sm">
-          Track packages, manage reserved checkouts, and request returns.
+          Track deliveries and manage returns.
         </p>
       </div>
 

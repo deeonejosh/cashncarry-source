@@ -125,38 +125,32 @@ export default function AdminDashboardPage({ onNavigate }: AdminDashboardPagePro
   const pendingApplicationsCount = applications.filter((a) => a.status === 'pending').length;
 
   return (
-    <div className="space-y-8 pb-16">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-3xl bg-gradient-to-r from-purple-950 via-slate-900 to-[#073c22] p-8 text-white shadow-xl">
+    <div className="space-y-6 pb-12">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 text-slate-900">
         <div className="space-y-2">
           <div className="flex items-center gap-2">
-            <span className="rounded-full bg-purple-500/20 px-3 py-1 text-[10px] font-black uppercase text-purple-300 border border-purple-400/30">
+            <span className="rounded-full bg-emerald-50 px-3 py-1 text-[10px] font-bold uppercase text-emerald-800">
               ADMIN CONSOLE
             </span>
-            <span className="flex items-center gap-1 text-xs font-bold text-emerald-300">
-              <Lock size={12} /> MFA Session Verified
-            </span>
           </div>
-          <h1 className="text-2xl font-black sm:text-3xl">Platform Administration & Compliance</h1>
-          <p className="max-w-xl text-xs text-slate-300 sm:text-sm">
-            Review seller onboarding applications, moderate product submissions, and audit platform events from the database.
-          </p>
+          <h1 className="text-xl font-bold sm:text-2xl">Admin Console</h1>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={() => void loadAdminData()}
-            className="flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-bold text-white hover:bg-white/20"
+            className="flex min-h-10 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50"
           >
             <RefreshCw size={14} /> Refresh
           </button>
           {onNavigate && (
             <button
               onClick={() => onNavigate('email-marketing')}
-              className="flex items-center gap-1.5 rounded-full bg-orange-500 px-5 py-2 text-xs font-black text-white hover:bg-orange-600 transition shadow-lg"
+              className="flex min-h-10 items-center gap-1.5 rounded-xl bg-[#0c5c36] px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-900 transition"
             >
               <Mail size={14} />
-              <span>Email Studio</span>
+              <span>Email</span>
             </button>
           )}
         </div>
@@ -179,7 +173,7 @@ export default function AdminDashboardPage({ onNavigate }: AdminDashboardPagePro
       )}
 
       {/* Real Database Counts */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm space-y-1">
           <div className="text-xs font-bold text-slate-400">Total Users</div>
           <div className="text-2xl font-black text-slate-900">{overview?.counts.totalUsers ?? 0}</div>
@@ -215,7 +209,7 @@ export default function AdminDashboardPage({ onNavigate }: AdminDashboardPagePro
           }`}
         >
           <ShieldCheck size={15} />
-          <span>Seller Applications ({applications.length})</span>
+          <span>Seller Reviews ({applications.length})</span>
         </button>
 
         <button
@@ -225,7 +219,7 @@ export default function AdminDashboardPage({ onNavigate }: AdminDashboardPagePro
           }`}
         >
           <Package size={15} />
-          <span>Product Moderation ({moderationQueue.length})</span>
+          <span>Products ({moderationQueue.length})</span>
         </button>
 
         <button
@@ -235,7 +229,7 @@ export default function AdminDashboardPage({ onNavigate }: AdminDashboardPagePro
           }`}
         >
           <Activity size={15} />
-          <span>Audit Log & Config</span>
+          <span>Audit & Settings</span>
         </button>
       </div>
 
@@ -244,10 +238,7 @@ export default function AdminDashboardPage({ onNavigate }: AdminDashboardPagePro
       ) : activeTab === 'applications' ? (
         <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
           <div className="border-b border-slate-100 pb-3">
-            <h3 className="text-sm font-black text-slate-900">Seller Onboarding & Verification Queue</h3>
-            <p className="text-xs text-slate-500">
-              Approve qualified sellers to grant Seller Centre access, or reject/suspend non-compliant accounts.
-            </p>
+            <h3 className="text-sm font-black text-slate-900">Seller Applications</h3>
           </div>
 
           {applications.length === 0 ? (

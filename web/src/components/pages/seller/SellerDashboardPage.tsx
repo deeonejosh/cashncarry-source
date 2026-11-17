@@ -82,37 +82,34 @@ export default function SellerDashboardPage({ onNavigate, onOpenCreate }: Seller
   };
 
   return (
-    <div className="space-y-8 pb-16">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-3xl bg-gradient-to-r from-[#0c5c36] to-[#073c22] p-8 text-white shadow-xl">
+    <div className="space-y-6 pb-12">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 text-slate-900">
         <div className="space-y-2">
           <div className="flex items-center gap-2">
-            <span className="rounded-full bg-white/20 px-3 py-1 text-[10px] font-black uppercase text-emerald-200">
+            <span className="rounded-full bg-emerald-50 px-3 py-1 text-[10px] font-bold uppercase text-emerald-900">
               SELLER CENTRE
             </span>
-            <span className="flex items-center gap-1 text-xs font-bold text-emerald-300">
+            <span className="flex items-center gap-1 text-xs font-semibold text-emerald-700">
               <CheckCircle2 size={13} /> Approved Seller
             </span>
           </div>
-          <h1 className="text-2xl font-black sm:text-3xl">
+          <h1 className="text-xl font-bold sm:text-2xl">
             {sellerStore?.name || currentUser.storeName || currentUser.name}
           </h1>
-          <p className="text-xs text-emerald-100 sm:text-sm">
-            Manage your storefront, publish products, fulfill customer orders, upload videos, and host livestreams.
-          </p>
         </div>
 
         <div className="flex flex-wrap gap-2">
           <button
             onClick={() => onNavigate('seller-products')}
-            className="flex items-center gap-1.5 rounded-2xl bg-orange-500 px-4 py-2.5 text-xs font-black text-white hover:bg-orange-600 transition shadow"
+            className="flex min-h-10 items-center gap-1.5 rounded-xl bg-[#0c5c36] px-4 py-2.5 text-xs font-bold text-white hover:bg-emerald-900 transition"
           >
-            <Plus size={15} /> Manage Products
+            <Plus size={15} /> Products
           </button>
           <button
             onClick={() => (onOpenCreate ? onOpenCreate() : onNavigate('live'))}
-            className="flex items-center gap-1.5 rounded-2xl bg-rose-600 px-4 py-2.5 text-xs font-black text-white hover:bg-rose-700 transition shadow"
+            className="flex min-h-10 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition"
           >
-            <Radio size={15} /> Video / Go Live ({activeLives})
+            <Radio size={15} /> Go Live ({activeLives})
           </button>
         </div>
       </div>

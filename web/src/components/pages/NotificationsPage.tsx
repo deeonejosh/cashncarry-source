@@ -26,7 +26,7 @@ export default function NotificationsPage() {
         <div>
           <h1 className="text-2xl font-black text-slate-900 sm:text-3xl">Notifications</h1>
           <p className="mt-1 text-xs text-slate-500">
-            Account updates on your orders, seller applications, and marketplace activity.
+            Order and account updates.
           </p>
         </div>
 
