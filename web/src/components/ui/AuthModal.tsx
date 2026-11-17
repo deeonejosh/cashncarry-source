@@ -33,6 +33,9 @@ export default function AuthModal() {
           setTotpCode('');
           setShowMfaInput(false);
           closeAuthModal();
+          // Preserve a buyer's current checkout; privileged roles open their authorised workspaces.
+          if (res.user?.role === 'admin') window.location.assign('/admin');
+          else if (res.user?.role === 'seller') window.location.assign('/seller-centre');
         } else {
           if (res.mfaRequired) setShowMfaInput(true);
           setErrorMsg(res.error || 'Sign-in failed. Check your email and password.');
@@ -93,7 +96,7 @@ export default function AuthModal() {
             <div>
               <h2 className="text-lg font-black tracking-tight">Cash N Carry Nigeria</h2>
               <p className="text-xs text-emerald-100/90">
-                Sign in or create your buyer account
+                Sign in to your Cash N Carry account
               </p>
             </div>
           </div>
