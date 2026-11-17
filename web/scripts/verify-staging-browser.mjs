@@ -123,7 +123,7 @@ try {
     { tab: 'live', text: 'No one is live right now.' },
     { tab: 'seller-kyc', text: 'Account Sign In Required' },
     { tab: 'seller-settlements', text: 'Sign In Required' },
-    { tab: 'admin-dashboard', text: 'Platform Administration & Compliance' },
+    { tab: 'admin-dashboard', text: 'Administrator Access Required' },
   ];
 
   // Exhaustive anonymous route smoke; auth-only pages must fail closed, not crash.
