@@ -121,13 +121,6 @@ export default function LiveAuctionCard({
             <span>Highest bid — winner checkout not yet available</span>
           </div>
         ) : (
-              <>
-                <AlertCircle size={14} />
-                <span>Won — Online Payments Disabled</span>
-              </>
-            )}
-          </button>
-        ) : (
           <div className="rounded-xl bg-slate-100 py-2.5 text-center text-xs font-bold text-slate-600">
             Auction Closed
           </div>
