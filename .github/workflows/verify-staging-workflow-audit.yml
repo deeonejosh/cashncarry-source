@@ -4,6 +4,9 @@ name: Verify Cash N Carry private staging workflows
 # This workflow remains manual until the latest extracted source is committed.
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - fix/staging-workflow-audit
 
 permissions:
   contents: read
