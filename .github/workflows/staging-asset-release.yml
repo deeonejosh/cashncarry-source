@@ -1,0 +1,37 @@
+name: Prepare vetted frontend assets for isolated staging
+on:
+  push:
+    branches: [fix/staging-admin-seller-benchmark-20261117]
+    paths: ['.github/workflows/staging-asset-release.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Validate and build vetted source
+        working-directory: web
+        run: |
+          npm ci --no-audit --no-fund
+          npm run lint
+          npm test
+          npm run build
+      - name: Verify exact approved release asset hashes
+        run: |
+          printf '%s\n' 'f61532c37e9e089a9b81ae153bb0cedccecb3bb93e0118a7931c23679b0fb4fe  web/dist/assets/index-CFB2SPus.js' 'd2a09b304cbeadca26fee3b6f3618fd027d3784a587003eb19a164f88f8e3653  web/dist/assets/index-DFKFiQbB.css' '047ba81387935697020956cbe549c8a59df01dd018259f32318b5aa94e0526d1  web/dist/index.html' | sha256sum -c -
+      - name: Commit only hashed, tested static release assets on separate artifact branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c artifact/staging-ui-repair-15f802b8
+          git add -f web/dist/index.html web/dist/assets/index-CFB2SPus.js web/dist/assets/index-DFKFiQbB.css
+          git commit -m "build(staging): immutable vetted frontend asset delivery, no Cloudflare deployment"
+          git push origin HEAD:refs/heads/artifact/staging-ui-repair-15f802b8
