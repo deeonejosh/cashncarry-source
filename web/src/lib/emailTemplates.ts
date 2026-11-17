@@ -121,13 +121,10 @@ export function generateHtmlEmail(templateId: EmailTemplateId, options: EmailRen
       <td align="center">
         <table role="presentation" width="600" border="0" cellspacing="0" cellpadding="0" style="background-color: #ffffff; border-radius: 20px; overflow: hidden; border: 1px solid #e2e8f0;">
           <tr>
-            <td style="background-color: #073c22; padding: 20px 32px; text-align: left;">
-              <span style="font-size: 22px; font-weight: 900; color: #ffffff;">
-                Cash <span style="color: #fb923c;">N</span> Carry
-              </span>
-              <span style="display: block; font-size: 10px; font-weight: 700; color: #86efac; letter-spacing: 1.5px; text-transform: uppercase; margin-top: 2px;">
-                Nigeria · Live Shopping Marketplace
-              </span>
+            <td bgcolor="#ffffff" style="background-color: #ffffff; padding: 18px 32px; text-align: left; border-bottom: 3px solid #0c5c36;">
+              <a href="https://www.cashncarryng.com/" target="_blank" style="text-decoration: none;">
+                <img src="https://cdn.jsdelivr.net/gh/deeonejosh/cashncarry-source@7191c33393d67cd344cbb2b48cf6743a82352a38/web/public/brand/logo.png" alt="Cash N Carry Nigeria" width="180" height="60" border="0" style="display: block; width: 180px; height: 60px; border: 0; outline: none;" />
+              </a>
             </td>
           </tr>
           <tr>
