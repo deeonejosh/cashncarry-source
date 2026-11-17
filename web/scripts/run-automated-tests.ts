@@ -752,6 +752,13 @@ async function run() {
       assert.equal(reserved?.stock,1,'Auction reservation must decrement exactly one unit');
       const illegalSellerBid=await action(sellCookie,'PATCH',{action:'bid',id,amountKobo:10000});
       assert.equal(illegalSellerBid.status,403);
+      const firstWithoutAddress=await action(buyCookie,'PATCH',{action:'bid',id,amountKobo:10000});
+      assert.equal(firstWithoutAddress.status,409,'First auction bid requires one reusable buyer delivery address');
+      assert.equal((await firstWithoutAddress.json() as any).code,'BUYER_ADDRESS_REQUIRED');
+      const bidAddressId='auction-buyer-onetime-address';
+      await authDb.prepare(
+        "INSERT INTO cnc_buyer_addresses(id,user_id,recipient,line,city,state) VALUES(?,?,?,'12 Test Street','Lagos','Lagos')"
+      ).bind(bidAddressId,buyerId,'Fixture Buyer').run();
       const first=await action(buyCookie,'PATCH',{action:'bid',id,amountKobo:10000});
       assert.equal(first.status,200);
       const stale=await action(buyCookie,'PATCH',{action:'bid',id,amountKobo:10000});
