@@ -1,0 +1,92 @@
+name: Verify Cash N Carry private staging workflows
+
+# Deliberately no automatic deployment and no secrets or production access.
+# This workflow remains manual until the latest extracted source is committed.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: staging-workflow-audit
+  cancel-in-progress: false
+
+jobs:
+  source-inventory:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify the current source is extracted (not ZIP-only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f web/package.json || { echo "::error::Missing web/package.json. Extract the newest audited source onto fix/staging-workflow-audit first."; exit 1; }
+          test -f app/build.gradle.kts || { echo "::error::Missing Android source. Do not use an older ZIP as a silent fallback."; exit 1; }
+          test -f web/wrangler.jsonc || { echo "::error::Missing staging Worker configuration."; exit 1; }
+          test -f STAGING-WORKFLOW-AUDIT.md
+          grep -q '"name": "cashncarry-d1-staging-worker"' web/wrangler.jsonc
+          grep -q '"PAYMENTS_ENABLED": "false"' web/wrangler.jsonc
+          grep -q '"COINS_PURCHASES_ENABLED": "false"' web/wrangler.jsonc
+          grep -q '"KYC_UPLOADS_ENABLED": "false"' web/wrangler.jsonc
+          echo "Source inventory and fail-closed staging flags verified."
+
+  web:
+    needs: source-inventory
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+      - name: Prevent demo, source archives, or Worker code from being published as assets
+        run: |
+          set -euo pipefail
+          python3 scripts/audit_customer_ui.py --dist
+          test ! -f dist/_worker.js
+          ! find dist -name '*.zip' | grep -q .
+          ! grep -R -i -E 'QA Suite|V17 Staging ZIP|Chidi Okafor|Export ZIP' dist --include='*.js' --include='*.html'
+      - name: Local browser smoke (run if the script exists)
+        run: |
+          set -euo pipefail
+          if test -f scripts/verify-staging-browser.mjs; then
+            node --check scripts/verify-staging-browser.mjs
+            node scripts/verify-staging-browser.mjs
+          else
+            echo "::error::Missing browser smoke test; do not mark release approved"
+            exit 1
+          fi
+
+  android:
+    needs: source-inventory
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build and test the staging debug Android app only
+        run: |
+          set -euo pipefail
+          if test -f gradlew && test -f gradle/wrapper/gradle-wrapper.jar; then
+            chmod +x gradlew
+            ./gradlew --no-daemon :app:testDebugUnitTest :app:assembleDebug
+          else
+            echo "::error::Gradle wrapper JAR / launcher missing. No Android pass can be claimed."
+            exit 1
+          fi
+
+# No deploy job by design. After all gates pass, release staging through a
+# separately reviewed change with explicit staging-only credentials.
