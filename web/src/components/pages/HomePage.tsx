@@ -443,7 +443,6 @@ export default function HomePage({
                 currentUserId={currentUser.id}
                 paymentsEnabled={platformConfig.paymentsEnabled}
                 onPlaceBid={(auctionId, amount) => void placeBid(auctionId, amount)}
-                onClaimWin={() => setCurrentTab('auctions')}
                 onInspectSeller={(sellerId) => onOpenStorefront?.(sellerId)}
               />
             ))}
