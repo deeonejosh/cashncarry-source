@@ -10,7 +10,7 @@ fs.mkdirSync(path.join(output,'screenshots'),{recursive:true});
 const source=fs.readFileSync(path.join(ROOT,'src/App.tsx'),'utf8');
 const routes=[...new Set(['home',...[...source.matchAll(/case\s+['"]([^'"]+)['"]\s*:/g)].map(match=>match[1])])];
 const base='http://127.0.0.1:4173';
-const server=spawn(process.platform==='win32'?'npm.cmd':'npm',['run','preview','--','--host','127.0.0.1','--port','4173','--strictPort'],{cwd:ROOT,stdio:['ignore','pipe','pipe']});
+const server=spawn(process.platform==='win32'?'npm.cmd':'npm',['run','preview','--','--host','127.0.0.1','--port','4173','--strictPort'],{cwd:ROOT,stdio:['ignore','pipe','pipe'],detached:process.platform!=='win32'});
 let serverLog='';
 server.stdout.on('data',d=>{serverLog+=d.toString().slice(0,1500)});
 server.stderr.on('data',d=>{serverLog+=d.toString().slice(0,1500)});
@@ -65,7 +65,10 @@ try{
  }
 }finally{
  if(browser)await browser.close().catch(()=>{});
- server.kill('SIGTERM');
+ try { if(process.platform!=='win32' && server.pid) process.kill(-server.pid,'SIGTERM'); else server.kill('SIGTERM'); } catch { server.kill('SIGTERM'); }
+ server.stdout.destroy();
+ server.stderr.destroy();
+ server.unref();
 }
 const group={};
 for(const r of records){
