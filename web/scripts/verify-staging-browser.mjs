@@ -151,8 +151,22 @@ try {
     const page = await context.newPage();
     const consoleErrors = [];
     const pageErrors = [];
+    const forbiddenResourceResponses = [];
+    page.on('response', (response) => {
+      // Guest sessions deliberately receive 401 on protected API endpoints.
+      // 401 on static assets or unknown origins remains a release failure.
+      if (response.status() === 401) {
+        const route = new URL(response.url()).pathname;
+        if (!route.startsWith('/api/')) forbiddenResourceResponses.push(response.url());
+      }
+    });
     page.on('console', (msg) => {
-      if (msg.type() === 'error') consoleErrors.push(msg.text());
+      if (msg.type() !== 'error') return;
+      const message = msg.text();
+      if (/^Failed to load resource: the server responded with a status of 401 \(Unauthorized\)/.test(message)) {
+        return; // Checked separately above by URL and status.
+      }
+      consoleErrors.push(message);
     });
     page.on('pageerror', (err) => pageErrors.push(err.message));
 
@@ -225,6 +239,7 @@ try {
     const shopBody = await page.locator('body').innerText();
     assert.ok(/No products|no items|No listings/i.test(shopBody), `[${vp.name}] Expected empty catalog`);
 
+    assert.equal(forbiddenResourceResponses.length, 0, `[${vp.name}] Unexpected anonymous 401s for static resources: ${forbiddenResourceResponses.join('; ')}`);
     assert.equal(pageErrors.length, 0, `[${vp.name}] Uncaught page errors: ${pageErrors.join('; ')}`);
     assert.equal(consoleErrors.length, 0, `[${vp.name}] Console errors: ${consoleErrors.join('; ')}`);
     console.log(`  ✅ [BROWSER PASS] ${vp.name} (${vp.width}x${vp.height}): route empty states and access guards verified, 0 console/page errors, 0 overflow`);
