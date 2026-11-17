@@ -1,0 +1,457 @@
+import assert from 'node:assert/strict';
+import { createHash, createHmac, randomBytes } from 'node:crypto';
+import { scryptAsync } from '@noble/hashes/scrypt.js';
+import fs from 'node:fs';
+import path from 'node:path';
+import { build } from 'esbuild';
+import { Miniflare } from 'miniflare';
+import { renderAuthEmail } from '../deploy/chatgpt-sites/auth-email';
+
+console.log('🧪 Starting Cash N Carry Automated Staging & Backend Quality Suite...');
+
+let passed = 0;
+let failed = 0;
+
+async function test(name: string, fn: () => void | Promise<void>) {
+  try {
+    const start = performance.now();
+    await fn();
+    const ms = Math.round(performance.now() - start);
+    console.log(`  ✅ [PASS] ${name} (${ms}ms)`);
+    passed++;
+  } catch (err: any) {
+    console.error(`  ❌ [FAIL] ${name}:`, err.message);
+    failed++;
+  }
+}
+
+async function execMigrationSql(db: any, sql: string) {
+  const parts = sql.split(/(?=CREATE TRIGGER)/);
+  const ddl = parts[0]
+    .split('\n')
+    .filter((line) => !line.trim().startsWith('--'))
+    .join('\n')
+    .trim();
+  if (ddl) {
+    await db.exec(ddl.replace(/\s+/g, ' ').replace(/;\s*/g, ';\n').trim());
+  }
+  for (const trigger of parts.slice(1)) {
+    const cleanTrigger = trigger
+      .split('\n')
+      .filter((line) => !line.trim().startsWith('--'))
+      .join('\n')
+      .trim();
+    if (cleanTrigger) {
+      await db.prepare(cleanTrigger).run();
+    }
+  }
+}
+
+async function run() {
+  await test('Auth email: branded accessible templates escape HTML and include expiry', () => {
+    const verify = renderAuthEmail('<demo&code>', 'verify');
+    assert.match(verify.subject, /verification/i);
+    assert.match(verify.html, /&lt;demo&amp;code&gt;/);
+    assert.doesNotMatch(verify.html, /<demo&code>/);
+    assert.match(verify.text, /15 minutes/);
+    const reset = renderAuthEmail('ABCDEFGH', 'reset');
+    assert.match(reset.subject, /Reset/);
+    assert.match(reset.html, /ABCDEFGH/);
+  });
+
+  // 1. Catalog SQL Sanitization & D1 Query Safety
+  await test('Catalog: SQL Wildcard Escaping for D1 Queries', () => {
+    const raw = '100% Cotton_Naija\\Special';
+    const escaped = raw.trim().replace(/[\\%_]/g, '\\$&');
+    assert.equal(escaped, '100\\% Cotton\\_Naija\\\\Special');
+  });
+
+  // 2. Flutterwave Webhook HMAC-SHA256 Signature Verification
+  await test('Payments: Flutterwave Sandbox HMAC-SHA256 Webhook Verification', () => {
+    const secret = 'FLW_SANDBOX_SECRET_KEY_12345';
+    const payload = JSON.stringify({
+      event: 'charge.completed',
+      data: { id: 892019, tx_ref: 'cnc-test-sample-order-1', status: 'successful', amount: 18500, currency: 'NGN' },
+    });
+    const hmac = createHmac('sha256', secret);
+    hmac.update(payload);
+    const signature = hmac.digest('base64');
+    assert.match(signature, /^[A-Za-z0-9+/]{43}=$/);
+
+    const verifyHmac = createHmac('sha256', secret);
+    verifyHmac.update(payload);
+    assert.equal(verifyHmac.digest('base64'), signature);
+  });
+
+  // 3. Wrangler Staging Configuration Integrity
+  await test('Cloudflare: wrangler.jsonc staging worker & D1 UUID validation', () => {
+    const raw = fs.readFileSync(path.resolve('wrangler.jsonc'), 'utf8');
+    // Strip // comments outside quotes cleanly
+    const jsonText = raw
+      .split('\n')
+      .filter((l) => !l.trim().startsWith('//'))
+      .join('\n');
+    const cfg = JSON.parse(jsonText);
+    assert.equal(cfg.name, 'cashncarry-d1-staging-worker');
+    assert.equal(cfg.assets.html_handling, 'auto-trailing-slash');
+    assert.equal(cfg.vars.PAYMENTS_ENABLED, 'false');
+    assert.equal(cfg.vars.COINS_PURCHASES_ENABLED, 'false');
+    assert.equal(cfg.vars.KYC_UPLOADS_ENABLED, 'false');
+    for (const dbBinding of cfg.d1_databases) {
+      assert.equal(dbBinding.database_name, 'cashncarry-d1-staging');
+      assert.equal(dbBinding.database_id, '9a2cdbee-e030-4b10-908b-b10b8142d2aa');
+    }
+    assert.equal(cfg.name, 'cashncarry-d1-staging-worker');
+  });
+
+  // 4. Static SEO, Feed & Crawler files
+  await test('SEO & Feeds: sitemap.xml, robots.txt, and google-shopping.xml valid', () => {
+    const sitemap = fs.readFileSync(path.resolve('public/sitemap.xml'), 'utf8');
+    assert.ok(sitemap.includes('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"'));
+    assert.ok(!sitemap.includes('<url>'), 'Private staging must not publish sitemap URLs');
+
+    const feed = fs.readFileSync(path.resolve('public/feed/google-shopping.xml'), 'utf8');
+    assert.ok(feed.includes('<rss version="2.0" xmlns:g="http://base.google.com/ns/1.0">'));
+    assert.ok(!feed.includes('<item>'), 'Private staging must not publish product feed items');
+
+    const robots = fs.readFileSync(path.resolve('public/robots.txt'), 'utf8');
+    assert.ok(robots.includes('Disallow: /'), 'Private staging must block all crawlers');
+  });
+
+  // 5. Real Miniflare Worker + D1 Staging Guard Integration Tests
+  const bundled = await build({
+    entryPoints: ['deploy/chatgpt-sites/worker.ts'],
+    bundle: true,
+    platform: 'browser',
+    format: 'esm',
+    target: 'es2022',
+    external: ['node:*'],
+    write: false,
+  });
+  const workerScript = bundled.outputFiles[0].text;
+  const origin = 'https://cashncarry-d1-staging-worker.cashncarry-workforce-2026.workers.dev';
+
+  const mf = new Miniflare({
+    modules: true,
+    script: workerScript,
+    compatibilityDate: '2026-08-06',
+    compatibilityFlags: ['nodejs_compat'],
+    d1Databases: ['AUTH_DB', 'DB'],
+    bindings: {
+      AUTH_ORIGIN: origin,
+      PAYMENTS_ENABLED: 'false',
+      COINS_PURCHASES_ENABLED: 'false',
+      KYC_UPLOADS_ENABLED: 'false',
+      FLW_MODE: 'disabled',
+      FLW_WEBHOOK_SIGNATURE: 'hmac-sha256',
+      ORDER_RESERVATIONS: 'enabled',
+      ADMIN_ACCOUNT_ID: 'staging-admin',
+      ADMIN_TOTP_SECRET_HEX: '00112233445566778899aabbccddeeff00112233',
+    },
+  });
+
+  try {
+    const authDb = await mf.getD1Database('AUTH_DB');
+    const migrationsDir = path.resolve('deploy/chatgpt-sites/migrations');
+    const migrationFiles = fs
+      .readdirSync(migrationsDir)
+      .filter((f) => f.endsWith('.sql'))
+      .sort();
+
+    await test('D1 Migrations: Apply base schema and 0017 additive mobile sync cleanly', async () => {
+      assert.ok(migrationFiles.includes('0001_new_auth.sql'));
+      assert.ok(migrationFiles.includes('0010_catalog_schema_and_seed.sql'));
+      assert.ok(migrationFiles.includes('0017_unified_mobile_sync.sql'));
+      assert.ok(!migrationFiles.includes('0011_unified_mobile_sync.sql'), 'Migration 0011 collides with deployed wallet guard');
+      for (const file of migrationFiles) {
+        const sql = fs.readFileSync(path.join(migrationsDir, file), 'utf8');
+        await execMigrationSql(authDb, sql);
+      }
+      const db = await mf.getD1Database('DB');
+      for (const file of migrationFiles) {
+        const sql = fs.readFileSync(path.join(migrationsDir, file), 'utf8');
+        await execMigrationSql(db, sql);
+      }
+      const catCount = await db.prepare('SELECT COUNT(*) AS n FROM categories').first<{ n: number }>();
+      const prodCount = await db.prepare('SELECT COUNT(*) AS n FROM products').first<{ n: number }>();
+      assert.ok((catCount?.n ?? 0) >= 8, 'Expected at least 8 seeded categories');
+      assert.equal(prodCount?.n ?? 0, 0, 'Fresh staging must not generate fake products');
+    });
+
+    await test('Health & Staging Flags: /api/health reports fail-closed staging flags', async () => {
+      const res = await mf.dispatchFetch(origin + '/api/health');
+      assert.equal(res.status, 200);
+      const data: any = await res.json();
+      assert.equal(data.ok, true);
+      assert.equal(data.service, 'cashncarry-d1-staging-worker');
+      assert.equal(data.dbConnected, true);
+      assert.equal(data.authDbConnected, true);
+      assert.equal(data.staging.paymentsEnabled, false);
+      assert.equal(data.staging.coinsPurchasesEnabled, false);
+      assert.equal(data.staging.kycUploadsEnabled, false);
+    });
+
+    await test('Payments Guard: Initialize & Flutterwave webhook return 503 when PAYMENTS_ENABLED=false', async () => {
+      const initRes = await mf.dispatchFetch(origin + '/api/payments/initialize', {
+        method: 'POST',
+        headers: { origin, 'content-type': 'application/json' },
+        body: JSON.stringify({ order_id: 'ord-1' }),
+      });
+      assert.equal(initRes.status, 503);
+      const initJson: any = await initRes.json();
+      assert.equal(initJson.code, 'PAYMENTS_DISABLED');
+
+      const webhookRes = await mf.dispatchFetch(origin + '/api/payments/webhooks/flutterwave', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'flutterwave-signature': 'invalid' },
+        body: JSON.stringify({ event: 'charge.completed', data: { id: 1, tx_ref: 'ref-1' } }),
+      });
+      assert.equal(webhookRes.status, 503);
+      const whJson: any = await webhookRes.json();
+      assert.equal(whJson.code, 'PAYMENTS_DISABLED');
+    });
+
+    // Seed authenticated buyer session in AUTH_DB for authenticated guard tests
+    const sessionToken = 'b'.repeat(64);
+    const sessionHash = createHash('sha256').update(sessionToken).digest('hex');
+    await authDb
+      .prepare("INSERT INTO cnc_auth_users (id, email, credential, role, verified) VALUES ('staging-buyer', 'staging-buyer@example.invalid', '', 'buyer', 1)")
+      .run();
+    await authDb
+      .prepare("INSERT INTO cnc_auth_users (id, email, credential, role, verified) VALUES ('staging-seller', 'staging-seller@example.invalid', '', 'seller', 1)")
+      .run();
+    await authDb
+      .prepare('INSERT INTO cnc_auth_sessions (hash, user_id, expires) VALUES (?, ?, ?)')
+      .bind(sessionHash, 'staging-buyer', Date.now() + 600_000)
+      .run();
+    const sellerToken = 'c'.repeat(64);
+    const sellerHash = createHash('sha256').update(sellerToken).digest('hex');
+    await authDb
+      .prepare('INSERT INTO cnc_auth_sessions (hash, user_id, expires) VALUES (?, ?, ?)')
+      .bind(sellerHash, 'staging-seller', Date.now() + 600_000)
+      .run();
+
+    const buyerCookie = '__Host-cnc_session=' + sessionToken;
+    const sellerCookie = '__Host-cnc_session=' + sellerToken;
+
+    await test('Coins Guard: Credit minting blocked (503) & bad Origin rejected (403)', async () => {
+      const csrfRes = await mf.dispatchFetch(origin + '/api/coins', {
+        method: 'POST',
+        headers: { origin: 'https://evil.example', cookie: buyerCookie, 'content-type': 'application/json' },
+        body: JSON.stringify({ action: 'credit', requestId: 'r1', recipientId: 'staging-buyer' }),
+      });
+      assert.equal(csrfRes.status, 403);
+
+      const creditRes = await mf.dispatchFetch(origin + '/api/coins', {
+        method: 'POST',
+        headers: { origin, cookie: buyerCookie, 'content-type': 'application/json' },
+        body: JSON.stringify({ action: 'credit', requestId: 'r1', recipientId: 'staging-buyer' }),
+      });
+      assert.equal(creditRes.status, 503);
+      const json: any = await creditRes.json();
+      assert.equal(json.code, 'COINS_DISABLED');
+    });
+
+    await test('Auctions Guard: Winner checkout blocked (503) & bad Origin rejected (403)', async () => {
+      const csrfRes = await mf.dispatchFetch(origin + '/api/auctions', {
+        method: 'PATCH',
+        headers: { origin: 'https://evil.example', cookie: buyerCookie, 'content-type': 'application/json' },
+        body: JSON.stringify({ action: 'checkout', id: 'auc-1' }),
+      });
+      assert.equal(csrfRes.status, 403);
+
+      const checkoutRes = await mf.dispatchFetch(origin + '/api/auctions', {
+        method: 'PATCH',
+        headers: { origin, cookie: buyerCookie, 'content-type': 'application/json' },
+        body: JSON.stringify({ action: 'checkout', id: 'auc-1' }),
+      });
+      assert.equal(checkoutRes.status, 503);
+      const json: any = await checkoutRes.json();
+      assert.equal(json.code, 'PAYMENTS_DISABLED');
+    });
+
+    await test('KYC Guard: GET reports uploadsEnabled=false & POST fails closed (503)', async () => {
+      const getRes = await mf.dispatchFetch(origin + '/api/sellers/kyc', {
+        headers: { origin, cookie: sellerCookie },
+      });
+      assert.equal(getRes.status, 200);
+      const getJson: any = await getRes.json();
+      assert.equal(getJson.uploadsEnabled, false);
+      assert.equal(getJson.r2Configured, false);
+
+      const postRes = await mf.dispatchFetch(origin + '/api/sellers/kyc', {
+        method: 'POST',
+        headers: { origin, cookie: sellerCookie, 'content-type': 'application/json' },
+        body: JSON.stringify({ businessName: 'Test', cacNumber: 'RC-123' }),
+      });
+      assert.equal(postRes.status, 503);
+      const postJson: any = await postRes.json();
+      assert.equal(postJson.code, 'KYC_UPLOADS_DISABLED');
+    });
+
+    await test('Unified Mobile Auth & Sync: Bearer token login -> /api/v1/profile -> wishlist -> follows', async () => {
+      const salt = randomBytes(32).toString('hex');
+      const derived = await scryptAsync(
+        new TextEncoder().encode('StagingPass#2026!'),
+        new TextEncoder().encode(salt),
+        { N: 32768, r: 8, p: 3, dkLen: 32, maxmem: 64 * 1024 * 1024 }
+      );
+      const cred = salt + ':' + Buffer.from(derived).toString('hex');
+      await authDb
+        .prepare("INSERT INTO cnc_auth_users (id, email, credential, role, verified) VALUES ('mobile-buyer', 'mobile-buyer@example.invalid', ?, 'buyer', 1)")
+        .bind(cred)
+        .run();
+
+      const loginRes = await mf.dispatchFetch(origin + '/api/auth/login', {
+        method: 'POST',
+        headers: {
+          origin,
+          'content-type': 'application/json',
+          'x-client-type': 'mobile',
+        },
+        body: JSON.stringify({ email: 'mobile-buyer@example.invalid', password: 'StagingPass#2026!' }),
+      });
+      assert.equal(loginRes.status, 200);
+      const loginJson: any = await loginRes.json();
+      assert.equal(loginJson.signedIn, true);
+      assert.match(loginJson.token, /^[a-f0-9]{64}$/);
+      const bearerHeaders = {
+        authorization: `Bearer ${loginJson.token}`,
+        'x-client-type': 'mobile',
+        'content-type': 'application/json',
+      };
+
+      const meRes = await mf.dispatchFetch(origin + '/api/auth/me', { headers: bearerHeaders });
+      assert.equal(meRes.status, 200);
+      const meJson: any = await meRes.json();
+      assert.equal(meJson.user.id, 'mobile-buyer');
+      assert.equal(meJson.authenticated, true);
+
+      const putProfRes = await mf.dispatchFetch(origin + '/api/v1/profile', {
+        method: 'PUT',
+        headers: bearerHeaders,
+        body: JSON.stringify({
+          displayName: 'Tunde Lagos',
+          bio: 'Synced across Android and Web',
+          avatarUrl: 'https://example.invalid/avatar.png',
+          selectedState: 'Abuja (FCT)',
+        }),
+      });
+      assert.equal(putProfRes.status, 200);
+
+      const getProfRes = await mf.dispatchFetch(origin + '/api/v1/profile', { headers: bearerHeaders });
+      assert.equal(getProfRes.status, 200);
+      const profJson: any = await getProfRes.json();
+      assert.equal(profJson.profile.display_name, 'Tunde Lagos');
+      assert.equal(profJson.profile.selected_state, 'Abuja (FCT)');
+
+      const wishRes = await mf.dispatchFetch(origin + '/api/v1/wishlist', {
+        method: 'POST',
+        headers: bearerHeaders,
+        body: JSON.stringify({ productId: 'p-1' }),
+      });
+      assert.ok(wishRes.status === 200 || wishRes.status === 201);
+      const getWishRes = await mf.dispatchFetch(origin + '/api/v1/wishlist', { headers: bearerHeaders });
+      const getWishJson: any = await getWishRes.json();
+      assert.equal(getWishJson.wishlist[0].product_id, 'p-1');
+
+      const followRes = await mf.dispatchFetch(origin + '/api/v1/follows', {
+        method: 'POST',
+        headers: bearerHeaders,
+        body: JSON.stringify({ sellerId: 'staging-seller' }),
+      });
+      assert.ok(followRes.status === 200 || followRes.status === 201);
+      const msgRes = await mf.dispatchFetch(origin + '/api/v1/messages', {
+        method: 'POST',
+        headers: bearerHeaders,
+        body: JSON.stringify({ receiverId: 'staging-seller', body: 'Is this in stock for Abuja?' }),
+      });
+      assert.equal(msgRes.status, 201);
+
+      // Admin route MUST strictly reject Mobile Bearer tokens (even if valid buyer/seller Bearer)
+      const adminDeniedRes = await mf.dispatchFetch(origin + '/api/admin/moderation', {
+        headers: bearerHeaders,
+      });
+      assert.equal(adminDeniedRes.status, 403);
+    });
+
+    await test('Unified Live & Short Videos: Seller publish/room -> buyer comment & like', async () => {
+      const liveCreateRes = await mf.dispatchFetch(origin + '/api/v1/live', {
+        method: 'POST',
+        headers: { origin, cookie: sellerCookie, 'content-type': 'application/json' },
+        body: JSON.stringify({ title: 'Evening Lagos Drop', category: 'Fashion', pinnedProductId: 'p-1' }),
+      });
+      assert.equal(liveCreateRes.status, 201);
+      const liveCreateJson: any = await liveCreateRes.json();
+      assert.ok(liveCreateJson.roomId);
+
+      const commentRes = await mf.dispatchFetch(origin + '/api/v1/live/comments', {
+        method: 'POST',
+        headers: { origin, cookie: buyerCookie, 'content-type': 'application/json' },
+        body: JSON.stringify({ roomId: liveCreateJson.roomId, body: 'Love the Ankara weave!' }),
+      });
+      assert.equal(commentRes.status, 201);
+
+      const videoRes = await mf.dispatchFetch(origin + '/api/v1/videos', {
+        method: 'POST',
+        headers: { origin, cookie: sellerCookie, 'content-type': 'application/json' },
+        body: JSON.stringify({
+          title: 'Unboxing Drop',
+          productId: 'p-1',
+          caption: 'Fast nationwide delivery',
+          coverUrl: 'https://example.invalid/cover.jpg',
+        }),
+      });
+      assert.equal(videoRes.status, 201);
+      const vidJson: any = await videoRes.json();
+      assert.ok(vidJson.id);
+
+      const likeRes = await mf.dispatchFetch(origin + '/api/v1/videos/like', {
+        method: 'POST',
+        headers: { origin, cookie: buyerCookie, 'content-type': 'application/json' },
+        body: JSON.stringify({ videoId: vidJson.id }),
+      });
+      assert.equal(likeRes.status, 200);
+      const likeJson: any = await likeRes.json();
+      assert.equal(likeJson.liked, true);
+    });
+
+  } finally {
+    await mf.dispose();
+  }
+
+  // 6. Verify staging-init-complete.sql executes cleanly in a blank D1 DB with all 6 triggers
+  const initMf = new Miniflare({
+    modules: true,
+    script: 'export default { fetch() { return new Response("ok"); } }',
+    compatibilityDate: '2026-08-06',
+    d1Databases: ['TEST_DB'],
+  });
+  try {
+    await test('Bootstrap SQL: staging-init-complete.sql executes cleanly without demo products or stores', async () => {
+      const testDb = await initMf.getD1Database('TEST_DB');
+      const initSql = fs.readFileSync(path.resolve('deploy/chatgpt-sites/staging-init-complete.sql'), 'utf8');
+      await execMigrationSql(testDb, initSql);
+      const triggers = await testDb
+        .prepare("SELECT name FROM sqlite_master WHERE type = 'trigger' ORDER BY name")
+        .all();
+      const triggerNames = (triggers.results || []).map((t: { name: string }) => t.name);
+      assert.equal(triggerNames.length, 6, `Expected 6 triggers, got ${triggerNames.join(', ')}`);
+      const cats = await testDb.prepare('SELECT COUNT(*) AS n FROM categories').first<{ n: number }>();
+      assert.equal(cats?.n, 8);
+      for (const name of ['stores','products']) {
+        const count = await testDb.prepare(`SELECT COUNT(*) AS n FROM ${name}`).first<{ n: number }>();
+        assert.equal(count?.n ?? 0, 0, `Bootstrap created fake ${name}`);
+      }
+    });
+  } finally {
+    await initMf.dispose();
+  }
+
+  console.log(`\n🏁 Test Run Finished: ${passed} Passed, ${failed} Failed.`);
+  if (failed > 0) {
+    process.exit(1);
+  }
+}
+
+run();

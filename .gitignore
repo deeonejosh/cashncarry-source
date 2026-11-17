@@ -1,0 +1,32 @@
+# Credentials and device keys
+.env
+.env.*
+!.env.example
+*.jks
+*.keystore
+*service-account*.json
+*.pem
+*.key
+# Local databases
+*.sqlite
+*.sqlite3
+*.db
+*.db-wal
+*.db-shm
+# Build outputs, caches and generated artifacts
+node_modules/
+web/node_modules/
+web/dist/
+dist/
+.gradle/
+**/build/
+.kotlin/
+.idea/
+.vscode/
+*.apk
+*.aab
+*.zip
+__pycache__/
+*.pyc
+.wrangler/
+.DS_Store

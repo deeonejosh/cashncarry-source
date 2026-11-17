@@ -1,0 +1,561 @@
+import {
+  currentAccount,
+  hasValidMutationOrigin,
+  readBody,
+  type AuthEnvironment,
+} from './new-auth';
+
+const json = (data: unknown, status = 200) =>
+  Response.json(data, { status, headers: { 'cache-control': 'no-store' } });
+
+const text = (v: unknown, maxLen = 400): string =>
+  typeof v === 'string' ? v.trim().slice(0, maxLen) : '';
+
+function stripApiPrefix(pathname: string): string {
+  if (pathname.startsWith('/api/v1/')) return pathname.slice('/api/v1'.length);
+  if (pathname.startsWith('/api/')) return pathname.slice('/api'.length);
+  return pathname;
+}
+
+export async function unifiedSyncRoute(
+  request: Request,
+  env: AuthEnvironment
+): Promise<Response | null> {
+  const url = new URL(request.url);
+  if (!url.pathname.startsWith('/api/')) return null;
+
+  const route = stripApiPrefix(url.pathname);
+  const supported = new Set([
+    '/profile',
+    '/addresses',
+    '/wishlist',
+    '/follows',
+    '/videos',
+    '/videos/like',
+    '/videos/comments',
+    '/live',
+    '/live/comments',
+    '/messages',
+    '/notifications',
+    '/reviews',
+    '/seller/orders',
+    '/seller/orders/fulfil',
+  ]);
+  if (!supported.has(route)) return null;
+
+  const db = env.AUTH_DB;
+  if (!db) return json({ error: 'Database unavailable' }, 503);
+
+  const account = await currentAccount(request, env);
+
+  // Public GET endpoints (videos feed, active live rooms, product reviews)
+  if (request.method === 'GET') {
+    if (route === '/videos') {
+      const { results } = await db
+        .prepare(
+          `SELECT id, seller_id, seller_name, product_id, title, caption, video_url, cover_url, likes_count, comments_count, created
+           FROM cnc_short_videos ORDER BY created DESC LIMIT 50`
+        )
+        .all();
+      return json({ videos: results ?? [] });
+    }
+
+    if (route === '/videos/comments') {
+      const videoId = text(url.searchParams.get('video_id'), 128);
+      if (!videoId) return json({ error: 'video_id required' }, 400);
+      const { results } = await db
+        .prepare(
+          `SELECT id, video_id, user_id, author_name, body, created
+           FROM cnc_video_comments WHERE video_id = ? ORDER BY created DESC LIMIT 50`
+        )
+        .bind(videoId)
+        .all();
+      return json({ comments: results ?? [] });
+    }
+
+    if (route === '/live') {
+      const { results } = await db
+        .prepare(
+          `SELECT room_id, seller_id, seller_name, title, category, status, viewer_count, hearts_count, pinned_product_id, stream_url, created
+           FROM cnc_live_room_state ORDER BY (CASE WHEN status='live' THEN 0 ELSE 1 END), created DESC LIMIT 30`
+        )
+        .all();
+      return json({ rooms: results ?? [] });
+    }
+
+    if (route === '/live/comments') {
+      const roomId = text(url.searchParams.get('room_id'), 128);
+      if (!roomId) return json({ error: 'room_id required' }, 400);
+      const { results } = await db
+        .prepare(
+          `SELECT id, room_id, user_id, author_name, body, is_reaction, created
+           FROM cnc_live_comments WHERE room_id = ? ORDER BY created DESC LIMIT 60`
+        )
+        .bind(roomId)
+        .all();
+      return json({ comments: results ?? [] });
+    }
+
+    if (route === '/reviews') {
+      const productId = text(url.searchParams.get('product_id'), 128);
+      if (!productId) return json({ error: 'product_id required' }, 400);
+      const { results } = await db
+        .prepare(
+          `SELECT id, product_id, user_id, author_name, rating, comment, created
+           FROM cnc_product_reviews_buyer WHERE product_id = ? ORDER BY created DESC LIMIT 50`
+        )
+        .bind(productId)
+        .all();
+      return json({ reviews: results ?? [] });
+    }
+
+    // Authenticated GET routes below
+    if (!account) return json({ error: 'Sign-in required' }, 401);
+
+    if (route === '/profile') {
+      const profile = await db
+        .prepare(
+          `SELECT p.user_id, COALESCE(NULLIF(p.display_name, ''), u.email) AS display_name,
+                  p.bio, p.avatar_url, COALESCE(NULLIF(p.selected_state, ''), 'Lagos') AS selected_state,
+                  u.email, u.role, p.updated_at
+           FROM cnc_auth_users u
+           LEFT JOIN cnc_user_profiles p ON p.user_id = u.id
+           WHERE u.id = ?`
+        )
+        .bind(account.id)
+        .first();
+      return json({
+        profile: profile ?? {
+          user_id: account.id,
+          display_name: account.email,
+          bio: '',
+          avatar_url: '',
+          selected_state: 'Lagos',
+          email: account.email,
+          role: account.role,
+        },
+      });
+    }
+
+    if (route === '/addresses') {
+      const { results } = await db
+        .prepare(
+          `SELECT id, recipient, line, city, state FROM cnc_buyer_addresses WHERE user_id = ? ORDER BY rowid DESC LIMIT 20`
+        )
+        .bind(account.id)
+        .all();
+      return json({ addresses: results ?? [] });
+    }
+
+    if (route === '/wishlist') {
+      const { results } = await db
+        .prepare(`SELECT product_id, created FROM cnc_wishlist WHERE user_id = ? ORDER BY created DESC LIMIT 100`)
+        .bind(account.id)
+        .all();
+      return json({ wishlist: results ?? [] });
+    }
+
+    if (route === '/follows') {
+      const { results } = await db
+        .prepare(`SELECT seller_id, created FROM cnc_seller_follows WHERE follower_id = ? ORDER BY created DESC LIMIT 200`)
+        .bind(account.id)
+        .all();
+      return json({ following: results ?? [] });
+    }
+
+    if (route === '/messages') {
+      const { results } = await db
+        .prepare(
+          `SELECT id, sender_id, receiver_id, order_id, product_id, body, read_at, created
+           FROM cnc_messages
+           WHERE sender_id = ? OR receiver_id = ?
+           ORDER BY created DESC LIMIT 100`
+        )
+        .bind(account.id, account.id)
+        .all();
+      return json({ messages: results ?? [] });
+    }
+
+    if (route === '/notifications') {
+      const { results } = await db
+        .prepare(
+          `SELECT id, user_id, title, body, kind, read_at, created
+           FROM cnc_notifications WHERE user_id = ? ORDER BY created DESC LIMIT 60`
+        )
+        .bind(account.id)
+        .all();
+      return json({ notifications: results ?? [] });
+    }
+
+    if (route === '/seller/orders') {
+      if (account.role !== 'seller') return json({ error: 'Seller access required' }, 403);
+      const { results } = await db
+        .prepare(
+          `SELECT o.id, o.buyer, o.status, o.delivery_address, o.created,
+                  COALESCE(f.status, 'processing') AS fulfilment_status,
+                  COALESCE(f.carrier, 'GIG Logistics') AS carrier,
+                  COALESCE(f.tracking_number, '') AS tracking_number,
+                  SUM(i.quantity * i.price_minor) AS total_minor
+           FROM cnc_orders o
+           JOIN cnc_order_items i ON i.order_id = o.id
+           LEFT JOIN cnc_order_fulfilments f ON f.order_id = o.id
+           WHERE i.seller = ?
+           GROUP BY o.id
+           ORDER BY o.created DESC LIMIT 50`
+        )
+        .bind(account.id)
+        .all();
+      return json({ orders: results ?? [] });
+    }
+
+    return json({ error: 'Method not allowed' }, 405);
+  }
+
+  // All mutating routes require auth + Origin or authenticated Mobile Bearer header
+  if (!account) return json({ error: 'Sign-in required' }, 401);
+  if (!hasValidMutationOrigin(request, env)) {
+    return json({ error: 'Invalid request origin' }, 403);
+  }
+
+  let body: Record<string, unknown> = {};
+  try {
+    body = await readBody(request);
+  } catch {
+    return json({ error: 'Invalid JSON body' }, 400);
+  }
+
+  const now = Math.floor(Date.now() / 1000);
+
+  if (route === '/profile' && (request.method === 'PUT' || request.method === 'POST')) {
+    const displayName = text(body.displayName ?? body.display_name, 80);
+    const bio = text(body.bio, 240);
+    const avatarUrl = text(body.avatarUrl ?? body.avatar_url, 400);
+    const selectedState = text(body.selectedState ?? body.selected_state, 60) || 'Lagos';
+    if (!displayName) return json({ error: 'displayName is required' }, 400);
+    await db
+      .prepare(
+        `INSERT INTO cnc_user_profiles (user_id, display_name, bio, avatar_url, selected_state, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?)
+         ON CONFLICT(user_id) DO UPDATE SET
+           display_name = excluded.display_name,
+           bio = excluded.bio,
+           avatar_url = excluded.avatar_url,
+           selected_state = excluded.selected_state,
+           updated_at = excluded.updated_at`
+      )
+      .bind(account.id, displayName, bio, avatarUrl, selectedState, now)
+      .run();
+    return json({
+      updated: true,
+      profile: {
+        user_id: account.id,
+        display_name: displayName,
+        bio,
+        avatar_url: avatarUrl,
+        selected_state: selectedState,
+        email: account.email,
+        role: account.role,
+      },
+    });
+  }
+
+  if (route === '/addresses') {
+    if (request.method === 'POST') {
+      const recipient = text(body.recipient, 100);
+      const line = text(body.line, 240);
+      const city = text(body.city, 100);
+      const state = text(body.state, 100);
+      if (!recipient || !line || !city || !state) {
+        return json({ error: 'recipient, line, city, and state are required' }, 400);
+      }
+      const id = crypto.randomUUID();
+      await db
+        .prepare(`INSERT INTO cnc_buyer_addresses (id, user_id, recipient, line, city, state) VALUES (?, ?, ?, ?, ?, ?)`)
+        .bind(id, account.id, recipient, line, city, state)
+        .run();
+      return json({ address: { id, recipient, line, city, state } }, 201);
+    }
+    if (request.method === 'DELETE') {
+      const id = text(body.id, 128);
+      if (!id) return json({ error: 'id required' }, 400);
+      await db
+        .prepare(`DELETE FROM cnc_buyer_addresses WHERE id = ? AND user_id = ?`)
+        .bind(id, account.id)
+        .run();
+      return json({ deleted: true });
+    }
+  }
+
+  if (route === '/wishlist' && request.method === 'POST') {
+    const productId = text(body.productId ?? body.product_id, 128);
+    if (!productId) return json({ error: 'productId required' }, 400);
+    const existing = await db
+      .prepare(`SELECT product_id FROM cnc_wishlist WHERE user_id = ? AND product_id = ?`)
+      .bind(account.id, productId)
+      .first();
+    if (existing) {
+      await db
+        .prepare(`DELETE FROM cnc_wishlist WHERE user_id = ? AND product_id = ?`)
+        .bind(account.id, productId)
+        .run();
+      return json({ wishlisted: false, productId });
+    }
+    await db
+      .prepare(`INSERT INTO cnc_wishlist (user_id, product_id, created) VALUES (?, ?, ?)`)
+      .bind(account.id, productId, now)
+      .run();
+    return json({ wishlisted: true, productId }, 201);
+  }
+
+  if (route === '/follows' && request.method === 'POST') {
+    const sellerId = text(body.sellerId ?? body.seller_id, 128);
+    if (!sellerId) return json({ error: 'sellerId required' }, 400);
+    const existing = await db
+      .prepare(`SELECT seller_id FROM cnc_seller_follows WHERE follower_id = ? AND seller_id = ?`)
+      .bind(account.id, sellerId)
+      .first();
+    if (existing) {
+      await db
+        .prepare(`DELETE FROM cnc_seller_follows WHERE follower_id = ? AND seller_id = ?`)
+        .bind(account.id, sellerId)
+        .run();
+      return json({ following: false, sellerId });
+    }
+    await db
+      .prepare(`INSERT INTO cnc_seller_follows (follower_id, seller_id, created) VALUES (?, ?, ?)`)
+      .bind(account.id, sellerId, now)
+      .run();
+    return json({ following: true, sellerId }, 201);
+  }
+
+  if (route === '/videos' && request.method === 'POST') {
+    const title = text(body.title, 160);
+    const productId = text(body.productId ?? body.product_id, 128);
+    const caption = text(body.caption, 280);
+    const coverUrl = text(body.coverUrl ?? body.cover_url, 400);
+    const videoUrl = text(body.videoUrl ?? body.video_url, 400);
+    if (!title || !productId) return json({ error: 'title and productId required' }, 400);
+    if (videoUrl && !videoUrl.startsWith('https://')) {
+      return json({ error: 'videoUrl must be https://' }, 400);
+    }
+    const id = crypto.randomUUID();
+    const prof = await db
+      .prepare(`SELECT display_name FROM cnc_user_profiles WHERE user_id = ?`)
+      .bind(account.id)
+      .first<{ display_name: string }>();
+    const sellerName = prof?.display_name || account.email.split('@')[0];
+    await db
+      .prepare(
+        `INSERT INTO cnc_short_videos (id, seller_id, seller_name, product_id, title, caption, video_url, cover_url, created)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      )
+      .bind(id, account.id, sellerName, productId, title, caption, videoUrl, coverUrl, now)
+      .run();
+    return json({ success: true, id }, 201);
+  }
+
+  if (route === '/videos/like' && request.method === 'POST') {
+    const videoId = text(body.videoId ?? body.video_id, 128);
+    if (!videoId) return json({ error: 'videoId required' }, 400);
+    const existing = await db
+      .prepare(`SELECT video_id FROM cnc_video_likes WHERE video_id = ? AND user_id = ?`)
+      .bind(videoId, account.id)
+      .first();
+    if (!existing) {
+      await db.batch([
+        db.prepare(`INSERT INTO cnc_video_likes (video_id, user_id, created) VALUES (?, ?, ?)`).bind(videoId, account.id, now),
+        db.prepare(`UPDATE cnc_short_videos SET likes_count = likes_count + 1 WHERE id = ?`).bind(videoId),
+      ]);
+    }
+    return json({ liked: true, videoId });
+  }
+
+  if (route === '/videos/comments' && request.method === 'POST') {
+    const videoId = text(body.videoId ?? body.video_id, 128);
+    const commentBody = text(body.body ?? body.text, 300);
+    if (!videoId || !commentBody) return json({ error: 'videoId and body required' }, 400);
+    const id = crypto.randomUUID();
+    const authorName = account.email.split('@')[0];
+    await db.batch([
+      db
+        .prepare(
+          `INSERT INTO cnc_video_comments (id, video_id, user_id, author_name, body, created) VALUES (?, ?, ?, ?, ?, ?)`
+        )
+        .bind(id, videoId, account.id, authorName, commentBody, now),
+      db.prepare(`UPDATE cnc_short_videos SET comments_count = comments_count + 1 WHERE id = ?`).bind(videoId),
+    ]);
+    return json({ success: true, id }, 201);
+  }
+
+  if (route === '/live') {
+    if (request.method === 'POST') {
+      if (account.role !== 'seller') return json({ error: 'Seller role required to start broadcast' }, 403);
+      const title = text(body.title, 160);
+      const category = text(body.category, 60) || 'Fashion';
+      const pinnedProductId = text(body.pinnedProductId ?? body.pinned_product_id, 128);
+      if (!title) return json({ error: 'Stream title required' }, 400);
+      const roomId = crypto.randomUUID();
+      const prof = await db
+        .prepare(`SELECT name FROM cnc_seller_stores WHERE owner = ?`)
+        .bind(account.id)
+        .first<{ name: string }>();
+      const sellerName = prof?.name || account.email.split('@')[0];
+      await db
+        .prepare(
+          `INSERT INTO cnc_live_room_state (room_id, seller_id, seller_name, title, category, status, pinned_product_id, created)
+           VALUES (?, ?, ?, ?, ?, 'live', ?, ?)`
+        )
+        .bind(roomId, account.id, sellerName, title, category, pinnedProductId, now)
+        .run();
+      return json({ success: true, roomId }, 201);
+    }
+
+    if (request.method === 'PATCH') {
+      const roomId = text(body.roomId ?? body.room_id, 128);
+      const action = text(body.action, 40);
+      if (!roomId || !['pin', 'end', 'like', 'join'].includes(action)) {
+        return json({ error: 'Valid roomId and action required' }, 400);
+      }
+      if (action === 'like') {
+        await db.prepare(`UPDATE cnc_live_room_state SET hearts_count = hearts_count + 1 WHERE room_id = ?`).bind(roomId).run();
+        return json({ success: true });
+      }
+      if (action === 'join') {
+        await db.prepare(`UPDATE cnc_live_room_state SET viewer_count = viewer_count + 1 WHERE room_id = ? AND status = 'live'`).bind(roomId).run();
+        return json({ success: true });
+      }
+      const room = await db.prepare(`SELECT seller_id FROM cnc_live_room_state WHERE room_id = ?`).bind(roomId).first<{ seller_id: string }>();
+      if (!room || room.seller_id !== account.id) return json({ error: 'Host authorization required' }, 403);
+      if (action === 'pin') {
+        const pinnedId = text(body.pinnedProductId ?? body.pinned_product_id, 128);
+        await db.prepare(`UPDATE cnc_live_room_state SET pinned_product_id = ? WHERE room_id = ?`).bind(pinnedId, roomId).run();
+        return json({ success: true });
+      }
+      if (action === 'end') {
+        await db.prepare(`UPDATE cnc_live_room_state SET status = 'ended', ended_at = ? WHERE room_id = ?`).bind(now, roomId).run();
+        return json({ success: true, status: 'ended' });
+      }
+    }
+  }
+
+  if (route === '/live/comments' && request.method === 'POST') {
+    const roomId = text(body.roomId ?? body.room_id, 128);
+    const commentBody = text(body.body ?? body.text, 300);
+    if (!roomId || !commentBody) return json({ error: 'roomId and body required' }, 400);
+    const id = crypto.randomUUID();
+    const authorName = account.email.split('@')[0];
+    await db
+      .prepare(
+        `INSERT INTO cnc_live_comments (id, room_id, user_id, author_name, body, is_reaction, created) VALUES (?, ?, ?, ?, ?, 0, ?)`
+      )
+      .bind(id, roomId, account.id, authorName, commentBody, now)
+      .run();
+    return json({ success: true, id }, 201);
+  }
+
+  if (route === '/messages') {
+    if (request.method === 'POST') {
+      const receiverId = text(body.receiverId ?? body.receiver_id, 128);
+      const msgBody = text(body.body ?? body.content, 500);
+      const orderId = text(body.orderId ?? body.order_id, 128);
+      const productId = text(body.productId ?? body.product_id, 128);
+      if (!receiverId || !msgBody) return json({ error: 'receiverId and body required' }, 400);
+      const recipient = await db
+        .prepare(`SELECT id FROM cnc_auth_users WHERE id = ? AND suspended = 0`)
+        .bind(receiverId)
+        .first();
+      if (!recipient) return json({ error: 'Recipient not found' }, 404);
+      const id = crypto.randomUUID();
+      await db.batch([
+        db
+          .prepare(
+            `INSERT INTO cnc_messages (id, sender_id, receiver_id, order_id, product_id, body, created) VALUES (?, ?, ?, ?, ?, ?, ?)`
+          )
+          .bind(id, account.id, receiverId, orderId, productId, msgBody, now),
+        db
+          .prepare(
+            `INSERT INTO cnc_notifications (id, user_id, title, body, kind, created) VALUES (?, ?, 'New message', ?, 'system', ?)`
+          )
+          .bind(crypto.randomUUID(), receiverId, msgBody.slice(0, 120), now),
+      ]);
+      return json({ success: true, id }, 201);
+    }
+    if (request.method === 'PATCH') {
+      const id = text(body.id, 128);
+      if (!id) return json({ error: 'id required' }, 400);
+      await db
+        .prepare(`UPDATE cnc_messages SET read_at = ? WHERE id = ? AND receiver_id = ?`)
+        .bind(now, id, account.id)
+        .run();
+      return json({ updated: true });
+    }
+  }
+
+  if (route === '/notifications' && request.method === 'PATCH') {
+    await db
+      .prepare(`UPDATE cnc_notifications SET read_at = ? WHERE user_id = ? AND read_at IS NULL`)
+      .bind(now, account.id)
+      .run();
+    return json({ updated: true });
+  }
+
+  if (route === '/reviews' && request.method === 'POST') {
+    const productId = text(body.productId ?? body.product_id, 128);
+    const rating = Number(body.rating);
+    const comment = text(body.comment, 350);
+    if (!productId || !Number.isInteger(rating) || rating < 1 || rating > 5 || !comment) {
+      return json({ error: 'Valid productId, rating (1-5), and comment required' }, 400);
+    }
+    const id = crypto.randomUUID();
+    await db
+      .prepare(
+        `INSERT INTO cnc_product_reviews_buyer (id, product_id, user_id, author_name, rating, comment, created) VALUES (?, ?, ?, ?, ?, ?, ?)`
+      )
+      .bind(id, productId, account.id, account.email.split('@')[0], rating, comment, now)
+      .run();
+    return json({ success: true, id }, 201);
+  }
+
+  if (route === '/seller/orders/fulfil' && request.method === 'POST') {
+    if (account.role !== 'seller') return json({ error: 'Seller access required' }, 403);
+    const orderId = text(body.orderId ?? body.order_id, 128);
+    const status = text(body.status, 30);
+    const carrier = text(body.carrier, 80) || 'GIG Logistics';
+    const trackingNumber = text(body.trackingNumber ?? body.tracking_number, 100);
+    if (!orderId || !['processing', 'packed', 'shipped', 'delivered'].includes(status)) {
+      return json({ error: 'Valid orderId and fulfilment status required' }, 400);
+    }
+    const ownsItem = await db
+      .prepare(`SELECT o.buyer FROM cnc_orders o JOIN cnc_order_items i ON i.order_id = o.id WHERE o.id = ? AND i.seller = ? LIMIT 1`)
+      .bind(orderId, account.id)
+      .first<{ buyer: string }>();
+    if (!ownsItem) return json({ error: 'Order not found for seller' }, 404);
+    await db.batch([
+      db
+        .prepare(
+          `INSERT INTO cnc_order_fulfilments (order_id, seller_id, status, carrier, tracking_number, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?)
+           ON CONFLICT(order_id) DO UPDATE SET
+             status = excluded.status,
+             carrier = excluded.carrier,
+             tracking_number = excluded.tracking_number,
+             updated_at = excluded.updated_at`
+        )
+        .bind(orderId, account.id, status, carrier, trackingNumber, now),
+      db
+        .prepare(
+          `INSERT INTO cnc_notifications (id, user_id, title, body, kind, created)
+           VALUES (?, ?, 'Order update', ?, 'order', ?)`
+        )
+        .bind(
+          crypto.randomUUID(),
+          ownsItem.buyer,
+          `Order ${orderId.slice(0, 8)} marked ${status}${trackingNumber ? ` (${carrier}: ${trackingNumber})` : ''}`,
+          now
+        ),
+    ]);
+    return json({ updated: true, orderId, status, carrier, trackingNumber });
+  }
+
+  return json({ error: 'Method not allowed' }, 405);
+}

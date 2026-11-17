@@ -1,0 +1,79 @@
+name: Existing private Cash N Carry staging - build-only verification
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check existing staging bindings and Android API separation
+        run: python3 -m unittest discover -s scripts -p 'test_existing_private_staging.py' -v
+  web:
+    needs: source-contract
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps --no-audit --no-fund
+      - name: Customer UI / navigation audit
+        run: npm run audit:customer-ui
+      - name: Type-check
+        run: npm run lint
+      - name: Run web automated tests
+        run: npm test
+      - name: Build new web app
+        run: npm run build
+      - name: Verify browser-ready assets contain no QA or ZIP exports
+        run: python3 scripts/audit_customer_ui.py --dist
+      - name: Bundle and smoke-test Cloudflare API
+        run: |
+          npm run bundle:worker
+          node deploy/chatgpt-sites/worker-smoke.mjs
+          node deploy/chatgpt-sites/new-auth-smoke.mjs
+      - name: Install test Chromium
+        run: npx playwright-core install --with-deps chromium
+      - name: Browser smoke - all 26 tabs and essential controls (desktop + mobile)
+        run: node scripts/verify-staging-browser.mjs
+      - name: Remove test bundle from public assets
+        run: rm -f dist/_worker.js
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cashncarry-private-staging-web-dist
+          path: web/dist
+          if-no-files-found: error
+          retention-days: 7
+  android:
+    needs: [source-contract, web]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.3.1'
+      - uses: android-actions/setup-android@v3
+      - name: Set up disposable debug signer (test-only)
+        run: bash scripts/create-staging-debug-keystore.sh
+      - name: Build and test Android staging app
+        env:
+          CNC_API_BASE_URL: https://cashncarry-mobile-staging-api.cashncarry-workforce-2026.workers.dev
+        run: gradle :app:testDebugUnitTest :app:assembleDebug --no-daemon --stacktrace
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cashncarry-private-staging-android-debug-apk
+          path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 14

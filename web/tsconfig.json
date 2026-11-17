@@ -1,0 +1,46 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "experimentalDecorators": true,
+    "useDefineForClassFields": false,
+    "module": "ESNext",
+    "types": ["vite/client"],
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "allowJs": true,
+    "jsx": "react-jsx",
+    "paths": {
+      "@/*": [
+        "./*"
+      ]
+    },
+    "allowImportingTsExtensions": true,
+    "noEmit": true
+  },
+  "exclude": [
+    "dist",
+    "deploy",
+    "merged-cash-n-carry",
+    "src/lib/__tests__",
+    "src/lib/prisma.ts",
+    "src/lib/withAuth.ts",
+    "src/lib/auth-throttle.ts",
+    "src/lib/auth.ts",
+    "src/lib/catalog.ts",
+    "src/lib/event-broker.ts",
+    "src/lib/flash-deals.ts",
+    "src/lib/gateway-refunds.ts",
+    "src/lib/kyc-object-storage.ts",
+    "src/lib/page-auth.ts",
+    "src/lib/payout-accounting.ts",
+    "src/lib/reconcile-payment.ts",
+    "src/lib/reservations.ts"
+  ]
+}
