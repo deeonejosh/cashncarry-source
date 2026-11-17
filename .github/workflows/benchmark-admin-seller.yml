@@ -1,0 +1,43 @@
+name: Cash N Carry Admin Seller workflow benchmark
+on:
+  push:
+    branches:
+      - fix/staging-admin-seller-benchmark-20261117
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: cnc-admin-seller-benchmark
+  cancel-in-progress: true
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+      - name: TypeScript check
+        run: npm run lint
+      - name: Database-backed integration and security regressions
+        run: npm test
+      - name: Vite production frontend build
+        run: npm run build
+      - name: Upload benchmark logs and artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cnc-admin-seller-benchmark-evidence
+          path: |
+            web/reports/benchmark/
+            web/dist/
+          if-no-files-found: warn
+          retention-days: 14
