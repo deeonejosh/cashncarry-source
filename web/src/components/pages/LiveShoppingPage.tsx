@@ -44,6 +44,7 @@ export default function LiveShoppingPage({
     addLiveComment,
     addToCart,
     sendCoinGift,
+    showToast,
   } = useStore();
 
   const activeRooms = liveRooms.filter((r) => r.status === 'live');
@@ -285,7 +286,7 @@ export default function LiveShoppingPage({
                   type="button"
                   onClick={async () => {
                     const result = await endLiveRoom(activeRoom.id);
-                    if (!result.ok) setPinModalOpen(false);
+                    if (!result.ok) showToast(result.error || 'Could not end the stream.', 'error');
                   }}
                   className="rounded-xl bg-rose-600 px-3.5 py-2 text-xs font-black text-white hover:bg-rose-700"
                 >
@@ -380,6 +381,7 @@ export default function LiveShoppingPage({
                     onClick={async () => {
                       const result = await pinLiveProduct(activeRoom.id, p.id);
                       if (result.ok) setPinModalOpen(false);
+                      else showToast(result.error || 'Could not pin this product.', 'error');
                     }}
                     className="w-full flex items-center justify-between rounded-xl border border-slate-200 p-3 text-left hover:bg-emerald-50 text-xs"
                   >
