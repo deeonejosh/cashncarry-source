@@ -8,11 +8,26 @@
 
 ## Release decision
 
-**Source changes committed; new UI build NOT deployed to Cloudflare staging.** The existing private Worker is unchanged. Production, DNS, production databases and all payment settings were not modified. The final web screenshot regression PASSED on the last source commit. The release gate still requires safe alignment of the GitHub Vite build with the currently deployed manually assembled KV-backed Worker, plus authenticated private Access verification. Android builds remain blocked by incomplete Gradle source configuration. Do not claim that the CI-rendered screenshots are screenshots of an updated hosted staging deployment.
+**Web UI source deployed to the existing private Cloudflare staging Worker on 17 November 2026 at 09:12 UTC.** The deployed release comes from GitHub commit `c35f73218e8a868fcfcd3dbed6e045aa11517b46` (UI components last updated in parent `39b11ce...`). Deployed Worker version `cc8b363e-4178-4dda-85b8-b700d21fb7de`, deployment ID `99bd5a52-5a15-4b66-90cf-460121431246`. Only new KV-hosted frontend assets and the Worker asset manifest/HTML handling were changed. The existing 154,336-byte backend module and D1, Resend, access settings and payment locks were retained. **Live authenticated visual verification remains BLOCKED by Cloudflare Access**; Cloudflare Browser Rendering reached its sign-in screen instead of the private application. Android builds remain blocked and the Android APK was not deployed. Production, production DNS and databases were untouched.
 
 ## Source and scope
 
 Inspected the extracted React 19/Vite 8/TypeScript/Tailwind 4 web source committed on the repair branch, not the old production archive. Examined all 26 routed website page components and the shared header, footer, navigation, product cards, modals and CSS. The Android/Kotlin project exists, but source Gradle config is missing/empty; no successful Android compilation or screen verification is claimed.
+
+
+## 17 November 2026 private staging web deployment
+
+- **Target:** `cashncarry-d1-staging-worker.cashncarry-workforce-2026.workers.dev` (private staging only).
+- **GitHub validated source commit:** `c35f73218e8a868fcfcd3dbed6e045aa11517b46`; GitHub Actions run [44052535655](https://github.com/deeonejosh/cashncarry-source/actions/runs/44052535655): source-inventory PASS, web job PASS, Android Gradle configuration FAILED.
+- **Worker deployed version:** `cc8b363e-4178-4dda-85b8-b700d21fb7de`, deployment `99bd5a52-5a15-4b66-90cf-460121431246`, timestamp 09:12:46 UTC.
+- **CI-built staging assets:** `/assets/index-B5Oghm1G.js` (601,523 bytes), `/assets/index-DSoMFQ2J.css` (78,858 bytes), `/index.html` (1,260 bytes), empty-catalog shopping feed and noindex sitemap.
+- **Artifact:** `cashncarry-staging-web-dist-c35f73218e8a868fcfcd3dbed6e045aa11517b46`, GitHub Actions artifact ID `14313893025`.
+- **Integrity checks:** all five new Cloudflare KV values were read back and SHA-256 hashes matched the exact CI-built artifact.
+- **Runtime safety:** existing backend module carried over byte-for-byte; `AUTH_DB` and `DB` still bind to staging D1 `9a2cdbee-e030-4b10-908b-b10b8142d2aa`; `AUTH_RESEND_API_KEY` secret binding retained; `PAYMENTS_ENABLED=false`, `COINS_PURCHASES_ENABLED=false`, `KYC_UPLOADS_ENABLED=false`, `FLW_MODE=disabled` retained.
+- **Data safety:** read-only post-deployment count still 1 account, 1 session, 0 seller products, 0 orders, 0 livestreams. No migrations, deletes or mutations performed.
+- **Private browser smoke:** **BLOCKED**. Cloudflare Browser Rendering returned the Cloudflare Access sign-in screen; do not claim that the actual hosted page has been visually checked or authenticated workflows exercised. The 52 route screenshots were captured against the CI preview build, not the hosted Access-protected worker.
+- **Android:** no new APK deployment; existing Android job failed because Gradle root and wrapper configuration are incomplete.
+- **Rollback reference:** previous Worker version `4771ec1f-247d-42ab-8811-6acbf2949ddb`.
 
 ## Existing route inventory and page-by-page cleanup
 
