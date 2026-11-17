@@ -19,6 +19,7 @@ export default function SellerProductsPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<SellerProductItem | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [actionProductId, setActionProductId] = useState<string | null>(null);
 
   // Create form states
   const [name, setName] = useState('');
@@ -29,7 +30,6 @@ export default function SellerProductsPage() {
   const [category, setCategory] = useState('fashion');
   const [description, setDescription] = useState('');
   const [imageUrl, setImageUrl] = useState('');
-  const [submitImmediately, setSubmitImmediately] = useState(true);
 
   // Edit form states
   const [editName, setEditName] = useState('');
@@ -37,6 +37,22 @@ export default function SellerProductsPage() {
   const [editStock, setEditStock] = useState<number>(1);
   const [editDescription, setEditDescription] = useState('');
   const [editImageUrl, setEditImageUrl] = useState('');
+
+  const runProductAction = async (
+    productId: string,
+    action: () => Promise<{ ok: boolean; error?: string }>,
+  ) => {
+    if (actionProductId !== null) return;
+    setActionProductId(productId);
+    try {
+      const result = await action();
+      if (!result.ok) showToast(result.error || 'Could not complete product action.', 'error');
+    } catch {
+      showToast('Could not complete product action. Please try again.', 'error');
+    } finally {
+      setActionProductId(null);
+    }
+  };
 
   const handleOpenEdit = (prod: SellerProductItem) => {
     setEditingProduct(prod);
@@ -73,9 +89,6 @@ export default function SellerProductsPage() {
       setPriceNaira(0);
       setCompareAtNaira(0);
       setStock(1);
-      if (submitImmediately) {
-        showToast('Draft created. Click "Submit for Review" in your table to request admin approval.', 'info');
-      }
     } else {
       showToast(res.error || 'Could not create product.', 'error');
     }
@@ -190,7 +203,8 @@ export default function SellerProductsPage() {
                     <div className="flex items-center justify-end gap-1.5">
                       {(prod.publication === 'draft' || prod.publication === 'rejected') && (
                         <button
-                          onClick={() => void submitSellerProductForReview(prod.id)}
+                          onClick={() => void runProductAction(prod.id, () => submitSellerProductForReview(prod.id))}
+                          disabled={actionProductId !== null}
                           className="inline-flex items-center gap-1 rounded-lg bg-[#0c5c36] px-2.5 py-1.5 text-[11px] font-bold text-white hover:bg-emerald-900"
                         >
                           <Send size={12} /> Submit
@@ -198,7 +212,8 @@ export default function SellerProductsPage() {
                       )}
                       {prod.publication === 'published' && (
                         <button
-                          onClick={() => void unpublishSellerProduct(prod.id)}
+                          onClick={() => void runProductAction(prod.id, () => unpublishSellerProduct(prod.id))}
+                          disabled={actionProductId !== null}
                           className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-[11px] font-bold text-slate-700 hover:bg-slate-50"
                         >
                           <EyeOff size={12} /> Unpublish
@@ -206,6 +221,7 @@ export default function SellerProductsPage() {
                       )}
                       <button
                         onClick={() => handleOpenEdit(prod)}
+                        disabled={actionProductId !== null}
                         className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
                         title="Edit product"
                       >
@@ -213,7 +229,8 @@ export default function SellerProductsPage() {
                       </button>
                       {prod.publication !== 'archived' && (
                         <button
-                          onClick={() => void archiveSellerProduct(prod.id)}
+                          onClick={() => void runProductAction(prod.id, () => archiveSellerProduct(prod.id))}
+                          disabled={actionProductId !== null}
                           className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
                           title="Archive product"
                         >
@@ -341,15 +358,6 @@ export default function SellerProductsPage() {
                   className="mt-1 w-full rounded-xl border border-slate-200 p-3 outline-none focus:border-emerald-600"
                 />
               </div>
-
-              <label className="flex items-center gap-2 text-xs text-slate-600">
-                <input
-                  type="checkbox"
-                  checked={submitImmediately}
-                  onChange={(e) => setSubmitImmediately(e.target.checked)}
-                />
-                <span>Remind me to submit for admin moderation review</span>
-              </label>
 
               <button
                 type="submit"
