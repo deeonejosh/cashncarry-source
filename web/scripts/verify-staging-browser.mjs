@@ -242,6 +242,12 @@ try {
     }
 
     // Fresh staging must show genuine empty states. No demo products are seeded.
+    await page.goto(`${origin}/?tab=profile`, { waitUntil: 'networkidle' });
+    const guestProfile = await page.locator('body').innerText();
+    assert.ok(guestProfile.includes('Your Account'), `[${vp.name}] Guest account sign-in panel missing`);
+    assert.equal(guestProfile.includes('Guest Shopper'), false, `[${vp.name}] Fake guest profile visible`);
+    assert.ok(guestProfile.includes('Sign In / Create Account'), `[${vp.name}] Guest login action missing`);
+
     await page.goto(`${origin}/?tab=shop`, { waitUntil: 'networkidle' });
     const shopBody = await page.locator('body').innerText();
     assert.ok(/No products|no items|No listings/i.test(shopBody), `[${vp.name}] Expected empty catalog`);
