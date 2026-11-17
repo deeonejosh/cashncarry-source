@@ -117,12 +117,12 @@ try {
   const tabsToVerify = [
     { tab: 'home', text: 'Cash N Carry' },
     { tab: 'shop', text: 'Shop Marketplace' },
-    { tab: 'orders', text: 'Payments temporarily unavailable' },
-    { tab: 'coins', text: 'Coin purchases & simulated credits temporarily unavailable' },
-    { tab: 'auctions', text: 'Payments temporarily unavailable' },
-    { tab: 'live', text: 'Live' },
-    { tab: 'seller-kyc', text: 'KYC document uploads temporarily unavailable' },
-    { tab: 'seller-settlements', text: 'Payments temporarily unavailable' },
+    { tab: 'orders', text: 'Account Sign In Required' },
+    { tab: 'coins', text: 'Coin purchases are currently unavailable' },
+    { tab: 'auctions', text: 'Live Marketplace Auctions' },
+    { tab: 'live', text: 'No one is live right now.' },
+    { tab: 'seller-kyc', text: 'Account Sign In Required' },
+    { tab: 'seller-settlements', text: 'Sign In Required' },
     { tab: 'admin-dashboard', text: 'Platform Administration & Compliance' },
   ];
 
@@ -180,13 +180,13 @@ try {
         const coinBtn = page.getByRole('button', { name: 'Coin Purchases Disabled' });
         assert.equal(await coinBtn.isDisabled(), true, `[${vp.name}] Coin Purchases button must be disabled`);
       }
-      if (entry.tab === 'seller-kyc') {
-        const disabledBtn = page.getByRole('button', { name: 'KYC Uploads Disabled in Staging' });
-        assert.equal(await disabledBtn.isDisabled(), true, `[${vp.name}] KYC submit button must be disabled`);
-      }
-      if (entry.tab === 'seller-settlements') {
-        const disabledPayout = page.getByRole('button', { name: /Payouts Disabled/i });
-        assert.equal(await disabledPayout.isDisabled(), true, `[${vp.name}] Payout button must be disabled`);
+      if (entry.tab === 'seller-kyc' || entry.tab === 'seller-settlements') {
+        const restricted = page.locator('body');
+        assert.match(
+          await restricted.innerText(),
+          /Sign In Required|Account Sign In Required/,
+          `[${vp.name}] Anonymous sellers must not access KYC or settlements`
+        );
       }
       if (entry.tab === 'admin-dashboard') {
         assert.ok(bodyText.includes('Administrator Access Required'), 'Admin route should reject anonymous users');
