@@ -3,6 +3,7 @@ import { checkoutPage } from './checkout-pages';
 import { flutterwaveRoute, type PaymentEnvironment } from './flutterwave';
 import { streamRoute, type StreamEnvironment } from './stream';
 import { kycRoute, type KycEnvironment } from './kyc';
+import { newsletterRoute } from './newsletter';
 import { adminRoute } from './admin';
 import { ownerSetupRoute } from './owner-setup';
 import { ordersRoute } from './orders';
@@ -103,6 +104,10 @@ export default {
         },
       });
     }
+
+    // Private staging, consent-based newsletter routes.
+    try { const newsletter = await newsletterRoute(request, env); if (newsletter) return newsletter; }
+    catch { return reply({error:'Newsletter temporarily unavailable'},503); }
 
     if (env.AUTH_DB && env.ORDER_RESERVATIONS === 'enabled'
         && ['/checkout','/orders','/api/checkout','/api/orders'].includes(url.pathname)) {
