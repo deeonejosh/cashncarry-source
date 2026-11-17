@@ -32,6 +32,10 @@ export async function marketplaceRoute(request: Request, env: Environment): Prom
   if (request.method !== 'GET' && request.method !== 'POST') return respond(405,'Method not allowed');
   const db = env.AUTH_DB;
   const owner = account.id;
+  if (path !== '/cart') {
+    const approved = await db.prepare("SELECT 1 AS ok FROM cnc_seller_applications WHERE user_id=? AND status='approved'").bind(owner).first();
+    if (!approved) return respond(403, 'Seller approval required');
+  }
   async function cartProduct(id: string, source: string): Promise<CatalogProduct | null> {
     if (source === 'replacement') {
       if (env.ORDER_RESERVATIONS !== 'enabled') return null;
@@ -48,9 +52,17 @@ export async function marketplaceRoute(request: Request, env: Environment): Prom
     try { body = await readBody(request); } catch { return respond(400,'Invalid request'); }
     if (path === '/seller/store') {
       const name = text(body.name), description = text(body.description);
-      if (!name || name.length > 100 || description.length > 500) return respond(400,'Invalid store details');
-      await db.prepare(`INSERT INTO cnc_seller_stores VALUES (?,?,?)
-        ON CONFLICT(owner) DO UPDATE SET name=excluded.name, description=excluded.description`).bind(owner,name,description).run();
+      const category = text(body.category) || 'fashion', location = text(body.location) || 'Lagos';
+      const phone = text(body.phone);
+      if (!name || name.length > 100 || description.length > 500 || category.length > 80
+          || location.length > 80 || phone.length > 30) return respond(400,'Invalid store details');
+      await db.prepare("INSERT INTO cnc_seller_stores (owner,name,description,category,location,phone) VALUES (?,?,?,?,?,?) "+
+        "ON CONFLICT(owner) DO UPDATE SET name=excluded.name,description=excluded.description,"+
+        "category=excluded.category,location=excluded.location,phone=excluded.phone"
+      ).bind(owner,name,description,category,location,phone).run();
+      const storefront = await db.prepare("SELECT owner AS id,owner AS owner_id,name,description,category,location,phone,1 AS verified,0 AS followers_count "+
+        "FROM cnc_seller_stores WHERE owner=?").bind(owner).first();
+      return api ? result({saved:true,storefront}) : redirect(path);
     } else if (path === '/seller/products') {
       const id = text(body.id);
       const revision = integer(body.revision,1,Number.MAX_SAFE_INTEGER);
@@ -106,8 +118,8 @@ export async function marketplaceRoute(request: Request, env: Environment): Prom
   }
 
   if (path === '/seller/store') {
-    const store = await db.prepare('SELECT name,description FROM cnc_seller_stores WHERE owner=?').bind(owner).first<Store>();
-    return api ? result({store}) : page('Store profile',`<h1>Store profile</h1><form method="post" class="account-form">
+    const store = await db.prepare('SELECT owner AS id,owner AS owner_id,name,description,category,location,phone,1 AS verified,0 AS followers_count FROM cnc_seller_stores WHERE owner=?').bind(owner).first<Store>();
+    return api ? result({storefront:store || null}) : page('Store profile',`<h1>Store profile</h1><form method="post" class="account-form">
       <label for="name">Store name</label><input id="name" name="name" maxlength="100" required value="${escape(store?.name)}">
       <label for="description">Description</label><input id="description" name="description" maxlength="500" value="${escape(store?.description)}">
       <button>Save store profile</button></form><p><a href="/seller/products">Manage product drafts</a></p>`);
