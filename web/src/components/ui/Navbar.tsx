@@ -149,7 +149,7 @@ export default function Navbar({
           <button
             type="button"
             onClick={onOpenCreate}
-            className="hidden lg:flex items-center gap-1.5 rounded-full bg-orange-500 px-3.5 py-2 text-xs font-black text-white shadow-sm hover:bg-orange-600 transition"
+            className="hidden lg:flex items-center gap-1.5 rounded-full bg-orange-700 px-3.5 py-2 text-xs font-black text-white shadow-sm hover:bg-orange-800 transition"
           >
             <PlusCircle size={15} />
             <span>{isApprovedSeller ? 'Create / Live' : currentUser.sellerStatus === 'pending' ? 'Seller Status' : 'Create'}</span>
@@ -187,7 +187,7 @@ export default function Navbar({
           >
             <Bell size={20} />
             {unreadNotificationsCount > 0 && (
-              <span className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-orange-500 text-[10px] font-black text-white">
+              <span className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-orange-700 text-[10px] font-black text-white">
                 {unreadNotificationsCount}
               </span>
             )}
@@ -364,7 +364,7 @@ export default function Navbar({
           >
             <ShoppingBag size={16} />
             <span>Cart</span>
-            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-orange-500 text-[10px] text-white">
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-orange-700 text-[10px] text-white">
               {cartCount}
             </span>
           </button>
@@ -380,7 +380,7 @@ export default function Navbar({
           >
             <ShoppingBag size={22} />
             {cartCount > 0 && (
-              <span className="absolute right-0 top-0 flex h-4 w-4 items-center justify-center rounded-full bg-orange-500 text-[10px] font-black text-white">
+              <span className="absolute right-0 top-0 flex h-4 w-4 items-center justify-center rounded-full bg-orange-700 text-[10px] font-black text-white">
                 {cartCount}
               </span>
             )}
@@ -468,7 +468,7 @@ export default function Navbar({
             onClick={() =>
               isApprovedSeller ? setCurrentTab('seller-dashboard') : setCurrentTab('seller-kyc')
             }
-            className="flex items-center gap-1.5 rounded-full bg-orange-500 px-3.5 py-1.5 text-xs font-black text-white hover:bg-orange-600 shadow-sm transition"
+            className="flex items-center gap-1.5 rounded-full bg-orange-700 px-3.5 py-1.5 text-xs font-black text-white hover:bg-orange-800 shadow-sm transition"
           >
             <Store size={13} />
             <span>
