@@ -421,45 +421,30 @@ async function run() {
       assert.equal(adminDeniedRes.status, 403);
     });
 
-    await test('Unified Live & Short Videos: Seller publish/room -> buyer comment & like', async () => {
+    await test('Unified Live & Short Videos: unconfigured provider never fakes broadcast or upload', async () => {
       const liveCreateRes = await mf.dispatchFetch(origin + '/api/v1/live', {
         method: 'POST',
         headers: { origin, cookie: sellerCookie, 'content-type': 'application/json' },
-        body: JSON.stringify({ title: 'Evening Lagos Drop', category: 'Fashion', pinnedProductId: 'p-1' }),
+        body: JSON.stringify({ title: 'Do not create a phantom room', category: 'Fashion', pinnedProductId: 'p-1' }),
       });
-      assert.equal(liveCreateRes.status, 201);
-      const liveCreateJson: any = await liveCreateRes.json();
-      assert.ok(liveCreateJson.roomId);
-
-      const commentRes = await mf.dispatchFetch(origin + '/api/v1/live/comments', {
-        method: 'POST',
-        headers: { origin, cookie: buyerCookie, 'content-type': 'application/json' },
-        body: JSON.stringify({ roomId: liveCreateJson.roomId, body: 'Love the Ankara weave!' }),
-      });
-      assert.equal(commentRes.status, 201);
-
+      assert.equal(liveCreateRes.status, 503);
+      const liveResult=await liveCreateRes.json() as any;
+      assert.equal(liveResult.code,'BROADCAST_NOT_CONFIGURED');
       const videoRes = await mf.dispatchFetch(origin + '/api/v1/videos', {
         method: 'POST',
         headers: { origin, cookie: sellerCookie, 'content-type': 'application/json' },
-        body: JSON.stringify({
-          title: 'Unboxing Drop',
-          productId: 'p-1',
-          caption: 'Fast nationwide delivery',
-          coverUrl: 'https://example.invalid/cover.jpg',
-        }),
+        body: JSON.stringify({ title: 'Unverified URL', productId: 'p-1', videoUrl:'https://example.invalid/film.mp4' }),
       });
-      assert.equal(videoRes.status, 201);
-      const vidJson: any = await videoRes.json();
-      assert.ok(vidJson.id);
-
-      const likeRes = await mf.dispatchFetch(origin + '/api/v1/videos/like', {
-        method: 'POST',
-        headers: { origin, cookie: buyerCookie, 'content-type': 'application/json' },
-        body: JSON.stringify({ videoId: vidJson.id }),
-      });
-      assert.equal(likeRes.status, 200);
-      const likeJson: any = await likeRes.json();
-      assert.equal(likeJson.liked, true);
+      assert.equal(videoRes.status,503);
+      assert.equal((await videoRes.json() as any).code,'VIDEO_UPLOAD_UNAVAILABLE');
+      const rooms=await authDb.prepare('SELECT COUNT(*) AS n FROM cnc_live_room_state').first<{n:number}>();
+      const videos=await authDb.prepare('SELECT COUNT(*) AS n FROM cnc_short_videos').first<{n:number}>();
+      assert.equal(rooms?.n,0);
+      assert.equal(videos?.n,0);
+      const anonymousLive=await mf.dispatchFetch(origin+'/api/v1/live');
+      assert.equal(anonymousLive.status,200);
+      const live=await anonymousLive.json() as any;
+      assert.equal(live.liveStreamingConfigured,false);
     });
 
 
