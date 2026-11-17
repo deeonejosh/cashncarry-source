@@ -212,9 +212,10 @@ class ApiClient {
     totpCode?: string
   ): Promise<{ signedIn?: boolean; user?: ApiAuthUser; error?: string; mfaRequired?: boolean }> {
     const payload: Record<string, string> = { email, password };
-    if (totpCode && totpCode.trim()) payload.totpCode = totpCode.trim();
+    const adminCode = totpCode?.trim() || '';
+    if (adminCode) payload.code = adminCode;
     const res = await this.requestJson<{ signedIn?: boolean; user?: ApiAuthUser; mfaRequired?: boolean }>(
-      '/api/auth/login',
+      adminCode ? '/api/auth/admin-login' : '/api/auth/login',
       {
         method: 'POST',
         body: JSON.stringify(payload),
