@@ -740,7 +740,7 @@ async function run() {
       await authDb.prepare('INSERT INTO cnc_auth_sessions(hash,user_id,expires,mfa) VALUES (?,?,?,0)')
         .bind(createHash('sha256').update(sellerToken).digest('hex'),sellerId,Date.now()+600000).run();
       const created=await action(sellCookie,'POST',{productId,startingBidKobo:10000,durationMinutes:60});
-      assert.equal(created.status,201,'A verified seller should create an auction with a single D1 stock reservation');
+      assert.equal(created.status,201,`Approved seller auction create status ${created.status}: ${JSON.stringify(await created.clone().json())}`);
       const id=(await created.json() as any).auctionId as string;
       const listed=await mf.dispatchFetch(origin+'/api/auctions',{headers:{cookie:buyCookie}});
       assert.equal(listed.status,200,'Auction listing query must match actual D1 schema');
