@@ -65,6 +65,17 @@ export async function auctionsRoute(request: Request, env: AuctionEnvironment): 
     }
     if (!account) return json({ error: 'Sign-in required' }, 401);
     if (account.role !== 'seller') return json({ error: 'Seller role required' }, 403);
+    // A role label alone is insufficient: Seller Centre explicitly requires an
+    // owner-approved application, verified identity and a non-suspended account.
+    const approval = await db.prepare(
+      `SELECT a.user_id FROM cnc_seller_applications a
+       JOIN cnc_auth_users u ON u.id=a.user_id
+       WHERE a.user_id=? AND a.status='approved'
+         AND u.role='seller' AND u.verified=1 AND u.suspended=0`
+    ).bind(account.id).first();
+    if (!approval) {
+      return json({ error: 'Administrator-approved seller account required', code: 'SELLER_APPROVAL_REQUIRED' }, 403);
+    }
 
     let body: any;
     try { body = await readBody(request); } catch { return json({ error: 'Invalid JSON' }, 400); }
