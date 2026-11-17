@@ -135,3 +135,36 @@ No production changes were made. Existing staging was inspected read-only; the b
 - [Current benchmark branch](https://github.com/deeonejosh/cashncarry-source/tree/fix/staging-ai-benchmark-20261117)
 
 **Final release decision: BLOCKED pending full release verification.** The owner/Admin regression now passes, but authenticated staging browser tests and complete design/performance evidence remain incomplete. Do not deploy the benchmark branch while deployed Worker changes remain unreconciled with source.
+
+## 9. Completed isolated Playwright/Axe evidence (17 November 2026)
+
+The initial CI browser benchmark **completed**. Source: [GitHub Actions run 44123884809](https://github.com/deeonejosh/cashncarry-source/actions/runs/44123884809); artifact `cashncarry-ai-benchmark-evidence` (ID `14345264866`). The output has been inspected and the screenshots are preserved in the evidence ZIP.
+
+- **26 distinct frontend route/tab states** were tested at **1440×900 desktop and 390×844 mobile**: **52 view executions**.
+- **25 PASS / 27 FAIL / 0 BLOCKED** against the browser benchmark's combined HTTP 200, rendered page, horizontal overflow, JavaScript exception, and Axe WCAG A/AA criteria. Note: this is a *local rebuilt frontend* test, not authenticated private staging.
+- Desktop: **1/26 PASS**, **25/26 FAIL**. Mobile: **24/26 PASS**, **2/26 FAIL**. These outcomes are driven by the Axe **colour contrast** rule.
+- **71 Axe colour-contrast failure nodes across 27 view executions** (Axe rule `color-contrast`, severity *serious*). No tested view recorded horizontal overflow or a JavaScript page exception. The browser script does not prove all forms, navigation, buttons or workflows work.
+- **52 desktop/mobile screenshots** and `evidence.json` were uploaded in the artifact. Before/after screenshots were **not** produced: only a baseline local build was visually checked.
+- The local Vite preview does **not** serve the Cloudflare backend APIs. Screenshots show **HTTP 502 error banners** for several data-fed areas, including home Sellers and Live shopping. These are **local test environment limitations** and must not be reported as verified production or deployed staging API failures.
+- Lighthouse CI executed for locally previewed homepage and Shop in the workflow, but numeric Lighthouse category scores are **not validated in this report**. No real deployed staging Lighthouse score has been measured because Cloudflare Access requires an authorised test session.
+- The GitHub workflow's overall success status does **not** mean the benchmark passed; Playwright/Axe step used `continue-on-error`, reported failed gate, and returned exit code 1. Release remains blocked.
+
+### Evidence-based partial indicators (NOT a certified 100-point score)
+
+| Indicator | Verified measured result |
+|---|---|
+| Owner/auth/backend isolated regression | **18/18 PASS** after query fix |
+| Browser/axe combined route views | **25/52 PASS**, 27 FAIL |
+| Desktop Axe/visual gate | **1/26 PASS** |
+| Mobile Axe/visual gate | **24/26 PASS** |
+| Accessibility | **71 contrast nodes** in **27 route/viewport views** |
+| Horizontal overflow | **0/52** observed |
+| JavaScript page exceptions | **0/52** observed |
+| Real authenticated Buyer/Seller/Admin end-to-end | **BLOCKED**, Access credentials/test session not available |
+| Shipping/payment provider or supplier flow | **NOT TESTED**; production/payment transactions disabled |
+
+**No weighted website score out of 100 is certified**: the rubric encompasses workflow behaviour, security, performance and true end-to-end interactions not covered by local page rendering. Assigning the remainder based on screenshots would overstate coverage.
+
+### Final benchmark gate status
+
+**SOURCE REPAIR VERIFIED, RELEASE BLOCKED.** The Admin moderation clean-schema failure is fixed in the benchmark branch and independently passed the complete 18-test backend regression suite. Axe contrast findings remain unresolved, and the local-only browser environment cannot certify deployed private staging. The benchmark branch has **not** been deployed; existing staging and production remain untouched by the benchmark.
