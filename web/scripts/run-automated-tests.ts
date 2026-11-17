@@ -6,7 +6,7 @@ import path from 'node:path';
 import { build } from 'esbuild';
 import { Miniflare } from 'miniflare';
 import { renderAuthEmail } from '../deploy/chatgpt-sites/auth-email';
-import { resolveEdgeSEO } from '../deploy/chatgpt-sites/edge-seo';
+import { resolveEdgeSEO, injectEdgeSEOMeta } from '../deploy/chatgpt-sites/edge-seo';
 
 console.log('🧪 Starting Cash N Carry Automated Staging & Backend Quality Suite...');
 
@@ -144,6 +144,22 @@ async function run() {
     assert.match(sqlSeen[0], /s.suspended = 0/);
     assert.match(sqlSeen[0], /p.id = \?/);
     assert.doesNotMatch(sqlSeen[0], /name LIKE/i, 'No fuzzy private-catalog lookups');
+  });
+
+  await test('SEO security: seller titles and JSON-LD cannot escape HTML/script contexts', () => {
+    const injected = injectEdgeSEOMeta('<html><head><title>Old</title></head><body></body></html>', {
+      title: 'Offer </title><img src=x onerror=alert(1)>',
+      description: '" onmouseover="alert(1)',
+      canonicalUrl: 'https://staging.example.test/product/p%22',
+      ogType: 'product',
+      image: 'https://staging.example.test/logo.png',
+      jsonLd: { '@context': 'https://schema.org', name: '</script><script>alert(2)</script>' },
+    });
+    assert.doesNotMatch(injected, /<img src=x onerror=/);
+    assert.doesNotMatch(injected, /<\/script><script>alert\(2\)/);
+    assert.match(injected, /&lt;\/title&gt;&lt;img/);
+    assert.match(injected, /&quot; onmouseover=&quot;/);
+    assert.match(injected, /\\u003c\/script/);
   });
 
   // 5. Real Miniflare Worker + D1 Staging Guard Integration Tests
