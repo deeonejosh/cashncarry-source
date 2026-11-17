@@ -147,8 +147,10 @@ export async function auctionsRoute(request: Request, env: AuctionEnvironment): 
 
       const amountKobo = body.amountKobo;
       const minRequired = auction.current_bid_kobo ? auction.current_bid_kobo + 100 : auction.starting_bid_kobo;
-      if (!Number.isSafeInteger(amountKobo) || amountKobo > 100000000000 || amountKobo < minRequired)
-        return json({ error: `Bid must be a valid whole-kobo amount, at least ${(minRequired / 100).toFixed(2)} NGN` }, 400);
+      if (!Number.isSafeInteger(amountKobo) || amountKobo < 100 || amountKobo > 100000000000)
+        return json({ error: 'Bid must be a valid whole-kobo amount', code: 'INVALID_BID_AMOUNT' }, 400);
+      if (amountKobo < minRequired)
+        return json({ error: `Bid is too low: minimum ${(minRequired / 100).toFixed(2)} NGN`, code: 'BID_CONFLICT' }, 409);
 
       // The BEFORE INSERT validation and AFTER INSERT highest-bid update are one SQLite
       // transaction. A competing stale bid is rejected, never recorded as a losing winner.
