@@ -4,6 +4,7 @@ import { flutterwaveRoute, type PaymentEnvironment } from './flutterwave';
 import { streamRoute, type StreamEnvironment } from './stream';
 import { kycRoute, type KycEnvironment } from './kyc';
 import { newsletterRoute } from './newsletter';
+import { sellerApplicationRoute } from './seller-application';
 import { adminRoute } from './admin';
 import { ownerSetupRoute } from './owner-setup';
 import { ordersRoute } from './orders';
@@ -118,6 +119,12 @@ export default {
       const synced = await unifiedSyncRoute(originalRequest, env);
       if (synced) return synced;
     } catch { return reply({ error: 'Sync service temporarily unavailable' }, 503); }
+    // Seller applications are separate from protected Seller Centre operations.
+    // Normalise /api/v1/seller/application to /api/seller/application above.
+    try {
+      const application = await sellerApplicationRoute(request, env);
+      if (application) return application;
+    } catch { return reply({ error: 'Seller applications temporarily unavailable' }, 503); }
     try {
       const checkout = await checkoutPage(request,env);
       if (checkout) return checkout;
