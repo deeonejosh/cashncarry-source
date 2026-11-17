@@ -109,8 +109,10 @@ export default function LiveShoppingPage({
   };
 
   const handleBuyPinned = async (product: ProductItem) => {
-    await addToCart(product, 1);
-    onProceedToCheckout();
+    // Do not send a guest or an out-of-stock buyer to checkout unless the
+    // actual backend has accepted the cart mutation.
+    const added = await addToCart(product, 1);
+    if (added) onProceedToCheckout();
   };
 
   if (liveState.status === 'loading') {
@@ -281,7 +283,10 @@ export default function LiveShoppingPage({
                 </button>
                 <button
                   type="button"
-                  onClick={() => void endLiveRoom(activeRoom.id)}
+                  onClick={async () => {
+                    const result = await endLiveRoom(activeRoom.id);
+                    if (!result.ok) setPinModalOpen(false);
+                  }}
                   className="rounded-xl bg-rose-600 px-3.5 py-2 text-xs font-black text-white hover:bg-rose-700"
                 >
                   End Stream
@@ -373,8 +378,8 @@ export default function LiveShoppingPage({
                     key={p.id}
                     type="button"
                     onClick={async () => {
-                      await pinLiveProduct(activeRoom.id, p.id);
-                      setPinModalOpen(false);
+                      const result = await pinLiveProduct(activeRoom.id, p.id);
+                      if (result.ok) setPinModalOpen(false);
                     }}
                     className="w-full flex items-center justify-between rounded-xl border border-slate-200 p-3 text-left hover:bg-emerald-50 text-xs"
                   >
