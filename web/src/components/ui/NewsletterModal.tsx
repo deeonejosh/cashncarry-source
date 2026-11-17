@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { ArrowRight, CheckCircle2, Mail, X } from 'lucide-react';
-import { useStore } from '../../context/StoreContext';
 
 interface NewsletterModalProps {
   isOpen: boolean;
@@ -15,7 +14,6 @@ const choices = [
 ];
 
 export default function NewsletterModal({ isOpen, onClose }: NewsletterModalProps) {
-  const { currentUser } = useStore();
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
   const [topics, setTopics] = useState<string[]>(['deals', 'livestreams']);
@@ -33,7 +31,7 @@ export default function NewsletterModal({ isOpen, onClose }: NewsletterModalProp
     try {
       const response = await fetch('/api/newsletter/subscribe', {
         method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},
-        body:JSON.stringify({email:(email || currentUser.email || '').trim(),name,topics,consent:true,source:'modal'}),
+        body:JSON.stringify({email:email.trim(),name,topics,consent:true,source:'modal'}),
       });
       const result = await response.json() as {error?:string;message?:string};
       if (!response.ok) throw new Error(result.error || 'Please try again.');
@@ -60,7 +58,7 @@ export default function NewsletterModal({ isOpen, onClose }: NewsletterModalProp
         <form onSubmit={send} className="mt-5 space-y-4">
           <div><label htmlFor="newsletter-modal-email" className="mb-1.5 block text-sm font-semibold text-slate-700">Email address</label>
             <input id="newsletter-modal-email" type="email" required maxLength={254} autoComplete="email"
-              value={email || (email === '' && currentUser.authenticated ? currentUser.email : '')}
+              value={email}
               onChange={e => setEmail(e.target.value)} placeholder="you@example.com"
               className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-700"/></div>
           <div><label htmlFor="newsletter-modal-name" className="mb-1.5 block text-sm font-semibold text-slate-700">Name <span className="font-normal text-slate-400">(optional)</span></label>
