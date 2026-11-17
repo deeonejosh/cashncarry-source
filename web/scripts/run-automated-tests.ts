@@ -22,6 +22,7 @@ async function test(name: string, fn: () => void | Promise<void>) {
     passed++;
   } catch (err: any) {
     console.error(`  ❌ [FAIL] ${name}:`, err.message);
+    if (process.env.GITHUB_ACTIONS === 'true' && err?.stack) console.error(String(err.stack).split('\n').slice(1,5).join('\n'));
     failed++;
   }
 }
