@@ -109,6 +109,26 @@ export default function ProfilePage({ onNavigate }: ProfilePageProps) {
     .map((p) => p[0]?.toUpperCase() || '')
     .join('');
 
+
+  if (!currentUser.authenticated) {
+    return (
+      <section className="mx-auto max-w-lg rounded-3xl border border-slate-200 bg-white px-6 py-12 text-center shadow-sm sm:px-10">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 text-[#0E6B38]">
+          <LogIn size={24} aria-hidden="true" />
+        </div>
+        <h1 className="mt-5 text-2xl font-bold text-slate-900">Your Account</h1>
+        <p className="mt-2 text-sm text-slate-600">Sign in to see orders, addresses and saved items.</p>
+        <button
+          type="button"
+          onClick={() => openAuthModal('Sign in or create an account to continue.')}
+          className="mt-6 inline-flex min-h-[44px] items-center justify-center rounded-xl bg-[#0E6B38] px-6 py-3 text-sm font-semibold text-white hover:bg-[#084B26] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700"
+        >
+          Sign In / Create Account
+        </button>
+      </section>
+    );
+  }
+
   return (
     <div className="space-y-6 pb-24">
       {/* Profile Header */}
