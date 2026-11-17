@@ -441,8 +441,8 @@ export default function Navbar({
           onClick={() => setCurrentTab('flash-deals')}
           className={`flex items-center gap-1.5 whitespace-nowrap transition ${
             currentTab === 'flash-deals'
-              ? 'text-orange-600 font-extrabold border-b-2 border-orange-600 pb-1'
-              : 'hover:text-orange-600'
+              ? 'text-orange-700 font-extrabold border-b-2 border-orange-600 pb-1'
+              : 'hover:text-orange-700'
           }`}
         >
           <Zap size={14} className="text-orange-500" />
