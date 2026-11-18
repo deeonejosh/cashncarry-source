@@ -1,0 +1,56 @@
+name: Fast verified private staging v56 build (NO DEPLOY)
+on:
+  push:
+    branches: [fix/staging-master-seller-split-20261118]
+    paths: ['.github/workflows/package-v56-fast.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: cnc-private-v56-fast
+  cancel-in-progress: false
+jobs:
+  artifact:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Verify source and build both Worker and frontend
+        run: |
+          npm ci --no-audit --no-fund
+          npm run lint
+          npm test
+          npm run build
+          npm run bundle:worker
+          sha256sum dist/_worker.js dist/index.html > dist/CNC-source-built-v56-sha256.txt
+          printf 'SOURCE_COMMIT=%s\nDEPLOY=NEVER_BY_CI\n' "$GITHUB_SHA" > dist/CNC-v56-source.txt
+      - name: Commit immutable built assets to separate artifact branch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git switch -c artifact/staging-master-v56fast-20261118
+          git add -f web/dist
+          git commit -m 'build(staging): verified v56 full asset bundle; no Cloudflare deployment'
+          git push origin HEAD:refs/heads/artifact/staging-master-v56fast-20261118
+        working-directory: .
+      - name: Upload immutable Worker, frontend and migrations
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cashncarry-v56-fast-verified-release
+          path: |
+            web/dist/
+            web/deploy/chatgpt-sites/migrations/0022_auction_seller_approval.sql
+            web/deploy/chatgpt-sites/migrations/0023_approved_seller_public_store_sync.sql
+            web/deploy/chatgpt-sites/migrations/0024_seller_order_fulfilment.sql
+            web/deploy/chatgpt-sites/migrations/0025_paid_order_seller_notifications.sql
+          retention-days: 30
+          if-no-files-found: warn
