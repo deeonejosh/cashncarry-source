@@ -239,3 +239,36 @@ The staging-specific `noindex` setting and artificial preview environment limit 
 **Unresolved P0 / next release gates:** genuine Flutterwave **TEST-only** checkout with verified shipping, webhook settlement and refunds; auction winner payable-order/settlement path; configured and verified live-video transport; authorised full three-role E2E; staging frontend asset upload permission and asset deployment; KYC private uploads where approved; real notification delivery and Android-device testing. Paid provider activation is out of scope absent credentials and approval.
 
 **Release decision:** **Private staging backend deployed and verified. NOT PRODUCTION READY.** Do not interpret green isolated tests, database health or a successful Worker deployment as complete marketplace acceptance.
+
+
+## 17. VERIFIED PRIVATE FRONTEND RELEASE — v58 (18 November 2026, 08:46 UTC)
+
+**Deployment succeeded; existing private Cloudflare staging only. Production remains untouched.**
+
+| Evidence | Verified result |
+|---|---|
+| Active Worker | **v58**, version `6cf16c68-6515-4163-9ce2-dc146238d0b7`, 100% staging traffic |
+| Cloudflare deployment | `60f4f54c-99ce-43dc-914e-80c66605af81`, created `2026-11-18T08:46:14Z` |
+| Frontend release source | Source-built React assets from `artifact/staging-master-v56-20261118`, staged with verified SHA-256 checks |
+| Wrapper source | `fix/staging-v58-kv-ui-20261118`, tested commit `e7da750157ec15ac9bca0a5fdd15d2644ccb86a3` |
+| Backend source | Verified immutable **v57** bundle SHA-256 `89a8185083f0b3eaeda42255e8a0868eb335ce2bbe0efbcf0f37bd0a80d1e954`; unchanged |
+| Route enforcement | KV UI is served only on exact HTTPS private staging origin; all API routes use the existing original backend |
+| Frontend asset delivery | Existing bound staging-only KV `CNC_STAGING_ASSETS`, with three isolated `cnc:v58:ui:*` keys; no existing KV assets deleted |
+| HTML | SHA-256 `d885970af9a34102f4a8d63b0f6d4b4bea90bd3c13b6d00c109fdcdac99c660c`; 1,260 bytes; `noindex` |
+| JS | SHA-256 `6595806be9b58806b6bf1b34d8c6dab88fd0f2864b14004884d39e36df68ae72`; 609,702 bytes |
+| CSS | SHA-256 `a25a7fb15bf5883b5152e0cb296a317feffaf4688c043e6a6ac51b9c68d51057`; 79,956 bytes |
+| Static KV verification | All three files read back from Cloudflare KV and matched expected hash; missing file returns `503` instead of a false success |
+| Source/Miniflare CI | [v58 staging KV regression](https://github.com/deeonejosh/cashncarry-source/actions/runs/44269550307) **SUCCESS**: 25 isolated D1 tests, TypeScript, build, Worker bundling, exact HTML/JS/CSS byte comparison, GET/HEAD, health/API delegation, noindex, fail-closed missing assets and production-origin isolation |
+| Bindings | **14 inherited**, including Admin MFA, Resend, staging AUTH_DB/DB, and UI KV; Cloudflare `GET version` and deployment settings agree |
+| Safety switches | `PAYMENTS_ENABLED=false`, `COINS_PURCHASES_ENABLED=false`, `KYC_UPLOADS_ENABLED=false`, `FLW_MODE=disabled`; no live-video provider |
+| Remote database | `PRAGMA quick_check=ok`, foreign-key violations **0**, migration ledger **25**, no new orders or seller application data |
+| Existing fallback | Staging **v57** `5cef92b3-47f6-4f73-8bee-382da52d73f0` retained for immediate Worker rollback; v58 wrapper also preserves pre-existing static assets |
+| Production | No DNS, domain, production Worker, production database, real financial credentials or production content changed |
+
+**Why KV delivery was used:** The standard Cloudflare assets-upload session succeeded, but file transfer returned HTTP 401. Rather than weaken Cloudflare permissions, source-built, hash-verified frontend assets were uploaded through the **existing staging-only** KV namespace. A small, reviewed Worker wrapper serves exactly three allowlisted paths without changing API logic. The real v57 backend remains byte-for-byte identical.
+
+**Not claimed:** Direct authenticated Cloudflare Access browser sessions, actual remote purchases, a real Flutterwave sandbox webhook and refund, auction winner payment, real WHIP/WHEP video transport, Android physical-device testing, or a production performance benchmark. The successful Miniflare browser tests were isolated, not live staging E2E. The marketing/shop UI uses no fake products. No paid services have been provisioned.
+
+**Current decision:** **Staging frontend and backend safely deployed. NOT PRODUCTION READY.** Priority remains authenticated buyer/seller/admin acceptance, Flutterwave TEST-only checkout configuration and shipping/settlement integrity, auction-specific winner checkout and approved live-media transport. Do not remove safety flags without verified end-to-end integration and an explicit release review.
+
+**Rollback:** redeploy prior Worker version `5cef92b3-47f6-4f73-8bee-382da52d73f0` to **private staging** at 100%; no D1 or KV deletion is required. Database backup is preserved in private Library. Preserve existing MFA, Access policy and payment disabled flags.
