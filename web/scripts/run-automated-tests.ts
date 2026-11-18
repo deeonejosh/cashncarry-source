@@ -887,10 +887,10 @@ async function run() {
         'SELECT seller_id,status FROM cnc_seller_order_fulfilments WHERE order_id=?'
       ).bind(mixedId).all<{seller_id:string;status:string}>();
       assert.equal(rows.results.length,2,'Exactly one fulfilment record per seller');
-      const notices=await authDb.prepare(
+      const afterMixedNotices=await authDb.prepare(
         "SELECT COUNT(*) AS n FROM cnc_notifications WHERE user_id=? AND kind='order'"
       ).bind(buyerId).first<{n:number}>();
-      assert.equal(notices?.n,7,'All seven genuine transitions notify only once');
+      assert.equal(afterMixedNotices?.n,7,'All seven genuine transitions notify only once');
 
     });
 
