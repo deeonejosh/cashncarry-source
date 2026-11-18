@@ -380,9 +380,37 @@ function mapApiLiveRoom(raw: Record<string, unknown>, products: ProductItem[]): 
 function mapApiOrder(raw: Record<string, unknown>): Order {
   const totalMinor = Number(raw.total_minor ?? 0);
   const total = totalMinor > 0 ? Math.round(totalMinor / 100) : Number(raw.total ?? 0);
-  const rawAddr = (raw.address || {}) as Record<string, unknown>;
   const deliveryAddrStr = typeof raw.delivery_address === 'string' ? raw.delivery_address : '';
+  let savedAddress: Record<string, unknown> = {};
+  if (deliveryAddrStr.startsWith('{')) {
+    try {
+      const parsed: unknown = JSON.parse(deliveryAddrStr);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        savedAddress = parsed as Record<string, unknown>;
+      }
+    } catch { /* Invalid legacy address is handled as plain text below. */ }
+  }
+  const rawAddr = raw.address && typeof raw.address === 'object' && !Array.isArray(raw.address)
+    ? raw.address as Record<string, unknown> : savedAddress;
   const itemsRaw = Array.isArray(raw.items) ? (raw.items as Array<Record<string, unknown>>) : [];
+  const rawFulfilments = Array.isArray(raw.fulfilments)
+    ? raw.fulfilments as Array<Record<string, unknown>> : [];
+  const fulfilments: NonNullable<Order['fulfilments']> = rawFulfilments.map(row => ({
+    sellerId: String(row.seller_id || ''),
+    storeName: String(row.store_name || 'Seller'),
+    status: String(row.status || 'processing') as NonNullable<Order['fulfilments']>[number]['status'],
+    carrier: String(row.carrier || ''),
+    trackingNumber: String(row.tracking_number || ''),
+    updatedAt: Number(row.updated_at || 0),
+  }));
+  const paymentConfirmed = String(raw.payment_state || '') === 'paid';
+  let orderStatus = String(raw.fulfilment_status || raw.status || 'awaiting_payment');
+  if (paymentConfirmed && orderStatus === 'awaiting_payment') {
+    orderStatus = fulfilments.length === 1 ? fulfilments[0].status
+      : fulfilments.length > 1 && fulfilments.every(f => f.status === 'delivered')
+      ? 'delivered' : 'paid';
+  }
+  const soleShipment = fulfilments.length === 1 ? fulfilments[0] : null;
 
   return {
     id: String(raw.id || ''),
@@ -394,7 +422,7 @@ function mapApiOrder(raw: Record<string, unknown>): Order {
       id: String(rawAddr.id || ''),
       recipient: String(rawAddr.recipient || ''),
       phone: String(rawAddr.phone || ''),
-      line: String(rawAddr.line || deliveryAddrStr || ''),
+      line: String(rawAddr.line || (deliveryAddrStr.startsWith('{') ? '' : deliveryAddrStr) || ''),
       city: String(rawAddr.city || ''),
       state: String(rawAddr.state || ''),
     },
@@ -410,11 +438,16 @@ function mapApiOrder(raw: Record<string, unknown>): Order {
     subtotal: total,
     shipping: 0,
     total,
-    status: (String(raw.fulfilment_status || raw.status || 'awaiting_payment') as Order['status']),
-    createdAt: String(raw.created || ''),
+    status: orderStatus as Order['status'],
+    createdAt: typeof raw.created === 'number'
+      ? new Date(raw.created * 1000).toISOString()
+      : String(raw.created || ''),
     reservationEndsAt: String(raw.reservation_ends_at || ''),
-    trackingNumber: typeof raw.tracking_number === 'string' ? raw.tracking_number : undefined,
-    carrier: typeof raw.carrier === 'string' ? raw.carrier : undefined,
+    trackingNumber: soleShipment?.trackingNumber
+      || (typeof raw.tracking_number === 'string' ? raw.tracking_number : undefined),
+    carrier: soleShipment?.carrier
+      || (typeof raw.carrier === 'string' ? raw.carrier : undefined),
+    fulfilments,
   };
 }
 
