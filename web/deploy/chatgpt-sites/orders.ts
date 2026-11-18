@@ -14,10 +14,38 @@ export async function ordersRoute(request: Request, env: AuthEnvironment & { ORD
   const db = env.AUTH_DB;
   if (url.pathname === '/api/orders') {
     if (request.method !== 'GET') return json({error:'Method not allowed'},405);
-    const {results} = await db.prepare(`SELECT o.id,o.status,o.created,SUM(i.quantity*i.price_minor) AS total_minor
+    const {results} = await db.prepare(`SELECT o.id,o.status,o.payment_state,o.created,
+      SUM(i.quantity*i.price_minor) AS total_minor
       FROM cnc_orders o JOIN cnc_order_items i ON i.order_id=o.id WHERE o.buyer=?
-      GROUP BY o.id ORDER BY o.created DESC,o.id LIMIT 50`).bind(account.id).all();
-    return json({orders:results});
+      GROUP BY o.id ORDER BY o.created DESC,o.id LIMIT 50`).bind(account.id).all<{
+        id:string;status:string;payment_state:string;created:number;total_minor:number
+      }>();
+    // Order tracking is seller-scoped. An order spanning multiple sellers
+    // exposes one real fulfilment record per seller, not an invented single
+    // tracking number or premature 'delivered' state.
+    const {results:fulfilments} = await db.prepare(`
+      SELECT f.order_id,f.seller_id,COALESCE(st.name,'') AS store_name,
+             f.status,f.carrier,f.tracking_number,f.updated_at
+      FROM cnc_seller_order_fulfilments f
+      JOIN cnc_orders o ON o.id=f.order_id
+      LEFT JOIN cnc_seller_stores st ON st.owner=f.seller_id
+      WHERE o.buyer=? AND o.id IN (
+        SELECT id FROM cnc_orders WHERE buyer=? ORDER BY created DESC,id LIMIT 50
+      )
+      ORDER BY f.updated_at DESC LIMIT 150
+    `).bind(account.id,account.id).all<{
+      order_id:string;seller_id:string;store_name:string;status:string;
+      carrier:string;tracking_number:string;updated_at:number
+    }>();
+    const byOrder = new Map<string,typeof fulfilments>();
+    for (const item of fulfilments) {
+      const group=byOrder.get(item.order_id)||[];
+      group.push(item);
+      byOrder.set(item.order_id,group);
+    }
+    return json({orders:results.map(order=>({
+      ...order,fulfilments:byOrder.get(order.id)||[]
+    }))});
   }
   if (request.method !== 'POST') return json({error:'Method not allowed'},405);
   if (!hasValidMutationOrigin(request, env)) return json({error:'Invalid request origin'},403);
