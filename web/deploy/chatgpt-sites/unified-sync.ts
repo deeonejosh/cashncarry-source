@@ -215,8 +215,32 @@ export async function unifiedSyncRoute(
             ON f.order_id=o.id AND f.seller_id=?
           WHERE o.payment_state='paid' AND o.status='awaiting_payment'
           GROUP BY o.id ORDER BY o.created DESC LIMIT 50`
-      ).bind(account.id,account.id).all();
-      return json({ orders: results ?? [] });
+      ).bind(account.id,account.id).all<{id:string}>();
+      const {results:lineItems}=await db.prepare(`
+        SELECT i.order_id,i.product_id,i.seller AS seller_id,
+          i.name,i.quantity,i.price_minor,COALESCE(p.image,'') AS image,
+          COALESCE(st.name,'') AS seller_name
+        FROM cnc_order_items i
+        JOIN cnc_orders o ON o.id=i.order_id
+        JOIN cnc_flutterwave_payments pay ON pay.order_id=o.id
+          AND pay.transaction_id IS NOT NULL AND pay.paid_at IS NOT NULL
+        LEFT JOIN cnc_seller_products p ON p.id=i.product_id
+        LEFT JOIN cnc_seller_stores st ON st.owner=i.seller
+        WHERE i.seller=? AND o.status='awaiting_payment' AND o.payment_state='paid'
+        ORDER BY o.created DESC,i.product_id LIMIT 2000
+      `).bind(account.id).all<{
+        order_id:string;product_id:string;seller_id:string;name:string;
+        quantity:number;price_minor:number;image:string;seller_name:string
+      }>();
+      const lineItemsByOrder=new Map<string,typeof lineItems>();
+      for(const item of lineItems) {
+        const group=lineItemsByOrder.get(item.order_id)||[];
+        group.push(item);
+        lineItemsByOrder.set(item.order_id,group);
+      }
+      return json({orders:results.map(order=>({
+        ...order,items:lineItemsByOrder.get(order.id)||[]
+      }))});
     }
 
     return json({ error: 'Method not allowed' }, 405);
