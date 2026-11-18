@@ -352,8 +352,25 @@ try {
   record('owner sees private support note while customer cannot', { isolated: true });
   await expectStatus('/api/support/tickets/' + ticketId, ids.buyerA, 'PATCH',
     { priority: 'high' }, 403, 'customer cannot change support priority');
+  await db.prepare(`CREATE TRIGGER cnc_support_ci_reject_escalation_audit
+    BEFORE INSERT ON cnc_support_audit WHEN NEW.action='escalated'
+    BEGIN SELECT RAISE(ABORT, 'test escalation audit failure'); END`).run();
+  try {
+    const rejected = await call('/api/support/tickets/' + ticketId, ids.buyerA, 'PATCH', { action: 'escalate' });
+    assert.equal(rejected.status, 503);
+    const partial = await db.prepare('SELECT status FROM cnc_support_tickets WHERE id=?').bind(ticketId).first();
+    assert.equal(partial.status, 'open', 'escalation must roll back when its audit fails');
+    record('support escalation rolls back when its audit fails', { isolated: true });
+  } finally {
+    await db.prepare('DROP TRIGGER cnc_support_ci_reject_escalation_audit').run();
+  }
   await expectStatus('/api/support/tickets/' + ticketId, ids.buyerA, 'PATCH',
     { action: 'escalate' }, 200, 'customer requests human escalation');
+  await expectStatus('/api/support/tickets/' + ticketId, ids.buyerA, 'PATCH',
+    { action: 'escalate' }, 409, 'a repeated escalation is rejected');
+  const escalationAudit = await db.prepare("SELECT COUNT(*) AS n FROM cnc_support_audit WHERE ticket_id=? AND action='escalated'")
+    .bind(ticketId).first();
+  assert.equal(escalationAudit.n, 1, 'a repeated escalation must not create an audit row');
   const adminList = await expectStatus('/api/support/tickets?status=escalated', ids.owner, 'GET',
     undefined, 200, 'MFA owner views escalated support inbox');
   assert.ok(adminList.tickets.some(t => t.id === ticketId));

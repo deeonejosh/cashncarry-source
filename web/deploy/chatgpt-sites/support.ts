@@ -190,13 +190,17 @@ export async function supportRoute(request: Request, env: SupportEnvironment): P
     try { body = await readBody(request); } catch { return respond({ error: 'Invalid request' }, 400); }
     if (!isAdmin) {
       if (body.action !== 'escalate') return respond({ error: 'Administrator access required' }, 403);
-      const changed = await db.prepare(
-        "UPDATE cnc_support_tickets SET status='escalated',updated=unixepoch() " +
-        "WHERE id=? AND requester_id=? AND status NOT IN ('resolved','escalated') RETURNING id"
-      ).bind(id, account.id).first();
-      if (!changed) return respond({ error: 'Ticket cannot be escalated' }, 409);
-      await db.prepare("INSERT INTO cnc_support_audit (id,ticket_id,actor_id,action) VALUES (?,?,?,'escalated')")
-        .bind(crypto.randomUUID(), id, account.id).run();
+      const auditId = crypto.randomUUID();
+      const [, changed] = await db.batch([
+        db.prepare("INSERT INTO cnc_support_audit (id,ticket_id,actor_id,action) " +
+          "SELECT ?,id,requester_id,'escalated' FROM cnc_support_tickets " +
+          "WHERE id=? AND requester_id=? AND status NOT IN ('resolved','escalated')")
+          .bind(auditId, id, account.id),
+        db.prepare("UPDATE cnc_support_tickets SET status='escalated',updated=unixepoch() " +
+          "WHERE id=? AND EXISTS (SELECT 1 FROM cnc_support_audit WHERE id=? AND ticket_id=cnc_support_tickets.id) RETURNING id")
+          .bind(id, auditId),
+      ]);
+      if (!changed.results.length) return respond({ error: 'Ticket cannot be escalated' }, 409);
       return respond({ updated: true, status: 'escalated' });
     }
     const status = body.status === undefined ? ticket.status : safeString(body.status, 32);
