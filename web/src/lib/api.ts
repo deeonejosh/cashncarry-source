@@ -86,6 +86,32 @@ export interface ApiSellerProduct {
   created: string;
 }
 
+export interface ApiSupportTicket {
+  id: string;
+  requester_id?: string;
+  requester_email?: string;
+  subject: string;
+  category: 'general' | 'order' | 'delivery' | 'product' | 'account' | 'technical';
+  order_id: string;
+  status: 'open' | 'in_progress' | 'waiting_for_customer' | 'escalated' | 'resolved';
+  priority: 'normal' | 'high';
+  created: number;
+  updated: number;
+}
+export interface ApiSupportMessage {
+  id: string;
+  ticket_id: string;
+  author_id: string;
+  body: string;
+  internal: number;
+  created: number;
+}
+export interface ApiSupportDetail {
+  ticket: ApiSupportTicket;
+  messages: ApiSupportMessage[];
+  linkedOrder: { id: string; status: string; payment_state: string; created: number } | null;
+}
+
 export interface PlatformFeatureConfig {
   paymentsEnabled: boolean;
   coinsPurchasesEnabled: boolean;
@@ -578,6 +604,48 @@ class ApiClient {
       method: 'POST',
       body: JSON.stringify(input),
     });
+  }
+
+  // First-party, human-operated support inbox (no automatic AI or email send).
+  async listSupportTickets(status?: ApiSupportTicket['status']) {
+    const query = status ? '?status=' + encodeURIComponent(status) : '';
+    return this.requestJson<{ tickets: ApiSupportTicket[]; role: string }>('/api/support/tickets' + query);
+  }
+
+  async getSupportTicket(id: string) {
+    return this.requestJson<ApiSupportDetail>('/api/support/tickets/' + encodeURIComponent(id));
+  }
+
+  async createSupportTicket(input: {
+    subject: string; category: ApiSupportTicket['category']; message: string; orderId?: string;
+  }) {
+    return this.requestJson<{ ticket: { id: string; status: string } }>('/api/support/tickets', {
+      method: 'POST', body: JSON.stringify(input),
+    });
+  }
+
+  async replySupportTicket(id: string, message: string, internal = false) {
+    return this.requestJson<{ created: boolean; id: string }>(
+      '/api/support/tickets/' + encodeURIComponent(id) + '/messages', {
+        method: 'POST', body: JSON.stringify({ message, internal }),
+      }
+    );
+  }
+
+  async updateSupportTicket(id: string, input: {
+    status?: ApiSupportTicket['status']; priority?: ApiSupportTicket['priority']; action?: 'escalate';
+  }) {
+    return this.requestJson<{ updated: boolean; status?: string }>(
+      '/api/support/tickets/' + encodeURIComponent(id), {
+        method: 'PATCH', body: JSON.stringify(input),
+      }
+    );
+  }
+
+  async getSupportReplyTemplates(id: string) {
+    return this.requestJson<{ source: string; aiGenerated: boolean; suggestions: string[] }>(
+      '/api/support/tickets/' + encodeURIComponent(id) + '/reply-templates'
+    );
   }
 
   async getNotifications() {
