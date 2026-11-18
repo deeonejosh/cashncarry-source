@@ -307,6 +307,21 @@ try {
       message: 'Please help track my recent order.' },
     201, 'buyer creates order-linked customer support ticket');
   const ticketId = ticketCreated.ticket.id;
+  await db.prepare(`CREATE TRIGGER cnc_support_ci_reject_reply_audit
+    BEFORE INSERT ON cnc_support_audit WHEN NEW.action='replied'
+    BEGIN SELECT RAISE(ABORT, 'test reply audit failure'); END`).run();
+  try {
+    const rejected = await call('/api/support/tickets/' + ticketId + '/messages', ids.owner, 'POST', {
+      message: 'Reply that must roll back when its audit fails',
+    });
+    assert.equal(rejected.status, 503);
+    const partial = await db.prepare('SELECT COUNT(*) AS n FROM cnc_support_messages WHERE ticket_id=? AND author_id=?')
+      .bind(ticketId, ids.owner).first();
+    assert.equal(partial.n, 0, 'support reply must roll back when its audit fails');
+    record('support reply is all-or-nothing when audit persistence fails', { isolated: true });
+  } finally {
+    await db.prepare('DROP TRIGGER cnc_support_ci_reject_reply_audit').run();
+  }
   await expectStatus('/api/support/tickets', ids.buyerB, 'POST',
     { subject: 'Someone elses order', category: 'order', orderId: purchase.order.id,
       message: 'Trying to link an order I do not own' },

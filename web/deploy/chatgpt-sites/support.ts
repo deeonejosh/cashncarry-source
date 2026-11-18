@@ -155,22 +155,24 @@ export async function supportRoute(request: Request, env: SupportEnvironment): P
     const internal = isAdmin && body.internal === true ? 1 : 0;
     if (!message) return respond({ error: 'Message required (maximum 1600 characters)' }, 400);
     const messageId = crypto.randomUUID();
-    const added = await db.prepare(
-      "INSERT INTO cnc_support_messages (id,ticket_id,author_id,body,internal) " +
-      "SELECT ?,?,?,?,? WHERE " +
-      "(SELECT COUNT(*) FROM cnc_support_messages WHERE ticket_id=? AND author_id=? AND created>=unixepoch()-3600)<30 " +
-      "AND NOT EXISTS (SELECT 1 FROM cnc_support_messages WHERE ticket_id=? AND author_id=? AND body=? " +
-      "AND created>=unixepoch()-3) RETURNING id"
-    ).bind(messageId, id, account.id, message, internal, id, account.id, id, account.id, message).first();
-    if (!added) return respond({ error: 'Duplicate or too many messages', code: 'SUPPORT_RATE_LIMIT' }, 429);
-    await db.batch([
+    const [added] = await db.batch([
+      db.prepare(
+        "INSERT INTO cnc_support_messages (id,ticket_id,author_id,body,internal) " +
+        "SELECT ?,?,?,?,? WHERE " +
+        "(SELECT COUNT(*) FROM cnc_support_messages WHERE ticket_id=? AND author_id=? AND created>=unixepoch()-3600)<30 " +
+        "AND NOT EXISTS (SELECT 1 FROM cnc_support_messages WHERE ticket_id=? AND author_id=? AND body=? " +
+        "AND created>=unixepoch()-3) RETURNING id"
+      ).bind(messageId, id, account.id, message, internal, id, account.id, id, account.id, message),
       db.prepare("UPDATE cnc_support_tickets SET updated=unixepoch(),status=CASE WHEN ?=1 THEN status " +
         "WHEN ?='admin' AND status IN ('open','waiting_for_customer') THEN 'waiting_for_customer' " +
-        "WHEN ?<>'admin' AND status IN ('resolved','waiting_for_customer') THEN 'open' ELSE status END WHERE id=?")
-        .bind(internal, account.role, account.role, id),
-      db.prepare('INSERT INTO cnc_support_audit (id,ticket_id,actor_id,action) VALUES (?,?,?,?)')
-        .bind(crypto.randomUUID(), id, account.id, internal ? 'internal_note' : 'replied'),
+        "WHEN ?<>'admin' AND status IN ('resolved','waiting_for_customer') THEN 'open' ELSE status END " +
+        "WHERE id=? AND EXISTS (SELECT 1 FROM cnc_support_messages WHERE id=? AND ticket_id=cnc_support_tickets.id)")
+        .bind(internal, account.role, account.role, id, messageId),
+      db.prepare('INSERT INTO cnc_support_audit (id,ticket_id,actor_id,action) ' +
+        'SELECT ?,ticket_id,author_id,? FROM cnc_support_messages WHERE id=?')
+        .bind(crypto.randomUUID(), internal ? 'internal_note' : 'replied', messageId),
     ]);
+    if (!added.results.length) return respond({ error: 'Duplicate or too many messages', code: 'SUPPORT_RATE_LIMIT' }, 429);
     return respond({ created: true, id: messageId }, 201);
   }
   if (action) return respond({ error: 'Method not allowed' }, 405);
