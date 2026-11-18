@@ -228,6 +228,27 @@ try {
   assert.equal(winner.current_bid_kobo, 18000);
   assert.ok(winner.closed_at);
   record('auction winner is higher bidder; winner is persisted in D1', { amountKobo: winner.current_bid_kobo });
+  // A closed auction is part of the seller's order history and must remain
+  // discoverable to its seller and the owner, without publicising losing bids.
+  const sellerHistory = await call('/api/auctions', ids.seller);
+  assert.equal(sellerHistory.status, 200);
+  assert.ok(sellerHistory.data.auctions.some(a => a.id === auctionId && a.own && a.ended),
+    'closed auction must remain visible to its owning seller');
+  const ownerHistory = await call('/api/auctions', ids.owner);
+  assert.equal(ownerHistory.status, 200);
+  assert.ok(ownerHistory.data.auctions.some(a => a.id === auctionId),
+    'owner must retain visibility of closed auctions for moderation');
+  const losingHistory = await call('/api/auctions', ids.buyerA);
+  assert.equal(losingHistory.status, 200);
+  assert.ok(!losingHistory.data.auctions.some(a => a.id === auctionId),
+    'closed auction must not be exposed to losing bidders');
+  const guestHistory = await call('/api/auctions', null);
+  assert.ok(!guestHistory.data.auctions.some(a => a.id === auctionId),
+    'closed auction must not be exposed in the public catalog');
+  const winnerHistory = await call('/api/auctions', ids.buyerB);
+  assert.ok(winnerHistory.data.auctions.some(a => a.id === auctionId && a.winning),
+    'winner must retain visibility of their closed auction');
+  record('closed auction remains visible to owner, seller and winner but not losing bidders or guests', { isolated: true });
   await expectStatus('/api/auctions', ids.buyerB, 'PATCH',
     { action: 'checkout', id: auctionId }, 503,
     'winning-auction checkout remains fail-closed until verified payment settlement exists');
