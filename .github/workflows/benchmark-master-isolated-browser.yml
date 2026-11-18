@@ -34,6 +34,20 @@ jobs:
         run: node node_modules/playwright-core/cli.js install --with-deps chromium
       - name: Run guest desktop/mobile route smoke against isolated Miniflare
         run: node scripts/verify-staging-browser.mjs
+      - name: Reproduce the product link defect on the deployed baseline source
+        if: github.ref == 'refs/heads/fix/work-staging-benchmark-20261118'
+        run: |
+          baseline=19f94433c9e127ce6712342649c1b7e21dbfdbad
+          baseline_checkout="${RUNNER_TEMP}/cnc-v60-baseline"
+          git fetch --depth=1 origin "$baseline"
+          git worktree add --detach "$baseline_checkout" "$baseline"
+          cmp package-lock.json "$baseline_checkout/web/package-lock.json"
+          ln -s "$GITHUB_WORKSPACE/web/node_modules" "$baseline_checkout/web/node_modules"
+          cd "$baseline_checkout/web"
+          npm run build
+          npm run bundle:worker
+          CNC_TEST_PRODUCT_LINK_BASELINE=1 CNC_TEST_SCREENSHOTS="$GITHUB_WORKSPACE/web/reports/uiux/screenshots" \
+            node "$GITHUB_WORKSPACE/web/scripts/verify-staging-browser.mjs"
       - name: Upload browser screenshots and diagnostics
         if: always()
         uses: actions/upload-artifact@v4

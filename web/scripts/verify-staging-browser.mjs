@@ -6,6 +6,7 @@ import { chromium } from 'playwright-core';
 
 // Respect Playwright's browser installation on GitHub-hosted runners.
 const CHROME_PATH = process.env.CNC_TEST_CHROMIUM || chromium.executablePath();
+const CHECK_PRODUCT_LINK_BASELINE = process.env.CNC_TEST_PRODUCT_LINK_BASELINE === '1';
 
 const DIST_DIR = path.resolve('dist');
 const MIME_TYPES = {
@@ -140,14 +141,14 @@ try {
     'Run Automated Staging Diagnostic',
   ];
 
-  const screenshotDir = path.resolve('reports/uiux/screenshots');
+  const screenshotDir = path.resolve(process.env.CNC_TEST_SCREENSHOTS || 'reports/uiux/screenshots');
   fs.mkdirSync(screenshotDir, {recursive:true});
   const viewports = [
     { name: 'desktop', width: 1440, height: 900 },
     { name: 'mobile', width: 390, height: 844 },
   ];
 
-  for (const vp of viewports) {
+  for (const vp of CHECK_PRODUCT_LINK_BASELINE ? [] : viewports) {
     const context = await browser.newContext({ viewport: { width: vp.width, height: vp.height }, ignoreHTTPSErrors: true });
     const page = await context.newPage();
     const consoleErrors = [];
@@ -262,34 +263,43 @@ try {
   try {
     const page = await productContext.newPage();
     const product = { id: 'routing-fixture', name: 'Marketplace routing fixture', price: 1500, stock: 5 };
-    let releaseCatalog;
-    const catalogReady = new Promise((resolve) => { releaseCatalog = resolve; });
-    await page.route(`${origin}/api/products/${product.id}`, async (route) => {
-      await catalogReady;
-      await route.fulfill({ json: { product } });
-    });
+    if (CHECK_PRODUCT_LINK_BASELINE) {
+      await page.route(`${origin}/api/products`, (route) => route.fulfill({ json: { products: [product] } }));
+      await page.goto(`${origin}/?tab=product-detail&id=${product.id}`, { waitUntil: 'networkidle' });
+      await page.getByRole('heading', { name: 'Product not found', exact: true }).waitFor({ timeout: 5000 });
+      assert.equal(new URL(page.url()).searchParams.get('id'), null, 'Baseline must reproduce the dropped ID');
+      await page.screenshot({ path: path.join(screenshotDir, 'product-share-link-before.png') });
+      console.log('  [BASELINE REPRODUCED] Product share link drops the ID and shows Product not found');
+    } else {
+      let releaseCatalog;
+      const catalogReady = new Promise((resolve) => { releaseCatalog = resolve; });
+      await page.route(`${origin}/api/products/${product.id}`, async (route) => {
+        await catalogReady;
+        await route.fulfill({ json: { product } });
+      });
 
-    try {
-      await page.goto(`${origin}/?tab=product-detail&id=${product.id}`, { waitUntil: 'domcontentloaded' });
-      await page.getByRole('status').filter({ hasText: 'Loading product' }).waitFor({ timeout: 5000 });
-      assert.equal(new URL(page.url()).searchParams.get('id'), product.id, 'Product ID must survive catalog loading');
-    } finally {
-      releaseCatalog();
+      try {
+        await page.goto(`${origin}/?tab=product-detail&id=${product.id}`, { waitUntil: 'domcontentloaded' });
+        await page.getByRole('status').filter({ hasText: 'Loading product' }).waitFor({ timeout: 5000 });
+        assert.equal(new URL(page.url()).searchParams.get('id'), product.id, 'Product ID must survive catalog loading');
+      } finally {
+        releaseCatalog();
+      }
+      const productHeading = page.getByRole('heading', { name: product.name, exact: true });
+      await productHeading.waitFor();
+      await page.getByRole('button', { name: 'Increase quantity' }).click();
+      await page.getByRole('button', { name: 'Decrease quantity' }).click();
+      await page.screenshot({ path: path.join(screenshotDir, 'product-share-link-after.png') });
+      await page.reload({ waitUntil: 'domcontentloaded' });
+      await productHeading.waitFor();
+      await page.getByRole('button', { name: 'Back to products' }).click();
+      await page.getByRole('heading', { name: 'Shop', exact: true, level: 1 }).waitFor();
+      await page.goBack();
+      await productHeading.waitFor();
+      await page.goto(`${origin}/?productId=${product.id}`);
+      await productHeading.waitFor();
+      console.log('  ✅ [BROWSER PASS] Product outside the first catalogue page loads by share link, reloads, restores on Back, and accepts the legacy productId parameter');
     }
-    const productHeading = page.getByRole('heading', { name: product.name, exact: true });
-    await productHeading.waitFor();
-    await page.getByRole('button', { name: 'Increase quantity' }).click();
-    await page.getByRole('button', { name: 'Decrease quantity' }).click();
-    await page.screenshot({ path: path.join(screenshotDir, 'product-share-link.png') });
-    await page.reload({ waitUntil: 'domcontentloaded' });
-    await productHeading.waitFor();
-    await page.getByRole('button', { name: 'Back to products' }).click();
-    await page.getByRole('heading', { name: 'Shop', exact: true, level: 1 }).waitFor();
-    await page.goBack();
-    await productHeading.waitFor();
-    await page.goto(`${origin}/?productId=${product.id}`);
-    await productHeading.waitFor();
-    console.log('  ✅ [BROWSER PASS] Product outside the first catalogue page loads by share link, reloads, restores on Back, and accepts the legacy productId parameter');
   } finally {
     await productContext.close();
   }

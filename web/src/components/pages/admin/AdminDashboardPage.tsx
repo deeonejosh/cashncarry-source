@@ -129,14 +129,7 @@ export default function AdminDashboardPage({ onNavigate }: AdminDashboardPagePro
   return (
     <div className="space-y-6 pb-12">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 text-slate-900">
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <span className="rounded-full bg-emerald-50 px-3 py-1 text-[10px] font-bold uppercase text-emerald-800">
-              ADMIN CONSOLE
-            </span>
-          </div>
-          <h1 className="text-xl font-bold sm:text-2xl">Admin Console</h1>
-        </div>
+        <h1 className="text-xl font-bold sm:text-2xl">Admin Console</h1>
 
         <div className="flex flex-wrap items-center gap-2">
           <button
