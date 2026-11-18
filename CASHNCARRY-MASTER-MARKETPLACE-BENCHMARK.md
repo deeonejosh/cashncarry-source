@@ -9,7 +9,7 @@
 
 ## 1. Baseline, real deployed state and evidence
 
-Cloudflare Deployment `869d551d-9701-4913-ad05-b90e9837071f`: Worker **v54** `a1133ace-90c5-424c-af47-f514fca72dca`, 100% traffic, created 2026-11-17 22:55 UTC; originating source commit `de2f6643593b34ed3e51d7daefa30c1a34c4d97e`. Production DNS/Worker/data not written to by this exercise.
+**Baseline before repairs:** Cloudflare Deployment `869d551d-9701-4913-ad05-b90e9837071f`: Worker **v54** `a1133ace-90c5-424c-af47-f514fca72dca`, 100% traffic, created 2026-11-17 22:55 UTC, originating source commit `de2f6643593b34ed3e51d7daefa30c1a34c4d97e`. **Latest verified active release: v55** `1e6cacd4-765b-4b10-9a98-82efe80ef5de`, 100% since 2026-11-18 06:11:34 UTC, release backend source `a40ec1fc2b6f41bdd262b0e3cdb1705bca6e8568`. Production DNS/Worker/data not written to by this exercise.
 
 Previous baseline: 24 isolated Miniflare/D1 regression tests passed, 0 failed; [CI proof](https://github.com/deeonejosh/cashncarry-source/actions/runs/44194889147). Tests do NOT exercise Cloudflare Access-authenticated real staging sessions.
 
@@ -128,6 +128,25 @@ Statuses marked PASSED apply **only to the specifically named isolated backend t
 
 ## 12. Deployment and release gate
 
-**Last independently verified active staging release:** Cloudflare v54 as above. **New code deployment:** pending safe staged release build/version upload and Cloudflare read-back; the successful isolated CI alone does not mean changes are live. Do not modify production, DNS, production DB, production R2, live payment keys, Access or MFA settings. Preserve v54 as rollback while awaiting deployment.
+**New verified private staging release:** Cloudflare **v55**, deployed at 100%; deployment `4e5105a8-0f4f-4276-98e7-59d4ce5f6afe`. It is a backend-only safety release; the v54 frontend assets, entrypoint, 14 Cloudflare bindings and payment flags remain unchanged. Previous v54 is retained as the rollback. No staging schema migration or remote D1 fixture was executed. No production DNS, production Worker, production DB, production R2, live payment keys, Access policy or MFA settings were modified.
 
 **Production unchanged by this benchmark. P0 full marketplace readiness: CLOSED.**
+
+## 13. Verified v55 release and post-deployment readback (18 Nov 2026, 06:11 UTC)
+
+| Evidence | Actual result |
+|---|---|
+| Private staging active | v55 `1e6cacd4-765b-4b10-9a98-82efe80ef5de` at **100%** |
+| Cloudflare deployment ID | `4e5105a8-0f4f-4276-98e7-59d4ce5f6afe` |
+| Source commit in Worker annotation | `a40ec1fc2b6f41bdd262b0e3cdb1705bca6e8568` |
+| Source CI | [44249294268](https://github.com/deeonejosh/cashncarry-source/actions/runs/44249294268): 25 PASS, 0 FAIL, TypeScript/build/bundle pass |
+| Release artifact CI | [44249294425](https://github.com/deeonejosh/cashncarry-source/actions/runs/44249294425): success |
+| Immutable backend bundle | `artifact/staging-master-v55-20261118`, SHA-256 `394a0f96ede67344b7f77b72e86e95a59983024c3ca9fa651deb6cb1661e089e` |
+| Active Worker guard strings readback | `FULFILMENT_NOT_READY`, `FULFILMENT_TRANSITION_REJECTED`, `COIN_CREDIT_NOT_AUTHORIZED`, `AUCTION_SETTLEMENT_NOT_CONFIGURED`, `BROADCAST_NOT_CONFIGURED` all present |
+| Frontend assets | Prior v54 frontend manifest unchanged |
+| Configuration | 14 bindings retained; payments, coins and KYC uploads OFF, Flutterwave disabled |
+| Remote D1 | Read-only counts unchanged: 1 auth account, zero seller applications, seller stores, public stores, seller/public products, orders, auctions, gifts, live rooms or fulfilments |
+| Remote migrations | **None applied**; restore-capable offsite D1 export still needed for 0022–0023 |
+| Production | Not modified |
+
+**Interpretation:** The code fix is **actually deployed to private staging**, but full marketplace acceptance remains **BLOCKED** by provider, checkout/fulfilment and live-media dependencies. A code readback and 25 isolated tests do not substitute for a real authenticated three-user transaction through Cloudflare Access. Do not release to production.
