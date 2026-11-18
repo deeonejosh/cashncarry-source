@@ -210,3 +210,32 @@ The staging-specific `noindex` setting and artificial preview environment limit 
 **Staging deployment status remains unchanged:** private Worker **v55** `1e6cacd4-765b-4b10-9a98-82efe80ef5de` at 100% from the previous safety release. The seller-split candidate and migrations `0022`–`0025` are **NOT DEPLOYED** because no independently restorable D1 SQL backup has been retrieved (Cloudflare managed export completed, but the signed file retrieval failed). Zero remote D1 fixture writes. Payments, paid coin purchases, KYC uploads and live streaming are still disabled. All production infrastructure untouched.
 
 **Final gate: NOT PRODUCTION READY.** Authenticated three-user live staging transactions, genuine Flutterwave sandbox settlement, shipping-rate quotation, auction payout, streaming transport, real device, email receipt and rollbacks remain BLOCKED or NOT TESTED, as detailed above.
+
+
+## 16. VERIFIED RELEASE — private Cloudflare staging v57 (18 November 2026, 07:31 UTC)
+
+**Release scope:** EXISTING PRIVATE STAGING WORKER ONLY. **Do not deploy this source to production.**
+
+| Release verification | Direct readback / proof |
+|---|---|
+| Active Worker version | **v57**, `5cef92b3-47f6-4f73-8bee-382da52d73f0`, **100% traffic** |
+| Deployment | `232d27a6-7665-4372-95a6-8e83b483dcc2`; Cloudflare created `2026-11-18T07:31:04.445594Z` |
+| Source / immutable backend | Repair commit `14cd892b0e39ed9f2a74601d0a7a88813fb79e80`, binary SHA-256 `89a8185083f0b3eaeda42255e8a0868eb335ce2bbe0efbcf0f37bd0a80d1e954` |
+| Safe binding inheritance | **14 of 14 identical to v55** by name and binding type, including Admin MFA, Resend, D1 AUTH_DB/DB and KV assets |
+| Safety flags | `PAYMENTS_ENABLED=false`, `COINS_PURCHASES_ENABLED=false`, `KYC_UPLOADS_ENABLED=false`, `FLW_MODE=disabled` |
+| Staging D1 migrations | `0022`, `0023`, `0024`, `0025` validated against a separate restore and **actually applied** as 13 successful D1 SQL statements; migration ledger reconciled through `0025` |
+| Database post-deploy | `PRAGMA quick_check=ok`; `PRAGMA foreign_key_check` **0 rows**; **25** recorded migrations; 1 existing auth account and 0 orders, private products or seller fulfilments unchanged |
+| Independent rollback | v55 version `1e6cacd4-765b-4b10-9a98-82efe80ef5de` remains available; pre-migration D1 time-travel bookmark `000000b4-00000000-00005127-34f852f164f3c7c8a26604c769f34a79` was preserved |
+| Protected backup | Staging D1 encrypted AES-256-GCM archive successfully restored and independently checked in SQLite; private Library `/Cash N Carry Nigeria/Private Staging Backups/` has encrypted blob and **separately stored** key. Do not post encryption key or plaintext SQL |
+| CI / regression | [source-build run 44258172576](https://github.com/deeonejosh/cashncarry-source/actions/runs/44258172576): npm locked install, TypeScript, **25 isolated D1/workflow tests pass, 0 fail**, Vite build, Worker bundle. [Guest-browser 44257809438](https://github.com/deeonejosh/cashncarry-source/actions/runs/44257809438) and [UI/Axe audit 44257809661](https://github.com/deeonejosh/cashncarry-source/actions/runs/44257809661) succeeded on **isolated** Worker/D1 (52 guest views) |
+| Current customer-facing assets | **Previous v54/v55 frontend retained**. New source-built v56 React assets are in [artifact/staging-master-v56fast-20261118](https://github.com/deeonejosh/cashncarry-source/tree/artifact/staging-master-v56fast-20261118) but **NOT deployed**, because Cloudflare's asset-upload endpoint returned **HTTP 401 Unauthorized** |
+| Unused intermediate version | v56 `a77809d1-3f42-400f-ad20-14cd16af5c53` uploaded with zero inherited bindings and was **NEVER deployed**. v57 reconstructed the same Worker code with 14 verified inherited bindings before activation |
+| Production | **No production domain/DNS, Worker, D1, R2 or real payment changes performed** |
+
+**Staging:** https://cashncarry-d1-staging-worker.cashncarry-workforce-2026.workers.dev/ (Cloudflare Access protected).
+
+**Implemented in live staging backend:** owner-approved seller storefront sync, stronger auction seller checks, verified-paid-order seller notifications, and one payment-protected fulfilment state machine **per contributing seller**, with buyer progress notifications and isolated seller totals. The frontend does not yet include all revised v56 buyer tracking presentations. Payment proof in CI is a local **fixture**, not a real Flutterwave payment. No fabricated successful real checkout, auction payout, actual camera stream, external email receipt, mobile APK acceptance or Cloudflare Access three-user browser test is claimed.
+
+**Unresolved P0 / next release gates:** genuine Flutterwave **TEST-only** checkout with verified shipping, webhook settlement and refunds; auction winner payable-order/settlement path; configured and verified live-video transport; authorised full three-role E2E; staging frontend asset upload permission and asset deployment; KYC private uploads where approved; real notification delivery and Android-device testing. Paid provider activation is out of scope absent credentials and approval.
+
+**Release decision:** **Private staging backend deployed and verified. NOT PRODUCTION READY.** Do not interpret green isolated tests, database health or a successful Worker deployment as complete marketplace acceptance.
