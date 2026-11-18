@@ -1,0 +1,45 @@
+name: Cash N Carry master isolated browser smoke (never deploy)
+on:
+  push:
+    branches: [fix/staging-master-seller-split-20261118]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: cnc-master-isolated-browser
+  cancel-in-progress: true
+jobs:
+  chromium:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Verify TypeScript
+        run: npm run lint
+      - name: Build isolated private-staging React and Worker
+        run: |
+          npm run build
+          npm run bundle:worker
+      - name: Install isolated Chromium
+        run: node node_modules/playwright-core/cli.js install --with-deps chromium
+      - name: Run guest desktop/mobile route smoke against isolated Miniflare
+        run: node scripts/verify-staging-browser.mjs
+      - name: Upload browser screenshots and diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cnc-private-guest-browser-evidence
+          path: |
+            web/reports/uiux/
+          retention-days: 14
+          if-no-files-found: warn
