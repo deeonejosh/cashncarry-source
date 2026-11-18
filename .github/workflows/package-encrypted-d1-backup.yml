@@ -1,0 +1,32 @@
+name: Export encrypted private-staging D1 recovery snapshot (no secrets)
+on:
+  push:
+    branches: [artifact/private-staging-d1-recovery-20261118]
+    paths: ['.github/workflows/package-encrypted-d1-backup.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  upload-encrypted:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify encrypted snapshot format
+        run: |
+          python3 - <<'PY'
+          import json,base64
+          p='private-d1-snapshot-20261118.aesgcm.json'
+          x=json.load(open(p))
+          assert x['format']=='CNC-STAGING-ENCRYPTED-SQLITE-RESTORE-v1'
+          assert x['cipher']=='AES-256-GCM'
+          assert x['compression']=='gzip'
+          assert 'key' not in ''.join(x.keys()).lower()
+          assert len(base64.b64decode(x['encryptedPayloadBase64']))>1000
+          print('Encrypted snapshot validated; no decryption key stored in repository.')
+          PY
+      - name: Upload encrypted recovery blob only
+        uses: actions/upload-artifact@v4
+        with:
+          name: cashncarry-encrypted-staging-d1-recovery
+          path: private-d1-snapshot-20261118.aesgcm.json
+          retention-days: 30
