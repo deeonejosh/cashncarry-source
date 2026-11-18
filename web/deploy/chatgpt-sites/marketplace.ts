@@ -122,12 +122,19 @@ export async function marketplaceRoute(request: Request, env: Environment): Prom
             "category=COALESCE(?,category),description=COALESCE(?,description),"+
             "image=COALESCE(?,image),brand=COALESCE(?,brand),"+
             "compare_at_minor=COALESCE(?,compare_at_minor),"+
-            "publication='draft',revision=revision+1 "+
+            // Evaluate against the pre-update values in the same atomic UPDATE.
+            // Stock-only changes preserve the owner's one-time product approval.
+            "publication=CASE WHEN publication='published' AND name=? AND price_minor=? "+
+              "AND category=COALESCE(?,category) AND description=COALESCE(?,description) "+
+              "AND image=COALESCE(?,image) AND brand=COALESCE(?,brand) "+
+              "AND compare_at_minor=COALESCE(?,compare_at_minor) "+
+              "THEN 'published' ELSE 'draft' END,revision=revision+1 "+
             "WHERE id=? AND owner=? AND revision=? AND archived=0 AND ? + COALESCE(("+
               "SELECT SUM(i.quantity) FROM cnc_order_items i JOIN cnc_orders o ON o.id=i.order_id "+
               "WHERE i.product_id=cnc_seller_products.id AND o.status='awaiting_payment'"+
             "),0)<=1000000 RETURNING id"
           ).bind(name,price,stock,categoryInput,descriptionInput,imageInput,brandInput,
+            compare,name,price,categoryInput,descriptionInput,imageInput,brandInput,
             compare,id,owner,revision,stock).first();
           if (!changed) return respond(409,'Product unavailable or changed');
         }
