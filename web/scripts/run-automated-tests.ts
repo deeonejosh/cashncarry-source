@@ -847,6 +847,22 @@ async function run() {
       await authDb.prepare(
         "UPDATE cnc_flutterwave_payments SET transaction_id=?,paid_at=unixepoch() WHERE order_id=?"
       ).bind('999002',mixedId).run();
+      const buyerOrdersRes=await mf.dispatchFetch(origin+'/api/orders',{
+        headers:{cookie:cookies[buyerId]}
+      });
+      assert.equal(buyerOrdersRes.status,200,'Buyer must be able to view their saved orders');
+      const buyerOrders=(await buyerOrdersRes.json() as any).orders;
+      assert.equal(buyerOrders.find((x:any)=>x.id===mixedId)?.payment_state,'paid');
+      assert.deepEqual(buyerOrders.find((x:any)=>x.id===mixedId)?.fulfilments,[],
+        'Buyer must not see a fictitious shipment before seller dispatch');
+      const sellerPaidNotice=await authDb.prepare(
+        "SELECT COUNT(*) AS n FROM cnc_notifications WHERE user_id=? AND kind='order'"
+      ).bind(sellerId).first<{n:number}>();
+      const secondSellerPaidNotice=await authDb.prepare(
+        "SELECT COUNT(*) AS n FROM cnc_notifications WHERE user_id=? AND kind='order'"
+      ).bind(otherId).first<{n:number}>();
+      assert.equal(sellerPaidNotice?.n,2,'First seller notified once for each paid order');
+      assert.equal(secondSellerPaidNotice?.n,1,'Second seller notified for their paid share');
       const sellerA=(await (await list(sellerId)).json() as any).orders;
       const sellerB=(await (await list(otherId)).json() as any).orders;
       assert.equal(sellerA.length,2,'First seller sees single and multi-seller orders');
@@ -883,6 +899,12 @@ async function run() {
         orderId:orderId,status:'processing'
       });
       assert.equal(notOwner.status,404,'Seller cannot change a different seller order');
+      const buyerTracking=(await (await mf.dispatchFetch(origin+'/api/orders',{
+        headers:{cookie:cookies[buyerId]}
+      })).json() as any).orders.find((x:any)=>x.id===mixedId);
+      assert.equal(buyerTracking.fulfilments.length,2,'Buyer sees both seller shipment records');
+      assert.equal(buyerTracking.fulfilments.find((x:any)=>x.seller_id===sellerId)?.status,'packed');
+      assert.equal(buyerTracking.fulfilments.find((x:any)=>x.seller_id===otherId)?.status,'processing');
       const rows=await authDb.prepare(
         'SELECT seller_id,status FROM cnc_seller_order_fulfilments WHERE order_id=?'
       ).bind(mixedId).all<{seller_id:string;status:string}>();
