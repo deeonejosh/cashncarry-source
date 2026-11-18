@@ -156,6 +156,35 @@ export default function OrdersPage({ onTrackOrder, onOpenReturns }: OrdersPagePr
                   ))}
                 </div>
 
+                {!!order.fulfilments?.length && (
+                  <section aria-label="Individual seller shipment updates" className="space-y-2">
+                    <div className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
+                      Seller shipments
+                    </div>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {order.fulfilments.map((shipment) => (
+                        <div key={shipment.sellerId}
+                             className="rounded-xl border border-slate-200 bg-slate-50/70 p-3 text-xs">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-bold text-slate-800">{shipment.storeName}</span>
+                            <span className="rounded-full bg-white px-2 py-1 font-semibold capitalize text-slate-700">
+                              {shipment.status}
+                            </span>
+                          </div>
+                          {shipment.trackingNumber && (
+                            <button type="button"
+                              onClick={() => onTrackOrder(shipment.trackingNumber)}
+                              className="mt-2 inline-flex items-center gap-1.5 font-semibold text-[#0c5c36] hover:underline">
+                              <Truck size={13} />
+                              {shipment.carrier || 'Courier'}: {shipment.trackingNumber}
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                )}
+
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-slate-100 pt-4 text-xs">
                   <div className="text-slate-500 text-[11px]">
                     {order.address.line ? (
@@ -193,7 +222,7 @@ export default function OrdersPage({ onTrackOrder, onOpenReturns }: OrdersPagePr
                     </>
                   )}
 
-                  {order.trackingNumber && (
+                  {order.trackingNumber && !order.fulfilments?.length && (
                     <button
                       onClick={() => onTrackOrder(order.trackingNumber!)}
                       className="flex items-center gap-1.5 rounded-xl border border-[#0c5c36] bg-emerald-50 px-4 py-2 text-xs font-bold text-[#0c5c36] hover:bg-emerald-100 transition"
