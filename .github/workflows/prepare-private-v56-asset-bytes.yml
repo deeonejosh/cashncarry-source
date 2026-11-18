@@ -1,0 +1,57 @@
+name: Prepare verified static v56 assets as text for Cloudflare API (NO DEPLOY)
+on:
+  push:
+    branches: [artifact/staging-master-v56fast-20261118]
+    paths: ['.github/workflows/prepare-private-v56-asset-bytes.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  encode-static:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Encode only public release assets into deterministic small text parts
+        run: |
+          python3 - <<'PY'
+          import base64,hashlib,json,mimetypes,pathlib
+          root=pathlib.Path('web/dist')
+          out=pathlib.Path('staging-upload-bytes');out.mkdir(exist_ok=True)
+          omit={'_worker.js','CNC-v56-source.txt','CNC-source-built-v56-sha256.txt','.assetsignore'}
+          manifest={}
+          for p in sorted(root.rglob('*')):
+            if not p.is_file() or p.name in omit:continue
+            rel='/'+p.relative_to(root).as_posix()
+            data=p.read_bytes()
+            h=hashlib.md5(data).hexdigest()
+            typ=mimetypes.guess_type(p.name)[0] or 'application/octet-stream'
+            if p.suffix=='.js':typ='application/javascript'
+            elif p.suffix=='.webmanifest':typ='application/manifest+json'
+            base64str=base64.b64encode(data).decode('ascii')
+            id=hashlib.sha256(rel.encode()).hexdigest()[:16]
+            chunks=[base64str[i:i+200000] for i in range(0,len(base64str),200000)]
+            names=[]
+            for j,chunk in enumerate(chunks):
+              name=f'{id}-part{j:02d}.b64.txt'
+              (out/name).write_text(chunk,encoding='ascii')
+              names.append(name)
+            manifest[rel]={'hash':h,'size':len(data),'mime':typ,'chunks':names}
+          assert len(manifest)==9,'Only nine intended customer release assets may be included'
+          (out/'manifest.json').write_text(json.dumps(manifest,sort_keys=True,indent=2))
+          print('Checked and encoded',len(manifest),'public static files,',sum(len(x['chunks']) for x in manifest.values()),'parts. No production or private data.')
+          PY
+      - name: Commit immutable encoded asset contents on separate artifact branch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git switch -c artifact/staging-master-v56-upload-20261118
+          git add staging-upload-bytes
+          git commit -m 'build(staging): encoded v56 static assets for isolated API version upload; no deploy'
+          git push origin HEAD:refs/heads/artifact/staging-master-v56-upload-20261118
+      - name: Upload manifest and text parts (no Cloudflare credentials)
+        uses: actions/upload-artifact@v4
+        with:
+          name: cnc-private-v56-static-upload-bytes
+          path: staging-upload-bytes/
+          retention-days: 30
