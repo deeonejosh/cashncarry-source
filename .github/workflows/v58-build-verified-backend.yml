@@ -1,9 +1,10 @@
-name: Package v58 buyer-role security repair for private staging (NO DEPLOY)
+name: Package v58 marketplace auction history repair for private staging (NO DEPLOY)
 on:
   push:
     branches: [fix/v58-marketplace-e2e]
     paths:
       - '.github/workflows/v58-build-verified-backend.yml'
+      - 'web/deploy/chatgpt-sites/auctions.ts'
   workflow_dispatch:
 permissions:
   contents: write
@@ -42,15 +43,15 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git switch -c artifact/v58-marketplace-buyer-guard-20261118
+          git switch -c artifact/v58-marketplace-auction-history-20261118
           git add -f dist/staging-v58-e2e-backend.mjs dist/staging-v58-e2e-backend.sha256 dist/staging-v58-e2e-source.txt
-          git commit -m "build(private staging): verified buyer-only order guard backend; no deployment"
-          git push origin HEAD:refs/heads/artifact/v58-marketplace-buyer-guard-20261118
+          git commit -m "build(private staging): verified auction history backend; no deployment"
+          git push origin HEAD:refs/heads/artifact/v58-marketplace-auction-history-20261118
       - name: Upload immutable backend and E2E evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: cnc-v58-e2e-buyer-guard-backend-release
+          name: cnc-v58-e2e-auction-history-backend-release
           path: |
             web/dist/staging-v58-e2e-backend.mjs
             web/dist/staging-v58-e2e-backend.sha256
