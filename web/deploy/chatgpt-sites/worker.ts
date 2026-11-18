@@ -2,13 +2,14 @@ import { expireUnpaidReservations } from './reservation-expiry';
 import { checkoutPage } from './checkout-pages';
 import { flutterwaveRoute, type PaymentEnvironment } from './flutterwave';
 import { streamRoute, type StreamEnvironment } from './stream';
-import { kycRoute, type KycEnvironment } from './kyc';
+import { areKycUploadsConfigured, kycRoute, type KycEnvironment } from './kyc';
 import { newsletterRoute } from './newsletter';
 import { sellerApplicationRoute } from './seller-application';
 import { adminRoute } from './admin';
 import { ownerSetupRoute } from './owner-setup';
 import { ordersRoute } from './orders';
 import { marketplaceRoute } from './marketplace';
+import { productPhotoRoute } from './product-photos';
 import { accountPage } from './account-pages';
 import { authRoute, currentAccount, type AuthEnvironment } from './new-auth';
 import { auctionsRoute } from './auctions';
@@ -46,6 +47,11 @@ export default {
     const reply = (data: unknown, status = 200, extraHeaders = {}) =>
       Response.json(data, { status, headers: { 'cache-control': 'no-store', ...extraHeaders } });
 
+    try {
+      const photo = await productPhotoRoute(request, env);
+      if (photo) return photo;
+    } catch { return reply({ error: 'Product photos temporarily unavailable' }, 503); }
+
     if (url.pathname === '/api/health' || url.pathname === '/api/staging-config') {
       if (request.method !== 'GET' && request.method !== 'HEAD') {
         return reply({ error: 'Method not allowed' }, 405, { allow: 'GET, HEAD' });
@@ -74,8 +80,7 @@ export default {
         Boolean(env.FLW_SECRET_KEY?.startsWith('FLWSECK_TEST-'));
       const coinsPurchasesEnabled =
         env.PAYMENTS_ENABLED === 'true' && env.COINS_PURCHASES_ENABLED === 'true';
-      const kycUploadsEnabled =
-        env.KYC_UPLOADS_ENABLED === 'true' && Boolean(env.KYC_PRIVATE);
+      const kycUploadsEnabled = areKycUploadsConfigured(env);
 
       let user: { id: string; email: string; role: string } | null = null;
       if (env.AUTH_DB) {

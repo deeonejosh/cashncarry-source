@@ -612,11 +612,26 @@ async function run() {
       assert.equal(savedStore.status,200,'Storefront API contract should accept real Seller Centre fields');
       assert.equal((await savedStore.json() as any).storefront.name,'Staging Test Store');
 
+      const photo = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aJioAAAAASUVORK5CYII=', 'base64');
+      const upload = (cookie: string, bytes: Buffer | string) => mf.dispatchFetch(origin+'/api/seller/product-photo', {
+        method:'POST', headers:{origin,cookie,'content-type':'image/png'}, body:bytes,
+      });
+      assert.equal((await upload(sellerCookie, photo)).status,403);
+      assert.equal((await upload(sellerCookieApproved, 'not a photo')).status,415);
+      assert.equal((await upload(sellerCookieApproved, Buffer.alloc(512 * 1024 + 1))).status,413);
+      const uploaded = await upload(sellerCookieApproved, photo);
+      assert.equal(uploaded.status,201);
+      const {imageUrl}=await uploaded.json() as {imageUrl:string};
+      assert.equal((await mf.dispatchFetch(imageUrl)).status,404);
+      const privatePhoto=await mf.dispatchFetch(imageUrl,{headers:{cookie:sellerCookieApproved}});
+      assert.equal(privatePhoto.headers.get('content-type'),'image/png');
+      assert.deepEqual(Buffer.from(await privatePhoto.arrayBuffer()),photo);
+
       const productId=crypto.randomUUID();
       const created=await mf.dispatchFetch(origin+'/api/seller/products',makePost(sellerCookieApproved,{
         action:'create',id:productId,name:'Test Ankara Fabric',
         priceMinor:250000,stock:3,description:'Test-only fabric description',
-        category:'fashion',imageUrl:'https://example.invalid/item.png',brand:'Staging Test Store'
+        category:'fashion',imageUrl,brand:'Staging Test Store'
       }) as any);
       assert.equal(created.status,200,'Seller product create must accept camelCase priceMinor');
       const mine=await mf.dispatchFetch(origin+'/api/seller/products',{headers:{cookie:sellerCookieApproved}});
@@ -625,7 +640,7 @@ async function run() {
       assert.equal(listing.description,'Test-only fabric description');
       assert.equal(listing.category,'fashion');
       assert.equal(listing.price_minor,250000);
-      assert.equal(listing.image_url,'https://example.invalid/item.png');
+      assert.equal(listing.image_url,imageUrl);
       const publiclyVisibleBefore=await authDb.prepare("SELECT COUNT(*) AS n FROM products WHERE id=? AND active=1")
         .bind(productId).first<{n:number}>();
       assert.equal(publiclyVisibleBefore?.n,0,'Draft listings must remain private');
@@ -636,8 +651,19 @@ async function run() {
       const pending=await authDb.prepare("SELECT revision,publication FROM cnc_seller_products WHERE id=?")
         .bind(productId).first<{revision:number;publication:string}>();
       assert.equal(pending?.publication,'pending');
+      const returned=await mf.dispatchFetch(origin+'/api/admin/moderation',makePost(adminCookie,{
+        id:productId,revision:pending?.revision,decision:'reject'
+      }) as any);
+      assert.equal(returned.status,200);
+      const returnedDraft=await authDb.prepare("SELECT revision,publication FROM cnc_seller_products WHERE id=?")
+        .bind(productId).first<{revision:number;publication:string}>();
+      assert.equal(returnedDraft?.publication,'draft');
+      const resubmitted=await mf.dispatchFetch(origin+'/api/seller/products',makePost(sellerCookieApproved,{
+        action:'submit',id:productId,revision:returnedDraft?.revision
+      }) as any);
+      assert.equal(resubmitted.status,200);
       const moderated=await mf.dispatchFetch(origin+'/api/admin/moderation',makePost(adminCookie,{
-        id:productId,revision:pending?.revision,decision:'approve'
+        id:productId,revision:(returnedDraft?.revision ?? 0)+1,decision:'approve'
       }) as any);
       assert.equal(moderated.status,200);
       const publicProduct=await authDb.prepare("SELECT store,price,category,active FROM products WHERE id=?")
@@ -646,6 +672,7 @@ async function run() {
       assert.equal(publicProduct?.price,2500);
       assert.equal(publicProduct?.category,'fashion');
       assert.equal(publicProduct?.active,1,'Approved listings must be buyer-visible');
+      assert.equal((await mf.dispatchFetch(imageUrl)).status,200,'Published product photos must be visible to shoppers');
 
       const suspended=await mf.dispatchFetch(origin+'/api/admin/seller-applications/review',makePost(adminCookie,{
         applicationId,userId:'staging-buyer',decision:'suspend',notes:'Test suspension'
@@ -655,6 +682,7 @@ async function run() {
       assert.equal(denied.status,401,'Suspended account sessions cannot access Seller Centre');
       const hidden=await authDb.prepare("SELECT active FROM products WHERE id=?").bind(productId).first<{active:number}>();
       assert.equal(hidden?.active,0,'Suspended seller catalog must be hidden');
+      assert.equal((await mf.dispatchFetch(imageUrl)).status,404,'Suspended seller photos must no longer be visible');
       const audit=await authDb.prepare("SELECT COUNT(*) AS n FROM cnc_seller_application_events WHERE application_id=?")
         .bind(applicationId).first<{n:number}>();
       assert.ok((audit?.n??0)>=3,'Application lifecycle must be auditable');
@@ -695,6 +723,7 @@ async function run() {
       const noLongerPublic=await authDb.prepare("SELECT active FROM products WHERE id=?")
         .bind(productId).first<{active:number}>();
       assert.equal(noLongerPublic?.active,0,'Unpublished product must immediately disappear from buyer-facing catalog');
+      assert.equal((await mf.dispatchFetch(imageUrl)).status,404,'Unpublished photos must only be visible to the seller or admin');
       const repeated=await mf.dispatchFetch(origin+'/api/seller/products',makePost(resumedCookie,{
         action:'unpublish',id:productId,revision:resumedListing.revision
       }) as any);

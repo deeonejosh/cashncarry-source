@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useStore } from '../../../context/StoreContext';
 import { SellerProductItem } from '../../../types';
 import { categories } from '../../../lib/data';
+import ProductPhotoField from './ProductPhotoField';
 import { Plus, Edit, Archive, CheckCircle2, Clock, Send, EyeOff, X } from 'lucide-react';
 
 export default function SellerProductsPage() {
@@ -19,6 +20,7 @@ export default function SellerProductsPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<SellerProductItem | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [actionProductId, setActionProductId] = useState<string | null>(null);
 
   // Create form states
@@ -57,7 +59,7 @@ export default function SellerProductsPage() {
   const handleOpenEdit = (prod: SellerProductItem) => {
     setEditingProduct(prod);
     setEditName(prod.name);
-    setEditPriceNaira(Math.round(prod.priceMinor / 100));
+    setEditPriceNaira(prod.priceMinor / 100);
     setEditStock(prod.stock);
     setEditDescription(prod.description);
     setEditImageUrl(prod.imageUrl);
@@ -65,6 +67,7 @@ export default function SellerProductsPage() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (uploadingPhoto || submitting) return;
     if (!name.trim() || priceNaira <= 0 || stock < 0) {
       showToast('Enter a valid product name, positive price, and stock count.', 'error');
       return;
@@ -96,6 +99,7 @@ export default function SellerProductsPage() {
 
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (uploadingPhoto || submitting) return;
     if (!editingProduct) return;
     setSubmitting(true);
     const res = await updateSellerProduct({
@@ -120,7 +124,7 @@ export default function SellerProductsPage() {
         <div>
           <h1 className="text-2xl font-black text-slate-900 sm:text-3xl">Products</h1>
           <p className="mt-1 text-xs text-slate-500">
-            Manage listings and stock.
+            Save a draft, then submit it for admin review. Approved listings appear in the shop.
           </p>
         </div>
 
@@ -169,7 +173,7 @@ export default function SellerProductsPage() {
                     </div>
                   </td>
                   <td className="py-3.5 px-4 font-mono font-bold text-slate-900">
-                    ₦{Math.round(prod.priceMinor / 100).toLocaleString('en-NG')}
+                    ₦{(prod.priceMinor / 100).toLocaleString('en-NG', { maximumFractionDigits: 2 })}
                   </td>
                   <td className="py-3.5 px-4">
                     <span className={`font-bold ${prod.stock <= 3 ? 'text-rose-600' : 'text-slate-700'}`}>
@@ -201,13 +205,13 @@ export default function SellerProductsPage() {
                   </td>
                   <td className="py-3.5 px-4 text-right">
                     <div className="flex items-center justify-end gap-1.5">
-                      {(prod.publication === 'draft' || prod.publication === 'rejected') && (
+                      {prod.publication === 'draft' && (
                         <button
                           onClick={() => void runProductAction(prod.id, () => submitSellerProductForReview(prod.id))}
                           disabled={actionProductId !== null}
                           className="inline-flex items-center gap-1 rounded-lg bg-[#0c5c36] px-2.5 py-1.5 text-[11px] font-bold text-white hover:bg-emerald-900"
                         >
-                          <Send size={12} /> Submit
+                          <Send size={12} /> Submit for review
                         </button>
                       )}
                       {prod.publication === 'published' && (
@@ -255,7 +259,8 @@ export default function SellerProductsPage() {
           >
             <div className="flex items-center justify-between border-b border-slate-100 p-5">
               <h3 className="text-base font-black text-slate-900">Create Product Listing</h3>
-              <button onClick={() => setShowAddModal(false)}>
+              <button onClick={() => setShowAddModal(false)}
+                disabled={uploadingPhoto || submitting}>
                 <X size={18} className="text-slate-400" />
               </button>
             </div>
@@ -278,7 +283,9 @@ export default function SellerProductsPage() {
                   <label className="font-bold text-slate-700">Price in Naira (₦) *</label>
                   <input
                     type="number"
-                    min={1}
+                    min={0.01}
+                    max={10000000}
+                    step={0.01}
                     value={priceNaira || ''}
                     onChange={(e) => setPriceNaira(Number(e.target.value))}
                     required
@@ -290,6 +297,8 @@ export default function SellerProductsPage() {
                   <input
                     type="number"
                     min={0}
+                    max={10000000}
+                    step={0.01}
                     value={compareAtNaira || ''}
                     onChange={(e) => setCompareAtNaira(Number(e.target.value))}
                     className="mt-1 h-11 w-full rounded-xl border border-slate-200 px-3 outline-none focus:border-emerald-600"
@@ -303,6 +312,7 @@ export default function SellerProductsPage() {
                   <input
                     type="number"
                     min={0}
+                    max={1000000}
                     value={stock}
                     onChange={(e) => setStock(Number(e.target.value))}
                     required
@@ -336,16 +346,8 @@ export default function SellerProductsPage() {
                 />
               </div>
 
-              <div>
-                <label className="font-bold text-slate-700">Product Image URL (Optional)</label>
-                <input
-                  type="url"
-                  value={imageUrl}
-                  onChange={(e) => setImageUrl(e.target.value)}
-                  placeholder="https://..."
-                  className="mt-1 h-11 w-full rounded-xl border border-slate-200 px-3 outline-none font-mono text-[11px]"
-                />
-              </div>
+              <ProductPhotoField value={imageUrl} onChange={setImageUrl} uploading={uploadingPhoto}
+                onUploadingChange={setUploadingPhoto} disabled={submitting} />
 
               <div>
                 <label className="font-bold text-slate-700">Description *</label>
@@ -361,7 +363,7 @@ export default function SellerProductsPage() {
 
               <button
                 type="submit"
-                disabled={submitting}
+                disabled={submitting || uploadingPhoto}
                 className="w-full rounded-2xl bg-[#0c5c36] py-3.5 text-xs font-black text-white hover:bg-emerald-900 transition shadow-lg disabled:opacity-50"
               >
                 {submitting ? 'Creating Draft...' : 'Save Product Draft'}
@@ -380,7 +382,8 @@ export default function SellerProductsPage() {
           >
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <h3 className="text-base font-black text-slate-900">Edit Product</h3>
-              <button onClick={() => setEditingProduct(null)}>✕</button>
+              <button onClick={() => setEditingProduct(null)}
+                disabled={uploadingPhoto || submitting}>✕</button>
             </div>
 
             <form onSubmit={handleUpdate} className="space-y-4 text-xs">
@@ -400,7 +403,9 @@ export default function SellerProductsPage() {
                   <label className="font-bold text-slate-700">Price (₦)</label>
                   <input
                     type="number"
-                    min={1}
+                    min={0.01}
+                    max={10000000}
+                    step={0.01}
                     required
                     value={editPriceNaira}
                     onChange={(e) => setEditPriceNaira(Number(e.target.value))}
@@ -412,6 +417,7 @@ export default function SellerProductsPage() {
                   <input
                     type="number"
                     min={0}
+                    max={1000000}
                     required
                     value={editStock}
                     onChange={(e) => setEditStock(Number(e.target.value))}
@@ -420,15 +426,8 @@ export default function SellerProductsPage() {
                 </div>
               </div>
 
-              <div>
-                <label className="font-bold text-slate-700">Image URL</label>
-                <input
-                  type="url"
-                  value={editImageUrl}
-                  onChange={(e) => setEditImageUrl(e.target.value)}
-                  className="mt-1 h-11 w-full rounded-xl border border-slate-200 px-3 outline-none font-mono text-[11px]"
-                />
-              </div>
+              <ProductPhotoField value={editImageUrl} onChange={setEditImageUrl} uploading={uploadingPhoto}
+                onUploadingChange={setUploadingPhoto} disabled={submitting} />
 
               <div>
                 <label className="font-bold text-slate-700">Description</label>
@@ -442,7 +441,7 @@ export default function SellerProductsPage() {
 
               <button
                 type="submit"
-                disabled={submitting}
+                disabled={submitting || uploadingPhoto}
                 className="w-full rounded-2xl bg-[#0c5c36] py-3 text-xs font-black text-white hover:bg-emerald-900 transition disabled:opacity-50"
               >
                 {submitting ? 'Saving...' : 'Save Changes'}

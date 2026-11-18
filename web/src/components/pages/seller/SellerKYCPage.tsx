@@ -101,7 +101,7 @@ export default function SellerKYCPage({ onNavigate }: SellerKYCPageProps) {
               </div>
               <h4 className="text-sm font-black text-emerald-900">Approved Seller</h4>
               <p className="text-xs text-emerald-800">
-                Your seller privileges are active. You can publish products, upload videos, and host livestreams.
+                Your seller privileges are active. You can submit product listings for moderation and manage your storefront.
               </p>
               {onNavigate && (
                 <button

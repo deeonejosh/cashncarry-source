@@ -2,6 +2,7 @@ import {currentAccount, readBody, type AuthEnvironment, hasValidMutationOrigin }
 
 import { readProduct, type CatalogDatabase } from './catalog';
 import { escape, page } from './catalog-pages';
+import { managedPhotoId } from './product-photos';
 
 interface Environment extends AuthEnvironment { DB?: CatalogDatabase; ORDER_RESERVATIONS?: string }
 type Item = { id: string; name: string; price_minor: number; stock: number; revision: number; publication: string };
@@ -99,6 +100,9 @@ export async function marketplaceRoute(request: Request, env: Environment): Prom
             (compareInput !== undefined && compareInput !== null && compare === null)) {
           return respond(400,'Invalid product details');
         }
+        const photoId = managedPhotoId(imageInput || '', url.origin);
+        if (photoId && !await db.prepare('SELECT 1 FROM cnc_seller_product_photos WHERE id=? AND owner=?')
+          .bind(photoId, owner).first()) return respond(400, 'Select a photo uploaded by this seller.');
         if (body.action === 'create') {
           if (!/^[a-f0-9-]{36}$/i.test(id)) return respond(400,'Invalid product request ID');
           const created = await db.prepare(

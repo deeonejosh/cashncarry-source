@@ -7,7 +7,7 @@ export default function SellerSettlementsPage() {
   const paymentsEnabled = platformConfig.paymentsEnabled;
 
   const paidOrders = sellerOrders.filter(
-    (o) => o.status === 'paid' || o.status === 'shipped' || o.status === 'delivered'
+    (o) => ['paid', 'processing', 'packed', 'shipped', 'delivered'].includes(o.status)
   );
 
   const totalEarned = paidOrders.reduce((acc, o) => acc + o.total, 0);
@@ -37,7 +37,7 @@ export default function SellerSettlementsPage() {
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
         <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-1">
-          <div className="text-xs font-bold text-slate-400">Paid & Dispatched Order Volume</div>
+          <div className="text-xs font-bold text-slate-500">Paid Order Volume</div>
           <div className="text-2xl font-black text-slate-900">₦{totalEarned.toLocaleString('en-NG')}</div>
           <div className="text-[11px] text-slate-400">Calculated from real orders</div>
         </div>
@@ -49,10 +49,10 @@ export default function SellerSettlementsPage() {
         </div>
 
         <div className="rounded-3xl border border-emerald-200 bg-emerald-50/60 p-6 shadow-sm space-y-1">
-          <div className="text-xs font-bold text-emerald-800">Net Eligible Amount</div>
+          <div className="text-xs font-bold text-emerald-800">Estimated Net Earnings</div>
           <div className="text-2xl font-black text-[#0c5c36]">₦{netPayable.toLocaleString('en-NG')}</div>
           <div className="text-[11px] text-emerald-700">
-            {paymentsEnabled ? 'Ready for payout schedule' : 'Awaiting live payment activation'}
+            Automated payouts are unavailable.
           </div>
         </div>
       </div>
@@ -65,7 +65,7 @@ export default function SellerSettlementsPage() {
           </div>
 
           <div className="rounded-2xl bg-slate-50 p-4 border border-slate-200 text-xs text-slate-600">
-            Bank account verification and automated NUBAN payout transfers are disabled until payment processing is enabled.
+            Bank account verification and automated NUBAN payouts are unavailable in this environment.
           </div>
 
           <button
@@ -80,13 +80,13 @@ export default function SellerSettlementsPage() {
 
         <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-4 lg:col-span-2">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-            <h3 className="text-sm font-black text-slate-900">Eligible Order Ledger</h3>
+            <h3 className="text-sm font-black text-slate-900">Paid Order Ledger</h3>
             <span className="text-xs text-slate-400">{paidOrders.length} Orders</span>
           </div>
 
           {paidOrders.length === 0 ? (
             <div className="p-8 text-center text-xs text-slate-400">
-              No completed orders eligible for settlement yet.
+              No paid orders yet.
             </div>
           ) : (
             <div className="divide-y divide-slate-100 text-xs">

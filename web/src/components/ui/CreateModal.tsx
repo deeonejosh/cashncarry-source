@@ -447,19 +447,18 @@ export default function CreateModal({ isOpen, onClose, onNavigate }: CreateModal
 
               <button
                 type="button"
-                onClick={() => {
-                  setActiveView('go-live');
-                  void startCamera();
-                }}
+                onClick={() => setActiveView('go-live')}
                 className="group flex w-full items-center gap-4 rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:border-orange-500 hover:bg-orange-50/40"
               >
                 <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-orange-100 text-orange-600 group-hover:bg-orange-500 group-hover:text-white transition">
                   <Radio size={26} />
                 </div>
                 <div className="flex-1">
-                  <span className="text-sm font-black text-slate-900">Go Live</span>
+                  <span className="text-sm font-black text-slate-900">Set Up Live Room</span>
                   <p className="mt-1 text-xs text-slate-500">
-                    Open a live shopping room with pinned product checkout and real-time chat.
+                    {liveStreamingConfigured
+                      ? 'Set up a room for product pinning and chat. Video requires a separate broadcast connection.'
+                      : 'Set up a room for product pinning and chat. Video streaming is unavailable in this environment.'}
                   </p>
                 </div>
               </button>

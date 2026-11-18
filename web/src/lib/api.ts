@@ -383,6 +383,15 @@ class ApiClient {
     return this.requestJson<{ items?: ApiSellerProduct[] }>('/api/seller/products');
   }
 
+  async uploadSellerProductPhoto(photo: Blob) {
+    return this.requestJson<{ imageUrl?: string }>('/api/seller/product-photo', {
+      method: 'POST',
+      headers: { 'Content-Type': photo.type },
+      body: photo,
+      timeoutMs: 20000,
+    });
+  }
+
   async mutateSellerProduct(input: {
     action: 'create' | 'update' | 'submit' | 'unpublish' | 'archive';
     id?: string;

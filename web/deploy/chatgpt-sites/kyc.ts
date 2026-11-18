@@ -12,16 +12,22 @@ export interface KycEnvironment extends AuthEnvironment {
 const maxBytes = 5 * 1024 * 1024;
 const json = (data: unknown, status: number) => Response.json(data,{status,headers:{'cache-control':'no-store'}});
 
+export function areKycUploadsConfigured(env: KycEnvironment) {
+  return env.KYC_UPLOADS_ENABLED === 'true' && Boolean(env.AUTH_DB && env.KYC_PRIVATE
+    && env.KYC_SCANNER_HTTPS_URL && env.KYC_SCANNER_BEARER_TOKEN
+    && /^[a-f0-9]{64}$/i.test(env.KYC_DOCUMENT_KEY || ''));
+}
+
 export async function kycRoute(request: Request, env: KycEnvironment): Promise<Response | null> {
   if (new URL(request.url).pathname !== '/api/sellers/kyc') return null;
-  const uploadsEnabled = env.KYC_UPLOADS_ENABLED === 'true' && Boolean(env.KYC_PRIVATE);
+  const uploadsEnabled = areKycUploadsConfigured(env);
   if (request.method === 'GET') {
     return json({
       uploadsEnabled,
       r2Configured: Boolean(env.KYC_PRIVATE),
       reason: uploadsEnabled
         ? null
-        : 'KYC document uploads are temporarily unavailable until private R2 storage is provisioned in staging.',
+        : 'Document uploads require private storage, document scanning and encryption.',
     }, 200);
   }
   if (request.method !== 'POST') return json({error:'Method not allowed'},405);
