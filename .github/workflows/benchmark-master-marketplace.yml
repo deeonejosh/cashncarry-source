@@ -1,0 +1,44 @@
+name: Cash N Carry master marketplace private-staging benchmark
+on:
+  push:
+    branches: [fix/staging-master-marketplace-20261118]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: cnc-master-marketplace-staging
+  cancel-in-progress: true
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+      - name: TypeScript check
+        run: npm run lint
+      - name: Isolated Miniflare D1 security and workflow regression
+        run: npm test
+      - name: Build private staging frontend and UI static audit
+        run: npm run build
+      - name: Bundle Cloudflare Worker without deployment
+        run: npm run bundle:worker
+      - name: Upload QA reports and build manifests
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cnc-master-marketplace-evidence
+          path: |
+            web/reports/
+            web/dist/
+          if-no-files-found: warn
+          retention-days: 14
