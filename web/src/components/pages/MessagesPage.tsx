@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useStore } from '../../context/StoreContext';
 import { ProductItem } from '../../types';
+import SupportTicketsPanel from './SupportTicketsPanel';
 import {
   MessageSquare,
   Send,
@@ -80,6 +81,7 @@ export default function MessagesPage({ onNavigateOrder }: MessagesPageProps) {
   const [inputText, setInputText] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [showProductPicker, setShowProductPicker] = useState(false);
+  const [supportPanelOpen, setSupportPanelOpen] = useState(false);
 
   useEffect(() => {
     if (!activePartnerId && conversations.length > 0) {
@@ -123,6 +125,21 @@ export default function MessagesPage({ onNavigateOrder }: MessagesPageProps) {
 
   return (
     <div className="space-y-4 pb-20">
+      <div role="tablist" aria-label="Messages and support" className="flex flex-wrap gap-2 rounded-xl border border-slate-200 bg-white p-2">
+        <button type="button" role="tab" aria-selected={!supportPanelOpen}
+          onClick={() => setSupportPanelOpen(false)}
+          className={'rounded-lg px-4 py-2 text-xs font-bold ' +
+            (!supportPanelOpen ? 'bg-[#0c5c36] text-white' : 'text-slate-600 hover:bg-slate-100')}>
+          Seller Messages
+        </button>
+        <button type="button" role="tab" aria-selected={supportPanelOpen}
+          onClick={() => setSupportPanelOpen(true)}
+          className={'rounded-lg px-4 py-2 text-xs font-bold ' +
+            (supportPanelOpen ? 'bg-[#0c5c36] text-white' : 'text-slate-600 hover:bg-slate-100')}>
+          Customer Support
+        </button>
+      </div>
+      {!supportPanelOpen ? (<>
       <div>
         <h1 className="text-xl sm:text-2xl font-black text-slate-900">Messages</h1>
         <p className="text-xs text-slate-500">
@@ -343,6 +360,7 @@ export default function MessagesPage({ onNavigateOrder }: MessagesPageProps) {
           </div>
         </div>
       )}
+      </>) : <SupportTicketsPanel />}
     </div>
   );
 }
