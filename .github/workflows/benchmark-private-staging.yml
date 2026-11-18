@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - fix/staging-ai-benchmark-20261117
+      - fix/staging-master-seller-split-20261118
   workflow_dispatch:
 permissions:
   contents: read
