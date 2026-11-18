@@ -35,8 +35,16 @@ BEGIN
    WHERE o.id=NEW.order_id AND o.status='awaiting_payment'
      AND o.payment_state='paid' AND p.paid_at IS NOT NULL AND p.transaction_id IS NOT NULL
  ) THEN RAISE(ABORT,'CNC_SELLER_FULFILMENT_PAYMENT_REQUIRED') END;
- SELECT CASE WHEN NEW.status<>'processing'
-   THEN RAISE(ABORT,'CNC_FULFILMENT_INITIAL_STATE') END;
+END;
+
+-- SQLite fires BEFORE INSERT triggers during UPSERT conflict handling.
+-- Initial-state enforcement belongs in AFTER INSERT (actual new row only),
+-- otherwise a legitimate processing -> packed UPSERT would be aborted.
+CREATE TRIGGER IF NOT EXISTS cnc_fulfilment_initial_status
+AFTER INSERT ON cnc_seller_order_fulfilments
+WHEN NEW.status<>'processing'
+BEGIN
+ SELECT RAISE(ABORT,'CNC_FULFILMENT_INITIAL_STATE');
 END;
 
 CREATE TRIGGER IF NOT EXISTS cnc_fulfilment_paid_owner_update
