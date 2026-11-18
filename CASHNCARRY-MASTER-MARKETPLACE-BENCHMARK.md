@@ -150,3 +150,41 @@ Statuses marked PASSED apply **only to the specifically named isolated backend t
 | Production | Not modified |
 
 **Interpretation:** The code fix is **actually deployed to private staging**, but full marketplace acceptance remains **BLOCKED** by provider, checkout/fulfilment and live-media dependencies. A code readback and 25 isolated tests do not substitute for a real authenticated three-user transaction through Cloudflare Access. Do not release to production.
+
+
+## 14. Subsequent candidate: seller-scoped multi-vendor fulfilment (18 Nov 2026)
+
+**Status: SOURCE REPAIRED AND ISOLATED CI PASSED; NOT DEPLOYED TO CLOUDFLARE.**
+
+**Repair branch:** `fix/staging-master-seller-split-20261118`; tested source commit `c22344fb29c345e2eba935d9d91730c112153d34`.
+**Verified CI:** https://github.com/deeonejosh/cashncarry-source/actions/runs/44252077712 — Node 22, locked dependencies, TypeScript, **25 isolated tests passed / 0 failed**, Vite/UX static audit and Worker esbuild bundle all successful.
+
+**Verified P0 root cause:** Existing `cnc_order_fulfilments` uses `PRIMARY KEY(order_id)` and could not hold separate shipping states for products belonging to different sellers on the same order. v55 intentionally rejected these paid orders during fulfilment, leaving a real business workflow disconnected.
+
+**Repair committed but not deployed:**
+
+- `web/deploy/chatgpt-sites/migrations/0024_seller_order_fulfilment.sql` — adds `cnc_seller_order_fulfilments` using `PRIMARY KEY(order_id,seller_id)`; enforces confirmed provider payment, seller line-item ownership, ordered state transitions, and atomic buyer notification triggers. Migrates only verified historical fulfilment data. An initial test failed because SQLite evaluates BEFORE INSERT triggers on UPSERT conflict paths; moved initial-state validation to AFTER INSERT. Retest passed.
+- `web/deploy/chatgpt-sites/migrations/0025_paid_order_seller_notifications.sql` — one in-app notification per participating seller at the payment-state transition, not at unpaid reservation, with no duplicate on retry.
+- `web/deploy/chatgpt-sites/unified-sync.ts` — seller-specific paid order totals, own line items and separate fulfilment state. No other seller's private items or unpaid delivery address leak.
+- `web/deploy/chatgpt-sites/orders.ts` — buyer receives authoritative line items, saved delivery data and each seller's verified shipment/tracking record.
+- `web/src/context/StoreContext.tsx`, `web/src/types/index.ts` and `web/src/components/pages/OrdersPage.tsx` — correct JSON address/date mapping, kobo precision, actual order items, truthful paid status, compact individual-seller shipment tracking without duplicate Track actions.
+- `web/scripts/run-automated-tests.ts` — isolated API and D1 checks for unpaid fulfilment rejection, forged DB row prevention, stock reserved once, retry idempotency, independent seller totals/states, buyer order items, tracking, payment-state seller notifications and buyer notification deduplication.
+- `.github/workflows/benchmark-master-marketplace.yml` — isolated child-branch CI; never deploys.
+
+**Tests and statuses:**
+
+| Test | Status | Evidence or blocker |
+|---|---|---|
+| Seller A/B own paid line items and privacy | **PASSED (isolated)** | 25-test Miniflare CI; per-seller SQL predicates |
+| Buyer sees two real seller shipment records | **PASSED (isolated)** | API D1 fixtures and React TypeScript build |
+| Seller-independent progression / replay deduplication | **PASSED (isolated)** | DB state guards and one notification per transition |
+| Authenticated Cloudflare staging three-user purchase | **NOT TESTED** | No authorised Access sessions; Flutterwave disabled |
+| Real Flutterwave sandbox transaction and fees | **BLOCKED** | TEST credential/fee quote configuration absent |
+| Actual remote D1 migration 0022–0025 | **BLOCKED** | Database export retrieval/independent backup not verified |
+| Public livestream transport and auction settlement | **BLOCKED** | No media handshake or winning checkout integration |
+
+**Backup evidence:** Cloudflare D1 managed export reported complete at time-travel bookmark `000000ab-00000000-00005127-9ecfcbc3d05ccb37a2e6cfb4edeeca6b`. Retrieval of the signed SQL export was attempted and returned **HTTP 403**; an independent restorable SQL backup was **not** secured. Point-in-time bookmark was retrieved, but is not treated as a durable independent export. No remote D1 migrations, fixture data writes or release were performed from this child branch. No production resources modified.
+
+**Staging release gate remains closed for this candidate.** The active private Worker remains previously verified **v55** `1e6cacd4-765b-4b10-9a98-82efe80ef5de` pending independent backup, remote migration test and actual multi-user acceptance. The isolated coverage is improved, but the published baseline **32/100** and v55 **37/100** conservative readiness scores are **not inflated** by tests that were never run against real providers or the deployed application. No new production-readiness score is claimed.
+
+**Priority next:** secure independent staging D1 SQL backup; apply and verify 0022–0025 migrations using the actual staging schema; deploy the matching compiled frontend and Worker together; run authorised multi-user buyer/seller/owner acceptance and explicit rollback checks. Keep real payments, coin purchases, KYC uploads and streaming disabled until genuine provider acceptance exists.
