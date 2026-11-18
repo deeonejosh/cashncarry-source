@@ -1,0 +1,3 @@
+source=abcbd0e33bfafd0bd899b6033cef2636ffa7ab5d
+release=PRIVATE_STAGING_CANDIDATE_ONLY
+production=DO_NOT_TOUCH
