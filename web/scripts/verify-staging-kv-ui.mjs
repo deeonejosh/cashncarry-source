@@ -7,8 +7,8 @@ import {Miniflare} from 'miniflare';
 const root = process.cwd();
 const releaseDir = path.join(root,'dist','staging-v58');
 fs.mkdirSync(releaseDir,{recursive:true});
-fs.copyFileSync('deploy/chatgpt-sites/staging-ui-kv-wrapper.mjs',path.join(releaseDir,'entry.js'));
-fs.copyFileSync('dist/_worker.js',path.join(releaseDir,'backend-v57.js'));
+fs.copyFileSync('deploy/chatgpt-sites/staging-ui-kv-wrapper.mjs',path.join(releaseDir,'entry.mjs'));
+fs.copyFileSync('dist/_worker.js',path.join(releaseDir,'backend-v57.mjs'));
 
 const expected = [
   ['index.html','cnc:v58:ui:index.html','d885970af9a34102f4a8d63b0f6d4b4bea90bd3c13b6d00c109fdcdac99c660c'],
@@ -22,7 +22,7 @@ for (const [file,,sha] of expected) {
 }
 const origin='https://cashncarry-d1-staging-worker.cashncarry-workforce-2026.workers.dev';
 const mf=new Miniflare({
-  modules:true,scriptPath:path.join(releaseDir,'entry.js'),
+  modules:true,scriptPath:path.join(releaseDir,'entry.mjs'),
   compatibilityDate:'2026-08-06',
   compatibilityFlags:['nodejs_compat'],
   kvNamespaces:['CNC_STAGING_ASSETS'],
