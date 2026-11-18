@@ -1,0 +1,64 @@
+name: Build verified private staging v56 release artifact (NO DEPLOY)
+on:
+  push:
+    branches: [fix/staging-master-seller-split-20261118]
+    paths: ['.github/workflows/package-private-v56-release.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: cnc-private-v56-package
+  cancel-in-progress: false
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+      - name: TypeScript, 25 D1/workflow tests, frontend build and Worker bundle
+        run: |
+          npm run lint
+          npm test
+          npm run build
+          npm run bundle:worker
+      - name: Install test Chromium
+        run: node node_modules/playwright-core/cli.js install --with-deps chromium
+      - name: Verify 26 customer tabs desktop/mobile with isolated Worker and D1
+        run: node scripts/verify-staging-browser.mjs
+      - name: Build deterministic release manifest; NO secrets and NO deployment
+        run: |
+          sha256sum dist/_worker.js dist/index.html dist/assets/* > dist/CNC-v56-SHA256SUMS.txt
+          printf 'source=%s\nrelease=PRIVATE_STAGING_CANDIDATE_ONLY\nproduction=DO_NOT_TOUCH\n' "$GITHUB_SHA" > dist/CNC-v56-release.txt
+          test -s dist/_worker.js
+          test "$(find dist/assets -name 'index-*.js' | wc -l)" -eq 1
+      - name: Commit immutable tested build to separate artifact branch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git switch -c artifact/staging-master-v56-20261118
+          git add -f dist
+          git commit -m 'build(staging): source-built v56 Worker and UI assets; no deployment'
+          git push origin HEAD:refs/heads/artifact/staging-master-v56-20261118
+      - name: Upload restore-reviewed sources, assets and D1 migrations
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cashncarry-private-v56-release-package
+          path: |
+            web/dist/
+            web/deploy/chatgpt-sites/migrations/0022_auction_seller_approval.sql
+            web/deploy/chatgpt-sites/migrations/0023_approved_seller_public_store_sync.sql
+            web/deploy/chatgpt-sites/migrations/0024_seller_order_fulfilment.sql
+            web/deploy/chatgpt-sites/migrations/0025_paid_order_seller_notifications.sql
+          if-no-files-found: warn
+          retention-days: 30
