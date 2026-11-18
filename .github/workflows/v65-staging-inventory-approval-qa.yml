@@ -1,0 +1,41 @@
+name: V65 private staging inventory approval regression (NO DEPLOY)
+on:
+  push:
+    branches: [fix/v65-inventory-approval-staging-20261118]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: v65-inventory-approval-qa
+  cancel-in-progress: false
+jobs:
+  isolated-marketplace:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Install reproducible dependencies
+        run: npm ci --no-audit --no-fund
+      - name: TypeScript and isolated unit regressions
+        run: npm run lint && npm test
+      - name: Source-built staging UI and backend, without deployment
+        run: npm run build && npm run bundle:worker
+      - name: Seller approval, stock updates, buyer catalog and all-role isolated E2E
+        run: node scripts/v58-marketplace-e2e.mjs
+      - name: Upload regression evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cnc-v65-inventory-approval-evidence
+          path: |
+            web/reports/
+          if-no-files-found: warn
+          retention-days: 14
