@@ -45,7 +45,17 @@ jobs:
           from zipfile import ZipFile
           archive=Path('Cash-N-Carry-Staging-Upload-Under-25MB.zip')
           assert archive.is_file(), 'Existing integrated Android source archive missing'
-          required=('settings.gradle.kts','build.gradle.kts','gradle/libs.versions.toml')
+          required=(
+              'settings.gradle.kts',
+              'build.gradle.kts',
+              'gradle/libs.versions.toml',
+              'app/src/main/res/values/strings.xml',
+              'app/src/main/res/drawable/ic_launcher_background.xml',
+              'app/src/main/res/drawable/ic_launcher_foreground.xml',
+              'app/src/main/java/com/example/ui/theme/Color.kt',
+              'app/src/main/java/com/example/ui/theme/Theme.kt',
+              'app/src/main/java/com/example/ui/theme/Type.kt',
+          )
           with ZipFile(archive) as z:
               names=z.namelist()
               for target in required:
