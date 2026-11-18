@@ -4,7 +4,7 @@ on:
     branches: [fix/v65-inventory-approval-staging-20261118]
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
 concurrency:
   group: v65-inventory-approval-qa
   cancel-in-progress: false
@@ -30,6 +30,17 @@ jobs:
         run: npm run build && npm run bundle:worker
       - name: Seller approval, stock updates, buyer catalog and all-role isolated E2E
         run: node scripts/v58-marketplace-e2e.mjs
+      - name: Package immutable verified backend for private staging (NO DEPLOY)
+        run: |
+          cp dist/_worker.js dist/staging-v65-approved-inventory-backend.mjs
+          sha256sum dist/staging-v65-approved-inventory-backend.mjs > dist/staging-v65-approved-inventory-backend.sha256
+          printf 'source=%s\\nscope=private-staging-only\\nno-deploy\\n' "$GITHUB_SHA" > dist/staging-v65-source.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c artifact/staging-v65-inventory-approval-20261118
+          git add -f dist/staging-v65-approved-inventory-backend.mjs dist/staging-v65-approved-inventory-backend.sha256 dist/staging-v65-source.txt
+          git commit -m "build(staging): immutable backend for verified inventory approval repair"
+          git push origin HEAD:refs/heads/artifact/staging-v65-inventory-approval-20261118
       - name: Upload regression evidence
         if: always()
         uses: actions/upload-artifact@v4
