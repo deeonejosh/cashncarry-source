@@ -38,6 +38,8 @@ jobs:
       - name: Build isolated frontend
         id: build
         run: npm run build
+      - name: Bundle real Worker API for browser benchmark
+        run: npm run bundle:worker
       - name: Install Chromium
         run: node node_modules/playwright-core/cli.js install chromium
       - name: Install independent audit-only tools
