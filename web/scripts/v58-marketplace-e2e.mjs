@@ -174,6 +174,29 @@ try {
   publishedItem = (await call('/api/seller/products', ids.seller)).data.items.find(p => p.id === productId);
   assert.equal(publishedItem.publication, 'published');
   assert.equal(publishedItem.stock, 5);
+  // The one-time approval exception applies ONLY to inventory. Material
+  // listing changes remain private until the owner approves the new revision.
+  await expectStatus('/api/seller/products', ids.seller, 'POST',
+    { action: 'update', id: productId, revision: publishedItem.revision,
+      name: publishedItem.name, priceMinor: publishedItem.price_minor + 1000,
+      stock: 5, description: publishedItem.description, imageUrl: publishedItem.image_url },
+    200, 'seller submits a changed price as a private draft');
+  const changedProduct = (await call('/api/seller/products', ids.seller)).data.items.find(p => p.id === productId);
+  assert.equal(changedProduct.publication, 'draft', 'material price change must not bypass moderation');
+  buyerCatalog = await call('/api/products', ids.buyerA);
+  assert.ok(!buyerCatalog.data.products.some(p => p.id === productId),
+    'product with changed price must be hidden until owner re-approves');
+  await expectStatus('/api/seller/products', ids.seller, 'POST',
+    { action: 'submit', id: productId, revision: changedProduct.revision },
+    200, 'seller submits material price revision for approval');
+  const revisedPending = (await call('/api/admin/moderation', ids.owner)).data.products.find(p => p.id === productId);
+  assert.ok(revisedPending, 'owner sees material revision');
+  await expectStatus('/api/admin/moderation', ids.owner, 'POST',
+    { id: productId, revision: revisedPending.revision, decision: 'approve' },
+    200, 'owner approves price revision');
+  const revisedPublished = (await call('/api/seller/products', ids.seller)).data.items.find(p => p.id === productId);
+  assert.equal(revisedPublished.publication, 'published');
+  record('changed product pricing remains under admin moderation, unlike inventory-only updates', { isolated: true });
 
 
   for (const buyer of [ids.buyerA, ids.buyerB, ids.seller]) {
