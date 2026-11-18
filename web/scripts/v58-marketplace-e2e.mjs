@@ -362,6 +362,28 @@ try {
   assert.ok(adminQueue.data.tickets.length >= 2);
   record('support inbox, permissions, linked orders, MFA triage and human escalation pass in disposable D1',
     { tickets: adminQueue.data.tickets.length, aiProviderCalls: 0 });
+  // Reproduce an interrupted first-message insert: a support ticket must never
+  // exist without its initial message and creation audit record.
+  await db.prepare(`CREATE TRIGGER cnc_support_ci_reject_first_message
+    BEFORE INSERT ON cnc_support_messages
+    WHEN NEW.body='FORCE_SUPPORT_MESSAGE_FAILURE'
+    BEGIN SELECT RAISE(ABORT, 'SUPPORT_MESSAGE_TEST_FAILURE'); END`).run();
+  try {
+    const interrupted = await call('/api/support/tickets', ids.buyerB, 'POST', {
+      subject: 'Atomic support creation check', category: 'technical',
+      message: 'FORCE_SUPPORT_MESSAGE_FAILURE'
+    });
+    assert.equal(interrupted.status, 503,
+      'disposable support message insert failure must fail the request');
+    const orphaned = await db.prepare(
+      "SELECT COUNT(*) AS n FROM cnc_support_tickets WHERE subject='Atomic support creation check'"
+    ).first();
+    assert.equal(orphaned.n, 0, 'ticket insert must roll back when first support message fails');
+    record('support creation is all-or-nothing when initial message persistence fails', { isolated: true });
+  } finally {
+    await db.prepare('DROP TRIGGER cnc_support_ci_reject_first_message').run();
+  }
+
   result = { status: 'PASSED', cases: evidence.length, steps: evidence, remoteStagingWrites: 0,
     providerPaymentsTested: false, realStreamingTested: false, authenticatedAccessTests: false };
 } catch(error) {
