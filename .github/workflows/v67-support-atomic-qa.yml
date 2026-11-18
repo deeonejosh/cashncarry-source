@@ -1,0 +1,40 @@
+name: V67 private staging atomic support regression (NO DEPLOY)
+on:
+  push:
+    branches: [fix/v67-staging-support-atomic-20261118]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: cnc-v67-atomic-support-regression
+  cancel-in-progress: false
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Source typecheck and unit tests
+        run: npm run lint && npm test
+      - name: Compile existing private staging app and Worker (NO DEPLOY)
+        run: npm run build && npm run bundle:worker
+      - name: Isolated role, support atomicity and marketplace E2E (NO REMOTE WRITES)
+        run: node scripts/v58-marketplace-e2e.mjs
+      - name: Upload isolated evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cnc-v67-support-atomic-isolated
+          path: web/reports/
+          if-no-files-found: warn
+          retention-days: 14
