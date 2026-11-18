@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { StoreProvider, useStore } from './context/StoreContext';
+import { mapApiProduct, StoreProvider, useStore } from './context/StoreContext';
 import { ProductItem, Order } from './types';
+import { api } from './lib/api';
 import Navbar from './components/ui/Navbar';
 import MobileNav from './components/ui/MobileNav';
 import Footer from './components/ui/Footer';
@@ -121,8 +122,6 @@ function MainApp() {
     setCartOpen,
     toasts,
     products,
-    catalogState,
-    reloadMarketplace,
     orders,
     openAuthModal,
   } = useStore();
@@ -149,16 +148,34 @@ function MainApp() {
     () => getProductLinkId(new URLSearchParams(window.location.search))
   );
   const [clickedProduct, setClickedProduct] = useState<ProductItem | null>(null);
-  const selectedProduct = currentTab === 'product-detail' && productLinkId
+  const [productLookup, setProductLookup] = useState<{ id: string; product: ProductItem | null; failed: boolean } | null>(null);
+  const [productLookupAttempt, setProductLookupAttempt] = useState(0);
+  const listedProduct = currentTab === 'product-detail' && productLinkId
     ? products.find((product) => product.id === productLinkId || product.slug === productLinkId)
       ?? (clickedProduct && (clickedProduct.slug || clickedProduct.id) === productLinkId ? clickedProduct : null)
     : null;
+  const lookupId = currentTab === 'product-detail' && !listedProduct ? productLinkId : '';
+  const currentLookup = productLookup?.id === lookupId ? productLookup : null;
+  const selectedProduct = listedProduct ?? currentLookup?.product ?? null;
   const [lastCompletedOrder, setLastCompletedOrder] = useState<Order | null>(null);
   const [activeTrackingNumber, setActiveTrackingNumber] = useState<string>('');
   const [returnOrder, setReturnOrder] = useState<Order | null>(null);
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [newsletterModalOpen, setNewsletterModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (!lookupId) return;
+    let active = true;
+    void api.getProduct(lookupId).then((response) => {
+      if (!active) return;
+      const product = response.ok && response.data?.product
+        ? mapApiProduct({ ...response.data.product })
+        : null;
+      setProductLookup({ id: lookupId, product, failed: !product && response.status !== 404 });
+    });
+    return () => { active = false; };
+  }, [lookupId, productLookupAttempt]);
 
   // Synchronize URL bar and history state
   useEffect(() => {
@@ -368,14 +385,17 @@ function MainApp() {
           />
         );
       case 'product-detail':
-        if (productLinkId && !selectedProduct && catalogState.status === 'loading') {
+        if (lookupId && !currentLookup) {
           return <p role="status" className="py-16 text-center text-sm text-slate-600">Loading product…</p>;
         }
-        if (productLinkId && !selectedProduct && catalogState.status === 'error') {
+        if (currentLookup?.failed) {
           return (
             <div className="mx-auto max-w-lg space-y-4 px-6 py-16 text-center">
               <h1 className="text-lg font-bold text-slate-900">Unable to load this product</h1>
-              <button type="button" onClick={() => void reloadMarketplace()}
+              <button type="button" onClick={() => {
+                setProductLookup(null);
+                setProductLookupAttempt((attempt) => attempt + 1);
+              }}
                 className="rounded-xl bg-[#0c5c36] px-5 py-2.5 text-sm font-bold text-white">
                 Try again
               </button>

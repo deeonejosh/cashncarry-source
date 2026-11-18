@@ -264,9 +264,9 @@ try {
     const product = { id: 'routing-fixture', name: 'Marketplace routing fixture', price: 1500, stock: 5 };
     let releaseCatalog;
     const catalogReady = new Promise((resolve) => { releaseCatalog = resolve; });
-    await page.route(`${origin}/api/products`, async (route) => {
+    await page.route(`${origin}/api/products/${product.id}`, async (route) => {
       await catalogReady;
-      await route.fulfill({ json: { products: [product] } });
+      await route.fulfill({ json: { product } });
     });
 
     try {
@@ -278,6 +278,9 @@ try {
     }
     const productHeading = page.getByRole('heading', { name: product.name, exact: true });
     await productHeading.waitFor();
+    await page.getByRole('button', { name: 'Increase quantity' }).click();
+    await page.getByRole('button', { name: 'Decrease quantity' }).click();
+    await page.screenshot({ path: path.join(screenshotDir, 'product-share-link.png') });
     await page.reload({ waitUntil: 'domcontentloaded' });
     await productHeading.waitFor();
     await page.getByRole('button', { name: 'Back to products' }).click();
@@ -286,7 +289,7 @@ try {
     await productHeading.waitFor();
     await page.goto(`${origin}/?productId=${product.id}`);
     await productHeading.waitFor();
-    console.log('  ✅ [BROWSER PASS] Product share links load, reload, restore on Back, and accept the legacy productId parameter');
+    console.log('  ✅ [BROWSER PASS] Product outside the first catalogue page loads by share link, reloads, restores on Back, and accepts the legacy productId parameter');
   } finally {
     await productContext.close();
   }

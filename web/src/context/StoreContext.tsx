@@ -239,7 +239,7 @@ function normalizeMarketplaceCategory(raw: string): string {
   return category || 'general';
 }
 
-function mapApiProduct(raw: Record<string, unknown>): ProductItem {
+export function mapApiProduct(raw: Record<string, unknown>): ProductItem {
   const priceNaira = Number(raw.price ?? 0) || Math.round(Number(raw.price_minor ?? 0) / 100);
   const compareAtNaira = Number(raw.compare_at ?? 0) || priceNaira;
   const id = String(raw.id || '');

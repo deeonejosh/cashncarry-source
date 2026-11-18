@@ -298,6 +298,10 @@ class ApiClient {
     return this.requestJson<{ products?: ApiProduct[] }>(`/api/products${qs ? `?${qs}` : ''}`);
   }
 
+  async getProduct(id: string): Promise<ApiResult<{ product?: ApiProduct }>> {
+    return this.requestJson<{ product?: ApiProduct }>(`/api/products/${encodeURIComponent(id)}`);
+  }
+
   async getStorefronts(): Promise<ApiResult<{ storefronts?: ApiStorefront[] }>> {
     return this.requestJson<{ storefronts?: ApiStorefront[] }>('/api/storefronts');
   }

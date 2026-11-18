@@ -98,8 +98,7 @@ export default function ProductDetailsPage({
       : product.rating;
 
   const handleBuyNow = async () => {
-    await addToCart(product, quantity);
-    onProceedToCheckout();
+    if (await addToCart(product, quantity)) onProceedToCheckout();
   };
 
   const handleContactSeller = async () => {
@@ -236,6 +235,7 @@ export default function ProductDetailsPage({
               <div className="flex items-center rounded-xl border border-slate-200 bg-slate-50 p-1">
                 <button
                   type="button"
+                  aria-label="Decrease quantity"
                   onClick={() => setQuantity(Math.max(1, quantity - 1))}
                   className="rounded-lg p-2 text-slate-600 hover:bg-white transition"
                 >
@@ -244,6 +244,7 @@ export default function ProductDetailsPage({
                 <span className="w-10 text-center font-black text-sm text-slate-900">{quantity}</span>
                 <button
                   type="button"
+                  aria-label="Increase quantity"
                   onClick={() => setQuantity(Math.min(Math.max(1, product.stock), quantity + 1))}
                   className="rounded-lg p-2 text-slate-600 hover:bg-white transition"
                   disabled={quantity >= product.stock}
