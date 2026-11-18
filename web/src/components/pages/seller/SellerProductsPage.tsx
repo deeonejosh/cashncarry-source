@@ -391,7 +391,7 @@ export default function SellerProductsPage() {
 
             <form onSubmit={handleUpdate} className="min-h-0 flex-1 space-y-4 overflow-y-auto p-6 text-xs">
               {editingProduct.publication !== 'draft' && editingProduct.publication !== 'rejected' && (
-                <p className="text-slate-600">Saving returns this listing to draft. Submit it again for admin review.</p>
+                <p className="text-slate-600">Stock-only changes keep an approved product published. Changes to its title, price, photo or description require another admin review.</p>
               )}
               <div>
                 <label className="font-bold text-slate-700">Product Title</label>
