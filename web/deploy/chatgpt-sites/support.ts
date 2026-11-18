@@ -98,18 +98,30 @@ export async function supportRoute(request: Request, env: SupportEnvironment): P
       return respond({ error: 'Order unavailable for this account' }, 404);
     }
     const ticketId = crypto.randomUUID(), messageId = crypto.randomUUID();
-    const made = await db.prepare(
-      "INSERT INTO cnc_support_tickets (id,requester_id,subject,category,order_id) " +
-      "SELECT ?,?,?,?,? WHERE (SELECT COUNT(*) FROM cnc_support_tickets " +
-      "WHERE requester_id=? AND created>=unixepoch()-86400)<10 RETURNING id"
-    ).bind(ticketId, account.id, subject, category, orderId, account.id).first();
-    if (!made) return respond({ error: 'Daily support ticket limit reached', code: 'SUPPORT_RATE_LIMIT' }, 429);
-    await db.batch([
-      db.prepare('INSERT INTO cnc_support_messages (id,ticket_id,author_id,body) VALUES (?,?,?,?)')
-        .bind(messageId, ticketId, account.id, message),
-      db.prepare("INSERT INTO cnc_support_audit (id,ticket_id,actor_id,action) VALUES (?,?,?,'created')")
-        .bind(crypto.randomUUID(), ticketId, account.id),
+    // D1 batch statements run as a single transaction. Create the ticket,
+    // opening message and creation audit together so an interrupted message
+    // insert cannot leave behind an empty ticket.
+    const [made, savedMessage, audited] = await db.batch([
+      db.prepare(
+        "INSERT INTO cnc_support_tickets (id,requester_id,subject,category,order_id) " +
+        "SELECT ?,?,?,?,? WHERE (SELECT COUNT(*) FROM cnc_support_tickets " +
+        "WHERE requester_id=? AND created>=unixepoch()-86400)<10 RETURNING id"
+      ).bind(ticketId, account.id, subject, category, orderId, account.id),
+      db.prepare(
+        "INSERT INTO cnc_support_messages (id,ticket_id,author_id,body) " +
+        "SELECT ?,id,?,? FROM cnc_support_tickets WHERE id=? RETURNING id"
+      ).bind(messageId, account.id, message, ticketId),
+      db.prepare(
+        "INSERT INTO cnc_support_audit (id,ticket_id,actor_id,action) " +
+        "SELECT ?,id,?,'created' FROM cnc_support_tickets WHERE id=? RETURNING id"
+      ).bind(crypto.randomUUID(), account.id, ticketId),
     ]);
+    if (!made.results.length) {
+      return respond({ error: 'Daily support ticket limit reached', code: 'SUPPORT_RATE_LIMIT' }, 429);
+    }
+    if (!savedMessage.results.length || !audited.results.length) {
+      throw new Error('Support ticket creation transaction incomplete');
+    }
     return respond({ ticket: { id: ticketId, status: 'open' } }, 201);
   }
 
