@@ -29,10 +29,10 @@ export async function auctionsRoute(request: Request, env: AuctionEnvironment): 
          FROM cnc_auctions a
          LEFT JOIN cnc_seller_stores s ON s.owner=a.seller
          LEFT JOIN cnc_seller_products p ON p.id=a.product_id
-         WHERE a.closed_at IS NULL OR a.winner_id = ?
+         WHERE a.closed_at IS NULL OR a.winner_id = ? OR a.seller = ? OR ? = 'admin'
          ORDER BY a.ends_at DESC LIMIT 50`
       )
-      .bind(viewerId ?? '')
+      .bind(viewerId ?? '', viewerId ?? '', account?.role === 'admin' ? 'admin' : '')
       .all();
 
     return json({
