@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useStore } from '../../../context/StoreContext';
 import { api, ApiSellerApplication } from '../../../lib/api';
 import { AdminOverview } from '../../../types';
+import AdminSupportInbox from './AdminSupportInbox';
 import {
   ShieldCheck,
   Package,
@@ -34,7 +35,7 @@ interface ModerationProductRow {
 export default function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
   const { platformConfig, reloadMarketplace, showToast } = useStore();
 
-  const [activeTab, setActiveTab] = useState<'applications' | 'products' | 'audit'>('applications');
+  const [activeTab, setActiveTab] = useState<'applications' | 'products' | 'audit' | 'support'>('applications');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sellerApplicationsAvailable, setSellerApplicationsAvailable] = useState<boolean | null>(null);
@@ -218,6 +219,16 @@ export default function AdminDashboardPage({ onNavigate }: AdminDashboardPagePro
         </button>
 
         <button
+          onClick={() => setActiveTab('support')}
+          className={`flex items-center gap-1.5 rounded-xl px-4 py-2 transition ${
+            activeTab === 'support' ? 'bg-[#0c5c36] text-white shadow' : 'hover:bg-slate-100'
+          }`}
+        >
+          <Mail size={15} />
+          <span>Support Inbox</span>
+        </button>
+
+        <button
           onClick={() => setActiveTab('audit')}
           className={`flex items-center gap-1.5 rounded-xl px-4 py-2 transition ${
             activeTab === 'audit' ? 'bg-[#0c5c36] text-white shadow' : 'hover:bg-slate-100'
@@ -230,6 +241,8 @@ export default function AdminDashboardPage({ onNavigate }: AdminDashboardPagePro
 
       {loading ? (
         <div className="py-12 text-center text-xs text-slate-500">Loading admin console records...</div>
+      ) : activeTab === 'support' ? (
+        <AdminSupportInbox />
       ) : activeTab === 'applications' ? (
         <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
           <div className="border-b border-slate-100 pb-3">
