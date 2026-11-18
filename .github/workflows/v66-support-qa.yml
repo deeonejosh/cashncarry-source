@@ -1,0 +1,40 @@
+name: V66 private staging support inbox integration (NO DEPLOY)
+on:
+  push:
+    branches: [fix/v66-staging-support-inbox-20261118]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: cnc-v66-support-qa
+  cancel-in-progress: false
+jobs:
+  isolated-support:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+      - name: TypeScript and existing isolated D1 security tests
+        run: npm run lint && npm test
+      - name: Build staging frontend and bundle backend
+        run: npm run build && npm run bundle:worker
+      - name: Test connected ticket, order, role and admin MFA workflows in disposable D1
+        run: node scripts/v58-marketplace-e2e.mjs
+      - name: Evidence artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cnc-v66-support-inbox-isolated-evidence
+          path: web/reports/
+          if-no-files-found: warn
+          retention-days: 14
