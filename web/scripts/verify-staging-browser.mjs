@@ -4,9 +4,8 @@ import path from 'node:path';
 import { Miniflare } from 'miniflare';
 import { chromium } from 'playwright-core';
 
-const CHROME_PATH =
-  process.env.CNC_TEST_CHROMIUM ||
-  '/ms-playwright/chromium_headless_shell-1247/chrome-headless-shell-linux64/chrome-headless-shell';
+// Respect Playwright's browser installation on GitHub-hosted runners.
+const CHROME_PATH = process.env.CNC_TEST_CHROMIUM || chromium.executablePath();
 
 const DIST_DIR = path.resolve('dist');
 const MIME_TYPES = {
