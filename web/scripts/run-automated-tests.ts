@@ -852,7 +852,13 @@ async function run() {
       });
       assert.equal(buyerOrdersRes.status,200,'Buyer must be able to view their saved orders');
       const buyerOrders=(await buyerOrdersRes.json() as any).orders;
-      assert.equal(buyerOrders.find((x:any)=>x.id===mixedId)?.payment_state,'paid');
+      const combinedOrder=buyerOrders.find((x:any)=>x.id===mixedId);
+      assert.equal(combinedOrder?.payment_state,'paid');
+      assert.equal(combinedOrder?.items.length,2,'Buyer should see both seller line items');
+      assert.equal(combinedOrder?.items.reduce((n:number,i:any)=>n+i.price_minor*i.quantity,0),500000,
+        'Buyer line-item sum must match persisted paid order total');
+      assert.equal(JSON.parse(combinedOrder?.delivery_address||'{}').recipient,'Order Fixture Buyer',
+        'Saved delivery address must round-trip through the orders API');
       assert.deepEqual(buyerOrders.find((x:any)=>x.id===mixedId)?.fulfilments,[],
         'Buyer must not see a fictitious shipment before seller dispatch');
       const sellerPaidNotice=await authDb.prepare(
@@ -870,6 +876,11 @@ async function run() {
       assert.equal(sellerA.find((x:any)=>x.id===mixedId)?.total_minor,250000,
         'First seller gross item total must not include second seller');
       assert.equal(sellerB[0].total_minor,250000,'Second seller gross item total isolated');
+      assert.equal(sellerA.find((x:any)=>x.id===mixedId)?.items.length,1,
+        'Seller A must receive one own line item');
+      assert.equal(sellerB[0].items.length,1,'Seller B must receive one own line item');
+      assert.equal(sellerB[0].items[0].seller_id,otherId,
+        'Seller B cannot read Seller A private order item details');
       const startA=await post('/api/v1/seller/orders/fulfil',sellerId,{
         orderId:mixedId,status:'processing'
       });
