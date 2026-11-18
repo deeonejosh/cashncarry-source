@@ -379,7 +379,7 @@ function mapApiLiveRoom(raw: Record<string, unknown>, products: ProductItem[]): 
 
 function mapApiOrder(raw: Record<string, unknown>): Order {
   const totalMinor = Number(raw.total_minor ?? 0);
-  const total = totalMinor > 0 ? Math.round(totalMinor / 100) : Number(raw.total ?? 0);
+  const total = totalMinor > 0 ? totalMinor / 100 : Number(raw.total ?? 0);
   const deliveryAddrStr = typeof raw.delivery_address === 'string' ? raw.delivery_address : '';
   let savedAddress: Record<string, unknown> = {};
   if (deliveryAddrStr.startsWith('{')) {
@@ -432,7 +432,7 @@ function mapApiOrder(raw: Record<string, unknown>): Order {
       sellerId: String(item.seller_id || item.sellerId || ''),
       sellerName: String(item.seller_name || item.sellerName || ''),
       quantity: Number(item.quantity ?? 1),
-      price: item.price_minor ? Math.round(Number(item.price_minor) / 100) : Number(item.price ?? 0),
+      price: item.price_minor ? Number(item.price_minor) / 100 : Number(item.price ?? 0),
       image: typeof item.image === 'string' ? item.image : undefined,
     })),
     subtotal: total,
