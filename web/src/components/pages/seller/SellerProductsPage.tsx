@@ -377,16 +377,22 @@ export default function SellerProductsPage() {
       {editingProduct && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
           <div
-            className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl space-y-4"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="seller-product-edit-title"
+            className="flex max-h-[calc(100dvh-2rem)] w-full max-w-md flex-col overflow-hidden rounded-3xl bg-white shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="text-base font-black text-slate-900">Edit Product</h3>
-              <button onClick={() => setEditingProduct(null)}
+            <div className="flex shrink-0 items-center justify-between border-b border-slate-100 px-6 py-4">
+              <h3 id="seller-product-edit-title" className="text-base font-black text-slate-900">Edit Product</h3>
+              <button onClick={() => setEditingProduct(null)} aria-label="Close product editor"
                 disabled={uploadingPhoto || submitting}>✕</button>
             </div>
 
-            <form onSubmit={handleUpdate} className="space-y-4 text-xs">
+            <form onSubmit={handleUpdate} className="min-h-0 flex-1 space-y-4 overflow-y-auto p-6 text-xs">
+              {editingProduct.publication !== 'draft' && editingProduct.publication !== 'rejected' && (
+                <p className="text-slate-600">Saving returns this listing to draft. Submit it again for admin review.</p>
+              )}
               <div>
                 <label className="font-bold text-slate-700">Product Title</label>
                 <input

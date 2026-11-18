@@ -87,6 +87,10 @@ export async function marketplaceRoute(request: Request, env: Environment): Prom
         const descriptionInput = typeof body.description === 'string' ? text(body.description) : null;
         const imageInput = typeof body.imageUrl === 'string' ? text(body.imageUrl) :
           typeof body.image === 'string' ? text(body.image) : null;
+        const photoId = managedPhotoId(imageInput || '', url.origin);
+        const validImage = photoId
+          ? imageInput === url.origin + '/media/product-photos/' + photoId
+          : !imageInput || /^https:\/\/[a-z\d.-]+(?:\/|$)/i.test(imageInput);
         const brandInput = typeof body.brand === 'string' ? text(body.brand) : null;
         const compareInput = body.compareAtMinor ?? body.compare_at_minor;
         const compare = compareInput === undefined || compareInput === null ? null :
@@ -95,12 +99,10 @@ export async function marketplaceRoute(request: Request, env: Environment): Prom
             (categoryInput !== null && categoryInput.length > 80) ||
             (descriptionInput !== null && descriptionInput.length > 2000) ||
             (brandInput !== null && brandInput.length > 100) ||
-            (imageInput !== null && (imageInput.length > 1000 ||
-               (imageInput && !/^https:\/\/[a-z\d.-]+(?:\/|$)/i.test(imageInput)))) ||
+            !validImage || (imageInput !== null && imageInput.length > 1000) ||
             (compareInput !== undefined && compareInput !== null && compare === null)) {
           return respond(400,'Invalid product details');
         }
-        const photoId = managedPhotoId(imageInput || '', url.origin);
         if (photoId && !await db.prepare('SELECT 1 FROM cnc_seller_product_photos WHERE id=? AND owner=?')
           .bind(photoId, owner).first()) return respond(400, 'Select a photo uploaded by this seller.');
         if (body.action === 'create') {

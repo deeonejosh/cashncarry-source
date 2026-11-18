@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash, randomBytes } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { Miniflare } from 'miniflare';
@@ -329,6 +330,77 @@ try {
     }
   } finally {
     await productContext.close();
+  }
+
+  if (!CHECK_PRODUCT_LINK_BASELINE) {
+    const db = await mf.getD1Database('AUTH_DB');
+    const seller = 'seller-photo-browser-fixture';
+    const token = randomBytes(32).toString('hex');
+    await db.batch([
+      db.prepare("INSERT INTO cnc_auth_users (id,email,credential,role,verified) VALUES (?,?,'','seller',1)")
+        .bind(seller, 'seller-photo@example.invalid'),
+      db.prepare("INSERT INTO cnc_seller_applications (id,user_id,business_name,phone,description,status) VALUES (?,?,'QA Store','0000000000','Isolated browser test','approved')")
+        .bind(seller, seller),
+      db.prepare("INSERT INTO cnc_seller_stores (owner,name,description) VALUES (?,'QA Store','Isolated browser test')")
+        .bind(seller),
+      db.prepare('INSERT INTO cnc_auth_sessions (hash,user_id,expires,mfa) VALUES (?,?,?,0)')
+        .bind(createHash('sha256').update(token).digest('hex'), seller, Date.now() + 600000),
+    ]);
+    const sellerContext = await browser.newContext({
+      viewport: { width: 360, height: 480 },
+      isMobile: true,
+      hasTouch: true,
+      ignoreHTTPSErrors: true,
+    });
+    try {
+      await sellerContext.addCookies([{ name: '__Host-cnc_session', value: token, url: origin, secure: true }]);
+      const page = await sellerContext.newPage();
+      await page.goto(`${origin}/?tab=seller-products`);
+      await page.getByRole('button', { name: 'Add New Product' }).click();
+      const form = page.locator('form').filter({ has: page.getByRole('button', { name: 'Save Product Draft' }) });
+      await form.getByPlaceholder('Enter exact product title').fill('QA Product with device photo');
+      await form.getByRole('spinbutton').first().fill('1200.25');
+      await form.getByPlaceholder('Detailed specifications, size, condition...').fill('Isolated browser test');
+      const picture = await page.evaluate(() => {
+        const canvas = document.createElement('canvas');
+        canvas.width = canvas.height = 40;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = 'green';
+        ctx.fillRect(0, 0, 40, 40);
+        return canvas.toDataURL('image/png').split(',')[1];
+      });
+      const file = { name: 'product.png', mimeType: 'image/png', buffer: Buffer.from(picture, 'base64') };
+      await form.getByLabel('Upload a photo').setInputFiles(file);
+      const preview = form.getByRole('img', { name: 'Uploaded product photo' });
+      await preview.waitFor({ timeout: 5000 });
+      assert.equal(await preview.evaluate((image) => image.decode().then(() => image.naturalWidth)), 40);
+      const response = page.waitForResponse((res) => new URL(res.url()).pathname === '/api/seller/products' && res.request().method() === 'POST');
+      await form.getByRole('button', { name: 'Save Product Draft' }).click();
+      const saved = await response;
+      assert.equal(saved.status(), 200, await saved.text());
+      const row = page.getByRole('row').filter({ hasText: 'QA Product with device photo' });
+      await row.getByRole('button', { name: 'Edit product' }).click();
+      const update = page.getByRole('button', { name: 'Save Changes' });
+      await update.scrollIntoViewIfNeeded();
+      const box = await update.boundingBox();
+      assert.ok(box && box.y >= 0 && box.y + box.height <= 480, 'Save Changes must be reachable on a short mobile screen');
+      await update.click();
+      await update.waitFor({ state: 'hidden' });
+      await row.getByRole('button', { name: 'Submit for review' }).click();
+      await row.getByText('In Moderation').waitFor();
+      await page.reload();
+      await row.getByText('In Moderation').waitFor();
+      const photo = row.getByRole('img', { name: 'QA Product with device photo' });
+      assert.equal(await photo.evaluate((image) => image.decode().then(() => image.naturalWidth)), 40);
+      const persisted = await db.prepare('SELECT price_minor, image, publication FROM cnc_seller_products WHERE owner=?').bind(seller).first();
+      assert.equal(persisted.price_minor, 120025);
+      assert.equal(persisted.publication, 'pending');
+      assert.match(persisted.image, /\/media\/product-photos\//);
+      assert.equal((await mf.dispatchFetch(persisted.image)).status, 404, 'Pending photo must remain private');
+      console.log('  ✅ [BROWSER PASS] Seller uploads a device photo, saves, edits and submits on mobile; price and photo survive reload');
+    } finally {
+      await sellerContext.close();
+    }
   }
 } finally {
   await browser.close();
