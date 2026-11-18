@@ -188,3 +188,25 @@ Statuses marked PASSED apply **only to the specifically named isolated backend t
 **Staging release gate remains closed for this candidate.** The active private Worker remains previously verified **v55** `1e6cacd4-765b-4b10-9a98-82efe80ef5de` pending independent backup, remote migration test and actual multi-user acceptance. The isolated coverage is improved, but the published baseline **32/100** and v55 **37/100** conservative readiness scores are **not inflated** by tests that were never run against real providers or the deployed application. No new production-readiness score is claimed.
 
 **Priority next:** secure independent staging D1 SQL backup; apply and verify 0022–0025 migrations using the actual staging schema; deploy the matching compiled frontend and Worker together; run authorised multi-user buyer/seller/owner acceptance and explicit rollback checks. Keep real payments, coin purchases, KYC uploads and streaming disabled until genuine provider acceptance exists.
+
+## 15. Measured guest browser / UI / accessibility verification — 18 Nov 2026
+
+**NEW VERIFIED EVIDENCE. All results below apply to a local isolated rebuilt Cloudflare Worker + D1, not the Cloudflare Access-protected deployed staging site.**
+
+- Branch: `fix/staging-master-seller-split-20261118`; test source SHA: `64bfa36a4ca20ac42dbfbd420f10e3c446d8fa20`.
+- Source/isolated D1 regression: [GitHub Actions 44255332164](https://github.com/deeonejosh/cashncarry-source/actions/runs/44255332164) **SUCCESS**: TypeScript, 25 Miniflare tests, React build, static UI audit and Cloudflare Worker bundle.
+- Actual isolated-Worker guest route smoke: [GitHub Actions 44255332065](https://github.com/deeonejosh/cashncarry-source/actions/runs/44255332065) **SUCCESS**: Chromium at desktop (1440×900) and mobile (390×844); 26 real React tabs; route and console assertions, safe empty states and administrator/seller guest-access denials; 52 screenshots, uploaded artifact `cnc-private-guest-browser-evidence`.
+- Worker-backed Playwright/Axe audit: [GitHub Actions 44255332210](https://github.com/deeonejosh/cashncarry-source/actions/runs/44255332210) **SUCCESS**. Evidence `cashncarry-ai-benchmark-evidence`: **26 routes × 2 viewports = 52 attempted, 52 passed the defined guest-shell criteria, 0 failed, 0 blocked, 0 Axe WCAG 2.0/2.1 A/AA violations**. The audit captured each screenshot and rejected any API HTTP 5xx response as a failed view.
+- **Corrected audit false-positive:** The previous `website-benchmark.mjs` used Vite-only preview, so Shop/Live screenshots displayed HTTP 502 API error panels while being marked as successful visual views. The audit now starts a real **isolated Miniflare Worker + migrated D1** and explicitly fails on 5xx API responses. New evidence shows no such errors. This is a QA-harness fix, not a deployment, payment or authentication claim.
+- Separate **Lighthouse CI** still runs on a frontend-only Vite preview (`http://127.0.0.1:4173`), so the resulting scores are *synthetic local frontend indications*, not remote/production Core Web Vitals and not proof that its API calls work. Scores from this run:
+
+| Local Lighthouse page | Performance | Accessibility | Best practices | SEO |
+|---|---:|---:|---:|---:|
+| Home (`/`) | 75/100 | 100/100 | 96/100 | 66/100 |
+| Shop (`/?tab=shop`) | 100/100 | 98/100 | 96/100 | 66/100 |
+
+The staging-specific `noindex` setting and artificial preview environment limit SEO-score interpretation. Do not copy these scores to `www.cashncarryng.com`. Axe's zero detected violations is not a full accessibility certification, and the guest checks cannot verify logged-in seller/admin journeys or paid checkout.
+
+**Staging deployment status remains unchanged:** private Worker **v55** `1e6cacd4-765b-4b10-9a98-82efe80ef5de` at 100% from the previous safety release. The seller-split candidate and migrations `0022`–`0025` are **NOT DEPLOYED** because no independently restorable D1 SQL backup has been retrieved (Cloudflare managed export completed, but the signed file retrieval failed). Zero remote D1 fixture writes. Payments, paid coin purchases, KYC uploads and live streaming are still disabled. All production infrastructure untouched.
+
+**Final gate: NOT PRODUCTION READY.** Authenticated three-user live staging transactions, genuine Flutterwave sandbox settlement, shipping-rate quotation, auction payout, streaming transport, real device, email receipt and rollbacks remain BLOCKED or NOT TESTED, as detailed above.
