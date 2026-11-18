@@ -179,8 +179,10 @@ export async function supportRoute(request: Request, env: SupportEnvironment): P
 
   if (request.method === 'GET') {
     const rows = await db.prepare(
+      'SELECT id,ticket_id,author_id,body,internal,created FROM (' +
       'SELECT id,ticket_id,author_id,body,internal,created FROM cnc_support_messages ' +
-      'WHERE ticket_id=? AND (?=1 OR internal=0) ORDER BY created,id LIMIT 200'
+      'WHERE ticket_id=? AND (?=1 OR internal=0) ORDER BY created DESC,id DESC LIMIT 200' +
+      ') ORDER BY created,id'
     ).bind(id, isAdmin ? 1 : 0).all();
     const order = ticket.order_id ? await linkedOrderSummary(db, ticket.order_id, account) : null;
     return respond({ ticket, messages: rows.results || [], linkedOrder: order });

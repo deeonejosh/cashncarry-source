@@ -350,6 +350,28 @@ try {
   assert.equal(adminDetail.data.messages.length, 3);
   assert.equal(adminDetail.data.messages.filter(m => m.internal === 1).length, 1);
   record('owner sees private support note while customer cannot', { isolated: true });
+  const longThread = await expectStatus('/api/support/tickets', ids.buyerA, 'POST',
+    { subject: 'Long support thread', category: 'general', message: 'Opening message' },
+    201, 'buyer creates a long-thread fixture');
+  const longThreadPath = '/api/support/tickets/' + longThread.ticket.id;
+  await db.prepare(`WITH RECURSIVE seq(n) AS (SELECT 1 UNION ALL SELECT n+1 FROM seq WHERE n<201)
+    INSERT INTO cnc_support_messages (id,ticket_id,author_id,body,internal,created)
+    SELECT 'long-thread-' || n,?,?, 'Public reply ' || n,0,unixepoch()+n FROM seq`)
+    .bind(longThread.ticket.id, ids.owner).run();
+  await db.prepare(`INSERT INTO cnc_support_messages (id,ticket_id,author_id,body,internal,created)
+    VALUES ('long-thread-note',?,?,'Private final note',1,unixepoch()+300)`)
+    .bind(longThread.ticket.id, ids.owner).run();
+  const longBuyer = await call(longThreadPath, ids.buyerA);
+  const longOwner = await call(longThreadPath, ids.owner);
+  assert.equal(longBuyer.status, 200);
+  assert.equal(longOwner.status, 200);
+  assert.equal(longBuyer.data.messages.length, 200);
+  assert.equal(longBuyer.data.messages[0].body, 'Public reply 2');
+  assert.equal(longBuyer.data.messages.at(-1).body, 'Public reply 201', 'buyers must see the latest public reply');
+  assert.ok(longBuyer.data.messages.every(message => message.internal === 0));
+  assert.equal(longOwner.data.messages.length, 200);
+  assert.equal(longOwner.data.messages.at(-1).body, 'Private final note');
+  record('long support threads retain recent replies and enforce private-note isolation', { isolated: true });
   await expectStatus('/api/support/tickets/' + ticketId, ids.buyerA, 'PATCH',
     { priority: 'high' }, 403, 'customer cannot change support priority');
   await db.prepare(`CREATE TRIGGER cnc_support_ci_reject_escalation_audit
