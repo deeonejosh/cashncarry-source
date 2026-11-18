@@ -1,7 +1,7 @@
 // PRIVATE staging-only static assets bridge.
 // Imports the exact immutable v57 Worker backend, preserving all API business logic.
 // Cloudflare Access, Admin MFA, D1 and payments settings are not changed.
-import backend from './backend-v57.js';
+import backend from './backend-v57.mjs';
 
 const STAGING_ORIGIN = 'https://cashncarry-d1-staging-worker.cashncarry-workforce-2026.workers.dev';
 const UI_FILES = Object.freeze({
