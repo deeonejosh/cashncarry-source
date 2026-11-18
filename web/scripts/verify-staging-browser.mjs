@@ -284,7 +284,7 @@ try {
     await page.reload({ waitUntil: 'domcontentloaded' });
     await productHeading.waitFor();
     await page.getByRole('button', { name: 'Back to products' }).click();
-    await page.getByRole('heading', { name: 'Shop', exact: true }).waitFor();
+    await page.getByRole('heading', { name: 'Shop', exact: true, level: 1 }).waitFor();
     await page.goBack();
     await productHeading.waitFor();
     await page.goto(`${origin}/?productId=${product.id}`);
