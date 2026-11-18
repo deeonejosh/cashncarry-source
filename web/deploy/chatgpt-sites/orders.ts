@@ -10,7 +10,9 @@ export async function ordersRoute(request: Request, env: AuthEnvironment & { ORD
   if (!env.AUTH_DB || env.ORDER_RESERVATIONS !== 'enabled') return json({error:'Order service unavailable'},503);
   const account = await currentAccount(request,env);
   if (!account) return json({error:'Sign-in required'},401);
-  if (!['buyer','seller'].includes(account.role)) return json({error:'Buyer or seller account required'},403);
+  // Checkout, order history and cancellation are buyer-only. Sellers use the
+  // separately authorised /api/seller/orders fulfilment API, never a buyer cart.
+  if (account.role !== 'buyer') return json({error:'Buyer account required'},403);
   const db = env.AUTH_DB;
   if (url.pathname === '/api/orders') {
     if (request.method !== 'GET') return json({error:'Method not allowed'},405);
