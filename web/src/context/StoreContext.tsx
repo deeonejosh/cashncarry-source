@@ -1015,6 +1015,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const res = await api.mutateSellerProduct({ action: 'update', revision, ...input });
     if (!res.ok) return { ok: false, error: res.error || 'Could not update product.' };
     await refreshSellerData();
+    await reloadMarketplace();
     showToast('Product updated.', 'success');
     return { ok: true };
   };
