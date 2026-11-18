@@ -150,6 +150,31 @@ try {
   const browse = await expectStatus('/api/products', ids.buyerA, 'GET', undefined, 200, 'buyer can search published public catalog');
   assert.ok(browse.products.some(p => p.id === productId), 'Published product must be visible to buyer');
   record('public product catalog matches owner-approved product', { id: productId });
+  // Once the owner has approved a listing, changing only inventory must not
+  // remove that listing from the shop or require a second moderation approval.
+  let publishedItem = (await call('/api/seller/products', ids.seller)).data.items.find(p => p.id === productId);
+  assert.equal(publishedItem.publication, 'published');
+  await expectStatus('/api/seller/products', ids.seller, 'POST',
+    { action: 'update', id: productId, revision: publishedItem.revision,
+      name: publishedItem.name, priceMinor: publishedItem.price_minor,
+      stock: 8, description: publishedItem.description, imageUrl: publishedItem.image_url },
+    200, 'seller restocks an approved product without re-review');
+  publishedItem = (await call('/api/seller/products', ids.seller)).data.items.find(p => p.id === productId);
+  assert.equal(publishedItem.publication, 'published', 'stock-only edit must preserve initial publication approval');
+  assert.equal(publishedItem.stock, 8);
+  let buyerCatalog = await call('/api/products', ids.buyerA);
+  assert.ok(buyerCatalog.data.products.some(p => p.id === productId && p.stock === 8),
+    'restocked approved product must remain visible with new stock to buyer');
+  record('one-time product approval preserved for inventory-only changes', { stock: 8 });
+  await expectStatus('/api/seller/products', ids.seller, 'POST',
+    { action: 'update', id: productId, revision: publishedItem.revision,
+      name: publishedItem.name, priceMinor: publishedItem.price_minor,
+      stock: 5, description: publishedItem.description, imageUrl: publishedItem.image_url },
+    200, 'seller adjusts approved product stock without resetting moderation');
+  publishedItem = (await call('/api/seller/products', ids.seller)).data.items.find(p => p.id === productId);
+  assert.equal(publishedItem.publication, 'published');
+  assert.equal(publishedItem.stock, 5);
+
 
   for (const buyer of [ids.buyerA, ids.buyerB, ids.seller]) {
     await expectStatus('/api/v1/addresses', buyer, 'POST',
