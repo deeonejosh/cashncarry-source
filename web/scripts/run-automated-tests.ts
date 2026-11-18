@@ -703,6 +703,149 @@ async function run() {
     });
 
 
+    await test('P0 order lifecycle: unpaid privacy, paid proof, seller isolation, monotonic fulfilment, replay safety', async () => {
+      // These are disposable Miniflare/D1 fixtures. Provider payment proof is simulated
+      // at DB level; this does NOT verify a real Flutterwave sandbox transaction.
+      const buyerId='order-fixture-buyer',sellerId='order-fixture-seller',otherId='order-fixture-other';
+      for(const [id,role] of [[buyerId,'buyer'],[sellerId,'seller'],[otherId,'seller']]) {
+        await authDb.prepare(
+          "INSERT INTO cnc_auth_users(id,email,credential,role,verified,suspended) VALUES(?,?,?, ?,1,0)"
+        ).bind(id,id+'@example.invalid','',role).run();
+      }
+      const cookies:Record<string,string>={};
+      for(const [id,token] of [[buyerId,'6'.repeat(64)],[sellerId,'7'.repeat(64)],[otherId,'8'.repeat(64)]]) {
+        await authDb.prepare("INSERT INTO cnc_auth_sessions(hash,user_id,expires,mfa) VALUES(?,?,?,0)")
+          .bind(createHash('sha256').update(token).digest('hex'),id,Date.now()+600000).run();
+        cookies[id]='__Host-cnc_session='+token;
+      }
+      for(const id of [sellerId,otherId]) {
+        await authDb.prepare(
+          "INSERT INTO cnc_seller_applications(id,user_id,business_name,phone,description,status) VALUES(?,?,?,'08000000001','Isolated order workflow fixture','approved')"
+        ).bind(id+'-app',id,id+' Store').run();
+        await authDb.prepare(
+          "INSERT INTO cnc_seller_stores(owner,name,description) VALUES(?,?,'Isolated test storefront')"
+        ).bind(id,id+' Store').run();
+        await authDb.prepare(
+          "INSERT INTO cnc_seller_products(id,owner,name,price_minor,stock,publication) VALUES(?,?,?,250000,8,'published')"
+        ).bind(id+'-product',id,'Fixture order product').run();
+        await authDb.prepare("UPDATE cnc_seller_products SET revision=revision+1 WHERE id=?")
+          .bind(id+'-product').run();
+      }
+      const addressId='order-fixture-address';
+      await authDb.prepare(
+        "INSERT INTO cnc_buyer_addresses(id,user_id,recipient,line,city,state) VALUES(?,?,?,'10 Test Street','Lagos','Lagos')"
+      ).bind(addressId,buyerId,'Order Fixture Buyer').run();
+      const post=(route:string,as:string,payload:unknown)=>mf.dispatchFetch(origin+route,{
+        method:'POST',headers:{origin,cookie:cookies[as],'content-type':'application/json'},body:JSON.stringify(payload)
+      });
+      const cart=await post('/api/cart',buyerId,{
+        id:sellerId+'-product',quantity:1,source:'replacement'
+      });
+      assert.equal(cart.status,200,'Buyer must be able to save approved seller inventory');
+      const create=await post('/api/checkout',buyerId,{
+        request_id:'order-benchmark-request-0001',address_id:addressId
+      });
+      assert.equal(create.status,200,'Order reservation must produce a pending order');
+      const orderId=(await create.json() as any).order.id as string;
+      const initial=await authDb.prepare(
+        "SELECT status,payment_state FROM cnc_orders WHERE id=?"
+      ).bind(orderId).first<{status:string;payment_state:string}>();
+      assert.equal(initial?.payment_state,'unpaid');
+      const inventory=await authDb.prepare(
+        "SELECT stock FROM cnc_seller_products WHERE id=?"
+      ).bind(sellerId+'-product').first<{stock:number}>();
+      assert.equal(inventory?.stock,7,'Reserved inventory must decrement exactly once');
+      const repeat=await post('/api/checkout',buyerId,{
+        request_id:'order-benchmark-request-0001',address_id:addressId
+      });
+      assert.equal(repeat.status,200);
+      assert.equal((await repeat.json() as any).order.id,orderId,'Checkout retry may not duplicate an order');
+      const stockAfterRetry=await authDb.prepare(
+        "SELECT stock FROM cnc_seller_products WHERE id=?"
+      ).bind(sellerId+'-product').first<{stock:number}>();
+      assert.equal(stockAfterRetry?.stock,7);
+      const list=(as:string)=>mf.dispatchFetch(origin+'/api/v1/seller/orders',{headers:{cookie:cookies[as]}});
+      assert.equal((await list(sellerId)).status,200);
+      assert.equal((await (await list(sellerId)).json() as any).orders.length,0,
+        'No unpaid buyer address or order may leak to Seller Centre');
+      const noEarlyFulfil=await post('/api/v1/seller/orders/fulfil',sellerId,{
+        orderId,status:'processing'
+      });
+      assert.equal(noEarlyFulfil.status,409,'Unpaid stock reservation is not a seller-ready order');
+      assert.equal((await noEarlyFulfil.json() as any).code,'FULFILMENT_NOT_READY');
+      assert.equal((await (await list(otherId)).json() as any).orders.length,0);
+
+      // Simulate only DB-side proof in isolated Miniflare, not a provider integration.
+      await authDb.prepare(
+        "INSERT INTO cnc_flutterwave_payments(order_id,reference,amount_minor) VALUES(?,?,?)"
+      ).bind(orderId,'order-proof-0001',250000).run();
+      await authDb.prepare(
+        "UPDATE cnc_flutterwave_payments SET transaction_id=?,paid_at=unixepoch() WHERE order_id=?"
+      ).bind('999001',orderId).run();
+      const paid=await authDb.prepare(
+        "SELECT payment_state FROM cnc_orders WHERE id=?"
+      ).bind(orderId).first<{payment_state:string}>();
+      assert.equal(paid?.payment_state,'paid','D1 payment proof trigger must mark order paid');
+      assert.equal((await (await list(sellerId)).json() as any).orders.length,1);
+      const invalidSkip=await post('/api/v1/seller/orders/fulfil',sellerId,{
+        orderId,status:'delivered',trackingNumber:'TEST-001'
+      });
+      assert.equal(invalidSkip.status,409,'Seller cannot skip directly to delivered');
+      const otherAccess=await post('/api/v1/seller/orders/fulfil',otherId,{
+        orderId,status:'processing'
+      });
+      assert.equal(otherAccess.status,404,'Another seller cannot fulfil the order');
+
+      const steps=[
+        {status:'processing'},
+        {status:'packed'},
+        {status:'shipped',trackingNumber:'TEST-001'},
+        {status:'delivered',trackingNumber:'TEST-001'}
+      ];
+      for(const step of steps) {
+        const res=await post('/api/v1/seller/orders/fulfil',sellerId,{orderId,...step});
+        assert.equal(res.status,200,'Next ordered fulfilment transition must succeed: '+step.status);
+        assert.equal((await res.json() as any).updated,true);
+      }
+      const final=await post('/api/v1/seller/orders/fulfil',sellerId,{
+        orderId,status:'delivered',trackingNumber:'TEST-001'
+      });
+      assert.equal(final.status,200);
+      assert.equal((await final.json() as any).updated,false,'Replay must not re-notify');
+      const reverse=await post('/api/v1/seller/orders/fulfil',sellerId,{orderId,status:'packed'});
+      assert.equal(reverse.status,409,'Delivered order cannot regress to packed');
+      const notices=await authDb.prepare(
+        "SELECT COUNT(*) AS n FROM cnc_notifications WHERE user_id=? AND kind='order'"
+      ).bind(buyerId).first<{n:number}>();
+      assert.equal(notices?.n,4,'One notification per real state transition, not per retry');
+
+      // A mixed-seller order cannot be fulfilled using the legacy order-level PK.
+      assert.equal((await post('/api/cart',buyerId,{
+        id:sellerId+'-product',quantity:1,source:'replacement'
+      })).status,200);
+      assert.equal((await post('/api/cart',buyerId,{
+        id:otherId+'-product',quantity:1,source:'replacement'
+      })).status,200);
+      const mixed=await post('/api/checkout',buyerId,{
+        request_id:'order-benchmark-request-0002',address_id:addressId
+      });
+      assert.equal(mixed.status,200);
+      const mixedId=(await mixed.json() as any).order.id as string;
+      await authDb.prepare(
+        "INSERT INTO cnc_flutterwave_payments(order_id,reference,amount_minor) VALUES(?,?,?)"
+      ).bind(mixedId,'order-proof-0002',500000).run();
+      await authDb.prepare(
+        "UPDATE cnc_flutterwave_payments SET transaction_id=?,paid_at=unixepoch() WHERE order_id=?"
+      ).bind('999002',mixedId).run();
+      const blocked=await post('/api/v1/seller/orders/fulfil',sellerId,{
+        orderId:mixedId,status:'processing'
+      });
+      assert.equal(blocked.status,409,'Mixed seller order requires per-seller fulfilment design');
+      assert.equal((await blocked.json() as any).code,'FULFILMENT_NOT_READY');
+      assert.equal((await (await list(sellerId)).json() as any).orders.length,1,
+        'Split-seller order must not appear as safely shippable under legacy schema');
+    });
+
     await test('P0 auction D1 trigger contract: reserve once, reject stale bids, close once and restore unsold stock once', async () => {
       const sellerId='auction-fixture-seller',buyerId='auction-fixture-buyer';
       const sellerToken='4'.repeat(64),buyerToken='5'.repeat(64);
