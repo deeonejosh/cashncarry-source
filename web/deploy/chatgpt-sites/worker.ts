@@ -18,6 +18,7 @@ import { catalogPage, homePage, protectedPageUnavailable } from './catalog-pages
 import { readActiveCategories, readProduct, readProducts, readStorefront, readStorefronts, type CatalogDatabase } from './catalog';
 import { resolveEdgeSEO, injectEdgeSEOMeta } from './edge-seo';
 import { unifiedSyncRoute } from './unified-sync';
+import { supportRoute } from './support';
 
 interface Environment extends AuthEnvironment, KycEnvironment, StreamEnvironment, PaymentEnvironment {
   DB?: CatalogDatabase & { prepare(sql: string): { first<T = unknown>(): Promise<T | null> } };
@@ -124,6 +125,10 @@ export default {
       const synced = await unifiedSyncRoute(originalRequest, env);
       if (synced) return synced;
     } catch { return reply({ error: 'Sync service temporarily unavailable' }, 503); }
+    try {
+      const support = await supportRoute(request, env);
+      if (support) return support;
+    } catch { return reply({ error: 'Support inbox temporarily unavailable' }, 503); }
     // Seller applications are separate from protected Seller Centre operations.
     // Normalise /api/v1/seller/application to /api/seller/application above.
     try {
