@@ -4,7 +4,7 @@ on:
     branches: [fix/v66-staging-support-inbox-20261118]
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
 concurrency:
   group: cnc-v66-support-qa
   cancel-in-progress: false
@@ -30,6 +30,23 @@ jobs:
         run: npm run build && npm run bundle:worker
       - name: Test connected ticket, order, role and admin MFA workflows in disposable D1
         run: node scripts/v58-marketplace-e2e.mjs
+      - name: Package verified Worker and frontend on immutable artifact branch (NO DEPLOY)
+        run: |
+          test -f dist/index.html
+          test -f dist/_worker.js
+          JS_FILE=$(grep -oE '/assets/index-[^"]+\\.js' dist/index.html | head -n 1)
+          CSS_FILE=$(grep -oE '/assets/index-[^"]+\\.css' dist/index.html | head -n 1)
+          test -n "$JS_FILE" && test -n "$CSS_FILE"
+          test -f "dist$JS_FILE" && test -f "dist$CSS_FILE"
+          cp dist/_worker.js dist/staging-v66-support-backend.mjs
+          sha256sum dist/index.html "dist$JS_FILE" "dist$CSS_FILE" dist/staging-v66-support-backend.mjs > dist/staging-v66-support-manifest.sha256
+          printf 'source=%s\\nscope=existing-private-staging-only\\nno-deploy\\n' "$GITHUB_SHA" > dist/staging-v66-support-source.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c artifact/staging-v66-support-20261118
+          git add -f dist/index.html "dist$JS_FILE" "dist$CSS_FILE" dist/staging-v66-support-backend.mjs dist/staging-v66-support-manifest.sha256 dist/staging-v66-support-source.txt
+          git commit -m "build(private staging): tested support inbox UI and Worker, no deployment"
+          git push origin HEAD:refs/heads/artifact/staging-v66-support-20261118
       - name: Evidence artifact
         if: always()
         uses: actions/upload-artifact@v4
