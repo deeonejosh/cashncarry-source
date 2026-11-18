@@ -138,6 +138,14 @@ export interface Order {
   paymentUrl?: string;
   trackingNumber?: string;
   carrier?: string;
+  fulfilments?: {
+    sellerId: string;
+    storeName: string;
+    status: 'processing' | 'packed' | 'shipped' | 'delivered';
+    carrier: string;
+    trackingNumber: string;
+    updatedAt: number;
+  }[];
 }
 
 export interface ReturnRequest {
