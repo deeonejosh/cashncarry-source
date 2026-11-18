@@ -37,6 +37,42 @@ jobs:
           set -euo pipefail
           yes | sdkmanager --licenses >/dev/null || true
           sdkmanager --install 'platforms;android-36' 'platforms;android-36.1' 'build-tools;36.0.0'
+      - name: Recover missing build metadata from existing checked-in integrated source archive
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile
+          archive=Path('Cash-N-Carry-Staging-Upload-Under-25MB.zip')
+          assert archive.is_file(), 'Existing integrated Android source archive missing'
+          required=('settings.gradle.kts','build.gradle.kts','gradle/libs.versions.toml')
+          with ZipFile(archive) as z:
+              names=z.namelist()
+              for target in required:
+                  dest=Path(target)
+                  if dest.is_file() and dest.stat().st_size>0:
+                      print('Existing build metadata kept:',target)
+                      continue
+                  matches=[n for n in names if not n.endswith('/') and n.endswith('/'+target)]
+                  # Prefer the root of the integrated project, rather than app/ or legacy nested exports
+                  matches.sort(key=lambda n:(n.count('/'),len(n)))
+                  if not matches:
+                      raise SystemExit('No valid archived Gradle metadata: '+target)
+                  data=z.read(matches[0])
+                  if not data.strip():
+                      raise SystemExit('Archived Gradle metadata is empty: '+target)
+                  dest.parent.mkdir(parents=True,exist_ok=True)
+                  dest.write_bytes(data)
+                  print('Recovered build metadata for disposable CI workspace:',target,'bytes=',len(data))
+          PY
+      - name: Confirm Android build settings include the checked-out application source
+        shell: bash
+        run: |
+          test -s settings.gradle.kts
+          test -s build.gradle.kts
+          test -s gradle/libs.versions.toml
+          grep -Fq 'include(":app")' settings.gradle.kts
+          test -s app/build.gradle.kts
       - name: Create temporary staging-only debug signer
         run: bash scripts/create-staging-debug-keystore.sh
       - name: Android source unit tests and debug-only APK (not real-device acceptance)
