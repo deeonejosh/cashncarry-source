@@ -198,25 +198,24 @@ export async function unifiedSyncRoute(
         "SELECT 1 AS ok FROM cnc_seller_applications WHERE user_id=? AND status='approved'"
       ).bind(account.id).first();
       if (!approved) return json({ error: 'Approved seller access required' }, 403);
-      // Never disclose buyer delivery information to an unpaid or cancelled order.
-      // Legacy fulfilments are order-scoped: exclude mixed-seller orders until
-      // per-seller fulfilment records are supported.
+      // Verified payment is required before a seller can read the buyer's
+      // delivery address. Mixed-seller orders expose only this seller's
+      // line items, fulfilment state and gross product total.
       const { results } = await db.prepare(
         `SELECT o.id,o.buyer,o.status,o.payment_state,o.delivery_address,o.created,
-           COALESCE(f.status,'processing') AS fulfilment_status,
-           COALESCE(f.carrier,'GIG Logistics') AS carrier,
-           COALESCE(f.tracking_number,'') AS tracking_number,
-           SUM(i.quantity*i.price_minor) AS total_minor
-         FROM cnc_orders o
-         JOIN cnc_order_items i ON i.order_id=o.id
-         JOIN cnc_flutterwave_payments p ON p.order_id=o.id
-           AND p.transaction_id IS NOT NULL AND p.paid_at IS NOT NULL
-         LEFT JOIN cnc_order_fulfilments f ON f.order_id=o.id AND f.seller_id=?
-         WHERE i.seller=? AND o.payment_state='paid' AND o.status='awaiting_payment'
-           AND NOT EXISTS(SELECT 1 FROM cnc_order_items other
-             WHERE other.order_id=o.id AND other.seller<>?)
-         GROUP BY o.id ORDER BY o.created DESC LIMIT 50`
-      ).bind(account.id,account.id,account.id).all();
+            COALESCE(f.status,'processing') AS fulfilment_status,
+            COALESCE(f.carrier,'GIG Logistics') AS carrier,
+            COALESCE(f.tracking_number,'') AS tracking_number,
+            SUM(i.quantity*i.price_minor) AS total_minor
+          FROM cnc_orders o
+          JOIN cnc_order_items i ON i.order_id=o.id AND i.seller=?
+          JOIN cnc_flutterwave_payments p ON p.order_id=o.id
+            AND p.transaction_id IS NOT NULL AND p.paid_at IS NOT NULL
+          LEFT JOIN cnc_seller_order_fulfilments f
+            ON f.order_id=o.id AND f.seller_id=?
+          WHERE o.payment_state='paid' AND o.status='awaiting_payment'
+          GROUP BY o.id ORDER BY o.created DESC LIMIT 50`
+      ).bind(account.id,account.id).all();
       return json({ orders: results ?? [] });
     }
 
@@ -555,28 +554,23 @@ export async function unifiedSyncRoute(
       return json({ error: 'Shipping tracking number required' }, 400);
     }
     const order = await db.prepare(
-      `SELECT o.buyer,o.status,o.payment_state,p.transaction_id,p.paid_at,
-        EXISTS(SELECT 1 FROM cnc_order_items other
-          WHERE other.order_id=o.id AND other.seller<>?) AS mixed_sellers
-       FROM cnc_orders o JOIN cnc_order_items i ON i.order_id=o.id AND i.seller=?
+      `SELECT o.buyer,o.status,o.payment_state,p.transaction_id,p.paid_at
+       FROM cnc_orders o
+       JOIN cnc_order_items i ON i.order_id=o.id AND i.seller=?
        LEFT JOIN cnc_flutterwave_payments p ON p.order_id=o.id
        WHERE o.id=? LIMIT 1`
-    ).bind(account.id,account.id,orderId).first<{
+    ).bind(account.id,orderId).first<{
       buyer:string;status:string;payment_state:string;
-      transaction_id:string|null;paid_at:number|null;mixed_sellers:number
+      transaction_id:string|null;paid_at:number|null
     }>();
     if (!order) return json({ error: 'Order not found for seller' }, 404);
     if (order.status!=='awaiting_payment'||order.payment_state!=='paid'||
-        !order.transaction_id||!order.paid_at||order.mixed_sellers) {
-      return json({error:'Order is not paid or requires split-seller fulfilment',
-        code:'FULFILMENT_NOT_READY'},409);
+        !order.transaction_id||!order.paid_at) {
+      return json({error:'Order is not fully paid',code:'FULFILMENT_NOT_READY'},409);
     }
     const previous=await db.prepare(
-      'SELECT seller_id,status,carrier,tracking_number FROM cnc_order_fulfilments WHERE order_id=?'
-    ).bind(orderId).first<{seller_id:string;status:string;carrier:string;tracking_number:string}>();
-    if (previous?.seller_id && previous.seller_id!==account.id) {
-      return json({error:'Order fulfilment belongs to another seller'},409);
-    }
+      'SELECT seller_id,status,carrier,tracking_number FROM cnc_seller_order_fulfilments WHERE order_id=? AND seller_id=?'
+    ).bind(orderId,account.id).first<{seller_id:string;status:string;carrier:string;tracking_number:string}>();
     if (previous?.status===status && previous.carrier===carrier &&
         previous.tracking_number===trackingNumber) {
       return json({updated:false,orderId,status,carrier,trackingNumber});
@@ -587,35 +581,30 @@ export async function unifiedSyncRoute(
       return json({error:'Invalid fulfilment status transition',
         code:'FULFILMENT_TRANSITION_REJECTED'},409);
     }
-    // A conditional SQL UPSERT enforces transitions even for concurrent requests.
+    // Unique (order_id,seller_id) and conditional upsert serialize transitions.
+    // D1 triggers validate paid proof/ownership and atomically notify buyers.
     const changed=await db.prepare(
-      `INSERT INTO cnc_order_fulfilments
-        (order_id,seller_id,status,carrier,tracking_number,updated_at)
+      `INSERT INTO cnc_seller_order_fulfilments
+         (order_id,seller_id,status,carrier,tracking_number,updated_at)
        VALUES (?,?,?,?,?,?)
-       ON CONFLICT(order_id) DO UPDATE SET
+       ON CONFLICT(order_id,seller_id) DO UPDATE SET
          status=excluded.status,carrier=excluded.carrier,
          tracking_number=excluded.tracking_number,updated_at=excluded.updated_at
-       WHERE cnc_order_fulfilments.seller_id=excluded.seller_id
-         AND ((cnc_order_fulfilments.status='processing' AND excluded.status='packed')
-          OR (cnc_order_fulfilments.status='packed' AND excluded.status='shipped')
-          OR (cnc_order_fulfilments.status='shipped' AND excluded.status='delivered'))
+       WHERE (cnc_seller_order_fulfilments.status='processing' AND excluded.status='packed')
+          OR (cnc_seller_order_fulfilments.status='packed' AND excluded.status='shipped')
+          OR (cnc_seller_order_fulfilments.status='shipped' AND excluded.status='delivered')
        RETURNING order_id`
     ).bind(orderId,account.id,status,carrier,trackingNumber,now).first<{order_id:string}>();
     if (!changed) {
       const latest=await db.prepare(
-        'SELECT seller_id,status,carrier,tracking_number FROM cnc_order_fulfilments WHERE order_id=?'
-      ).bind(orderId).first<{seller_id:string;status:string;carrier:string;tracking_number:string}>();
-      if(latest?.seller_id===account.id&&latest.status===status&&
-         latest.carrier===carrier&&latest.tracking_number===trackingNumber) {
+        'SELECT seller_id,status,carrier,tracking_number FROM cnc_seller_order_fulfilments WHERE order_id=? AND seller_id=?'
+      ).bind(orderId,account.id).first<{seller_id:string;status:string;carrier:string;tracking_number:string}>();
+      if(latest?.status===status&&latest.carrier===carrier&&
+         latest.tracking_number===trackingNumber) {
         return json({updated:false,orderId,status,carrier,trackingNumber});
       }
       return json({error:'Fulfilment changed; refresh and retry',code:'FULFILMENT_STALE'},409);
     }
-    await db.prepare(
-      `INSERT INTO cnc_notifications(id,user_id,title,body,kind,created)
-        VALUES (?,?,'Order update',?,'order',?)`
-    ).bind(crypto.randomUUID(),order.buyer,
-      `Order ${orderId.slice(0,8)} marked ${status}${trackingNumber ? ` (${carrier}: ${trackingNumber})` : ''}`,now).run();
     return json({updated:true,orderId,status,carrier,trackingNumber});
   }
 
