@@ -4,8 +4,8 @@
 **Working branch:** `fix/staging-master-marketplace-20261118`
 **Production:** https://www.cashncarryng.com — OUT OF SCOPE, NOT MODIFIED
 **Staging:** https://cashncarry-d1-staging-worker.cashncarry-workforce-2026.workers.dev/
-**Verified active Worker:** v54, `a1133ace-90c5-424c-af47-f514fca72dca`, 100% traffic, deployment `869d551d-9701-4913-ad05-b90e9837071f`, 2026-11-17 22:55:42 UTC.
-**Active release source:** `de2f6643593b34ed3e51d7daefa30c1a34c4d97e`. Working branch source is **not deployed** unless a later Cloudflare version readback confirms it.
+**Verified active Worker:** **v55**, `1e6cacd4-765b-4b10-9a98-82efe80ef5de`, 100% traffic, deployment `4e5105a8-0f4f-4276-98e7-59d4ce5f6afe`, 2026-11-18 06:11:34 UTC. **Previous rollback version:** v54 `a1133ace-90c5-424c-af47-f514fca72dca`.
+**Active backend release source:** `a40ec1fc2b6f41bdd262b0e3cdb1705bca6e8568` from this master repair branch. Immutable compiled backend artifact: `artifact/staging-master-v55-20261118`. Existing v54 frontend, stage entrypoint and 14 bindings preserved. The missing 0013 migration was source-only and not replayed against staging D1.
 **Baseline tests:** 24 passes, 0 failures, [run 44194889147](https://github.com/deeonejosh/cashncarry-source/actions/runs/44194889147). Tests are isolated Miniflare/D1 and static checks—not real authenticated staging browser acceptance.
 
 ## 1. Actual system boundary
@@ -113,3 +113,14 @@ Gifting: buyer balance + host identity -> validated gift
 - Actual Resend delivery, Flutterwave TEST payment callbacks, live video, physical Android hardware and authenticated Cloudflare Access E2E remain **NOT TESTED** or **BLOCKED**.
 - No production resources touched.
 - Final readiness requires connected staging credentials and provider/test fixtures; CI green alone cannot close the P0 payment, multivendor fulfilment or video gates.
+
+## 7. Verified backend-only staging v55 rollout — 18 Nov 2026
+
+- Source CI: [run 44249294268](https://github.com/deeonejosh/cashncarry-source/actions/runs/44249294268): **25 PASS, 0 FAIL**, TypeScript, Vite build, UI static audit and bundled Worker all passed.
+- Artifact packaging: [run 44249294425](https://github.com/deeonejosh/cashncarry-source/actions/runs/44249294425): successful, backend bundle SHA-256 `394a0f96ede67344b7f77b72e86e95a59983024c3ca9fa651deb6cb1661e089e`, no production deployment.
+- Cloudflare version `1e6cacd4-765b-4b10-9a98-82efe80ef5de` uploaded with **strict inheritance of all 14 bindings**, preserving previous stage entry, v54 static manifest and financial switches.
+- Deployed at 100% via deployment `4e5105a8-0f4f-4276-98e7-59d4ce5f6afe`, verified through fresh Cloudflare readback.
+- Active backend contains `FULFILMENT_NOT_READY`, `FULFILMENT_TRANSITION_REJECTED`, `COIN_CREDIT_NOT_AUTHORIZED`, `AUCTION_SETTLEMENT_NOT_CONFIGURED`, `BROADCAST_NOT_CONFIGURED`, `BUYER_ADDRESS_REQUIRED`.
+- Post-deployment staging D1 read-only counts: one existing auth account; **0** seller applications, stores, products, orders, auctions, gifts, live room states or fulfilments. No staging SQL migrations applied or real test customers created.
+- Current real-money configuration: `PAYMENTS_ENABLED=false`, `COINS_PURCHASES_ENABLED=false`, `FLW_MODE=disabled`, `KYC_UPLOADS_ENABLED=false`.
+- This is a **safety-only backend patch**, not proof of functioning real buyer/seller checkout, multi-seller shipping or live video. No Access-authenticated browser acceptance was performed. Production unchanged.
