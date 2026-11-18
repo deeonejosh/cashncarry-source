@@ -19,7 +19,7 @@ const mime={'.html':'text/html; charset=utf-8','.js':'application/javascript; ch
 const dist=path.resolve(ROOT,'dist');
 function assetFromDist(request){
  const url=new URL(request.url);
- let rel=url.pathname==='/'?'index.html':decodeURIComponent(url.pathname).replace(/^\\/+/, '');
+ let rel=url.pathname==='/'?'index.html':decodeURIComponent(url.pathname).replace(/^\/+/, '');
  rel=rel.replace(/\\/g,'/');
  let target=path.resolve(dist,rel);
  if(!target.startsWith(dist+path.sep)||!fs.existsSync(target)||fs.statSync(target).isDirectory()){
@@ -31,10 +31,10 @@ function assetFromDist(request){
 }
 async function applyMigration(db,sql) {
  const chunks=sql.split(/(?=CREATE TRIGGER)/);
- const ddl=chunks[0].split('\\n').filter(x=>!x.trim().startsWith('--')).join('\\n').trim();
- if(ddl)await db.exec(ddl.replace(/\\s+/g,' ').replace(/;\\s*/g,';\\n').trim());
+ const ddl=chunks[0].split('\n').filter(x=>!x.trim().startsWith('--')).join('\n').trim();
+ if(ddl)await db.exec(ddl.replace(/\s+/g,' ').replace(/;\s*/g,';\n').trim());
  for(const segment of chunks.slice(1)){
-   const trigger=segment.split('\\n').filter(x=>!x.trim().startsWith('--')).join('\\n').trim();
+   const trigger=segment.split('\n').filter(x=>!x.trim().startsWith('--')).join('\n').trim();
    if(trigger)await db.prepare(trigger).run();
  }
 }
