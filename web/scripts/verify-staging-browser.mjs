@@ -257,6 +257,39 @@ try {
     console.log(`  ✅ [BROWSER PASS] ${vp.name} (${vp.width}x${vp.height}): route empty states and access guards verified, 0 console/page errors, 0 overflow`);
     await context.close();
   }
+
+  const productContext = await browser.newContext({ ignoreHTTPSErrors: true });
+  try {
+    const page = await productContext.newPage();
+    const product = { id: 'routing-fixture', name: 'Marketplace routing fixture', price: 1500, stock: 5 };
+    let releaseCatalog;
+    const catalogReady = new Promise((resolve) => { releaseCatalog = resolve; });
+    await page.route(`${origin}/api/products`, async (route) => {
+      await catalogReady;
+      await route.fulfill({ json: { products: [product] } });
+    });
+
+    try {
+      await page.goto(`${origin}/?tab=product-detail&id=${product.id}`, { waitUntil: 'domcontentloaded' });
+      await page.getByRole('status').filter({ hasText: 'Loading product' }).waitFor({ timeout: 5000 });
+      assert.equal(new URL(page.url()).searchParams.get('id'), product.id, 'Product ID must survive catalog loading');
+    } finally {
+      releaseCatalog();
+    }
+    const productHeading = page.getByRole('heading', { name: product.name, exact: true });
+    await productHeading.waitFor();
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await productHeading.waitFor();
+    await page.getByRole('button', { name: 'Back to products' }).click();
+    await page.getByRole('heading', { name: 'Shop', exact: true }).waitFor();
+    await page.goBack();
+    await productHeading.waitFor();
+    await page.goto(`${origin}/?productId=${product.id}`);
+    await productHeading.waitFor();
+    console.log('  ✅ [BROWSER PASS] Product share links load, reload, restore on Back, and accept the legacy productId parameter');
+  } finally {
+    await productContext.close();
+  }
 } finally {
   await browser.close();
   await mf.dispose();

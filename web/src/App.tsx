@@ -63,6 +63,10 @@ const AUTH_REQUIRED_TABS = new Set([
   'seller-kyc',
 ]);
 
+function getProductLinkId(params: URLSearchParams) {
+  return params.get('id') || params.get('productId') || '';
+}
+
 function AccessDeniedPanel({
   title,
   message,
@@ -117,13 +121,18 @@ function MainApp() {
     setCartOpen,
     toasts,
     products,
+    catalogState,
+    reloadMarketplace,
     orders,
     openAuthModal,
   } = useStore();
 
   const [addressSetupRequested, setAddressSetupRequested] = useState(false);
   const [currentTab, setCurrentTab] = useState<string>(
-    () => new URLSearchParams(window.location.search).get('tab') || 'home'
+    () => {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('tab') || (getProductLinkId(params) ? 'product-detail' : 'home');
+    }
   );
   const [selectedCategory, setSelectedCategory] = useState<string>(
     () => new URLSearchParams(window.location.search).get('category') || 'all'
@@ -136,34 +145,20 @@ function MainApp() {
     () => new URLSearchParams(window.location.search).get('seller') || ''
   );
   const historyReady = useRef(false);
-  const deepLinkProductResolved = useRef(false);
-  const [selectedProduct, setSelectedProduct] = useState<ProductItem | null>(null);
+  const [productLinkId, setProductLinkId] = useState(
+    () => getProductLinkId(new URLSearchParams(window.location.search))
+  );
+  const [clickedProduct, setClickedProduct] = useState<ProductItem | null>(null);
+  const selectedProduct = currentTab === 'product-detail' && productLinkId
+    ? products.find((product) => product.id === productLinkId || product.slug === productLinkId)
+      ?? (clickedProduct && (clickedProduct.slug || clickedProduct.id) === productLinkId ? clickedProduct : null)
+    : null;
   const [lastCompletedOrder, setLastCompletedOrder] = useState<Order | null>(null);
   const [activeTrackingNumber, setActiveTrackingNumber] = useState<string>('');
   const [returnOrder, setReturnOrder] = useState<Order | null>(null);
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [newsletterModalOpen, setNewsletterModalOpen] = useState(false);
-
-  // Deep linking for product id / slug
-  useEffect(() => {
-    try {
-      const searchParams = new URLSearchParams(window.location.search);
-      const idParam = searchParams.get('id') || searchParams.get('productId');
-      if (idParam && products.length > 0 && !deepLinkProductResolved.current) {
-        deepLinkProductResolved.current = true;
-        const found = products.find((p) => p.id === idParam || p.slug === idParam);
-        if (found) {
-          setSelectedProduct(found);
-          if (!searchParams.has('tab')) setCurrentTab('product-detail');
-        }
-      }
-      const sellerParam = searchParams.get('seller');
-      if (sellerParam) setSelectedStorefrontId(sellerParam);
-    } catch {
-      // ignore
-    }
-  }, [products]);
 
   // Synchronize URL bar and history state
   useEffect(() => {
@@ -172,8 +167,8 @@ function MainApp() {
       if (currentTab !== 'home') params.set('tab', currentTab);
       if (currentTab === 'shop' && selectedCategory !== 'all') params.set('category', selectedCategory);
       if (currentTab === 'shop' && shopSearchQuery.trim()) params.set('q', shopSearchQuery.trim());
-      if (currentTab === 'product-detail' && selectedProduct) {
-        params.set('id', selectedProduct.slug || selectedProduct.id);
+      if (currentTab === 'product-detail' && productLinkId) {
+        params.set('id', productLinkId);
       }
       if (currentTab === 'storefront' && selectedStorefrontId) {
         params.set('seller', selectedStorefrontId);
@@ -189,22 +184,21 @@ function MainApp() {
     } catch {
       // ignore
     }
-  }, [currentTab, selectedCategory, selectedProduct, shopSearchQuery, selectedStorefrontId]);
+  }, [currentTab, selectedCategory, productLinkId, shopSearchQuery, selectedStorefrontId]);
 
   useEffect(() => {
     const restore = () => {
       const params = new URLSearchParams(window.location.search);
-      setCurrentTab(params.get('tab') || 'home');
+      const productId = getProductLinkId(params);
+      setCurrentTab(params.get('tab') || (productId ? 'product-detail' : 'home'));
       setSelectedCategory(params.get('category') || 'all');
       setShopSearchQuery(params.get('q') || '');
-      const seller = params.get('seller');
-      if (seller) setSelectedStorefrontId(seller);
-      const id = params.get('id');
-      if (id) setSelectedProduct(products.find((p) => p.id === id || p.slug === id) || null);
+      setSelectedStorefrontId(params.get('seller') || '');
+      setProductLinkId(productId);
     };
     window.addEventListener('popstate', restore);
     return () => window.removeEventListener('popstate', restore);
-  }, [products]);
+  }, []);
 
   const openPolicy = (section: PolicySection) => {
     setPolicySection(section);
@@ -218,7 +212,8 @@ function MainApp() {
   };
 
   const handleSelectProduct = (product: ProductItem) => {
-    setSelectedProduct(product);
+    setClickedProduct(product);
+    setProductLinkId(product.slug || product.id);
     navigateTab('product-detail');
   };
 
@@ -373,6 +368,20 @@ function MainApp() {
           />
         );
       case 'product-detail':
+        if (productLinkId && !selectedProduct && catalogState.status === 'loading') {
+          return <p role="status" className="py-16 text-center text-sm text-slate-600">Loading product…</p>;
+        }
+        if (productLinkId && !selectedProduct && catalogState.status === 'error') {
+          return (
+            <div className="mx-auto max-w-lg space-y-4 px-6 py-16 text-center">
+              <h1 className="text-lg font-bold text-slate-900">Unable to load this product</h1>
+              <button type="button" onClick={() => void reloadMarketplace()}
+                className="rounded-xl bg-[#0c5c36] px-5 py-2.5 text-sm font-bold text-white">
+                Try again
+              </button>
+            </div>
+          );
+        }
         return (
           <ProductDetailsPage
             product={selectedProduct}
