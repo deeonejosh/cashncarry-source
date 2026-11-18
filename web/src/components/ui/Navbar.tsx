@@ -121,13 +121,14 @@ export default function Navbar({
         </div>
 
         {/* Search Bar */}
-        <form onSubmit={handleSearchSubmit} className="relative hidden flex-1 max-w-xl lg:block">
+        <form onSubmit={handleSearchSubmit} className="relative hidden min-w-0 flex-1 max-w-xl lg:block">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={17} />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search verified Nigerian sellers, tech, fashion, beauty..."
+            aria-label="Search products and stores"
+            placeholder="Search products and stores"
             className="h-11 w-full rounded-full border border-slate-200 bg-slate-50 pl-11 pr-24 text-sm text-slate-900 outline-none transition focus:border-emerald-600 focus:bg-white focus:ring-4 focus:ring-emerald-600/10"
           />
           <button
@@ -160,6 +161,7 @@ export default function Navbar({
             onClick={() => setCurrentTab('coins')}
             className="flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-extrabold text-amber-900 hover:bg-amber-100 transition"
             title="Coins & Gifts"
+            aria-label="Coins and gifts"
           >
             <Coins size={14} className="text-amber-600" />
             <span>{(currentUser.coins ?? 0).toLocaleString()}</span>
@@ -198,6 +200,8 @@ export default function Navbar({
             <button
               type="button"
               onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+              aria-label="Account menu"
+              aria-expanded={profileDropdownOpen}
               className="flex items-center gap-2 rounded-full p-1.5 hover:bg-slate-100 transition border border-transparent hover:border-slate-200"
             >
               {currentUser.avatar ? (
@@ -211,7 +215,7 @@ export default function Navbar({
                   {initials}
                 </div>
               )}
-              <span className="hidden xl:block text-xs font-bold text-slate-800">
+              <span className="hidden max-w-28 truncate text-xs font-bold text-slate-800 xl:block">
                 {currentUser.authenticated ? currentUser.name.split(' ')[0] : 'Account'}
               </span>
               <ChevronDown size={14} className="text-slate-500" />
@@ -511,7 +515,8 @@ export default function Navbar({
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search products & stores..."
+              aria-label="Search products and stores"
+              placeholder="Search products and stores"
               className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-16 text-xs outline-none focus:border-emerald-600"
             />
             <button

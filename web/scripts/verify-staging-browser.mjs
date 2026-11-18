@@ -213,6 +213,33 @@ try {
       }
     }
 
+    await page.goto(origin + '/', { waitUntil: 'networkidle' });
+    const logos = page.locator('header img[alt="Cash N Carry Nigeria"], footer img[alt="Cash N Carry Nigeria"]');
+    assert.equal(await logos.count(), 2, 'Expected header and footer branding');
+    assert.ok(await logos.evaluateAll((images) => images.every((image) => image.complete && image.naturalWidth > 0)),
+      `[${vp.name}] Both brand logos must render`);
+
+    const cartButton = page.getByRole('button', { name: /^Cart(?: 0)?$/ });
+    await cartButton.click();
+    const drawer = page.getByRole('dialog', { name: /^Your Cart/ });
+    const closeCart = drawer.getByRole('button', { name: 'Close cart' });
+    await closeCart.waitFor();
+    assert.ok(await closeCart.evaluate((button) => document.activeElement === button));
+    await closeCart.press('Escape');
+    await drawer.waitFor({ state: 'hidden' });
+    assert.ok(await cartButton.evaluate((button) => document.activeElement === button));
+
+    await page.goto(`${origin}/?tab=policies`);
+    const policy = page.locator('main[data-cnc-route="policies"]');
+    await policy.getByRole('button', { name: 'Privacy & NDPA', exact: true }).click();
+    await page.waitForURL((url) => url.searchParams.get('section') === 'privacy');
+    await page.reload();
+    await policy.getByRole('heading', { name: /Privacy Notice & NDPA/ }).waitFor();
+    await policy.getByRole('button', { name: 'Returns & Refunds', exact: true }).click();
+    await page.waitForURL((url) => url.searchParams.get('section') === 'returns');
+    await page.goBack();
+    await policy.getByRole('heading', { name: /Privacy Notice & NDPA/ }).waitFor();
+
     // Route-by-route smoke across all 26 website tabs on desktop + mobile.
     for (const tab of allCustomerTabs) {
       await page.goto(tab === 'home' ? `${origin}/` : `${origin}/?tab=${tab}`, { waitUntil: 'networkidle' });

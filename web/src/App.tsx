@@ -68,6 +68,14 @@ function getProductLinkId(params: URLSearchParams) {
   return params.get('id') || params.get('productId') || '';
 }
 
+function readPolicySection(params: URLSearchParams): PolicySection {
+  const section = params.get('section');
+  if (section === 'privacy' || section === 'returns' || section === 'escrow' || section === 'seller-code') {
+    return section;
+  }
+  return 'terms';
+}
+
 function AccessDeniedPanel({
   title,
   message,
@@ -136,7 +144,7 @@ function MainApp() {
   const [selectedCategory, setSelectedCategory] = useState<string>(
     () => new URLSearchParams(window.location.search).get('category') || 'all'
   );
-  const [policySection, setPolicySection] = useState<PolicySection>('terms');
+  const [policySection, setPolicySection] = useState(() => readPolicySection(new URLSearchParams(window.location.search)));
   const [shopSearchQuery, setShopSearchQuery] = useState<string>(
     () => new URLSearchParams(window.location.search).get('q') || ''
   );
@@ -184,6 +192,7 @@ function MainApp() {
       if (currentTab !== 'home') params.set('tab', currentTab);
       if (currentTab === 'shop' && selectedCategory !== 'all') params.set('category', selectedCategory);
       if (currentTab === 'shop' && shopSearchQuery.trim()) params.set('q', shopSearchQuery.trim());
+      if (currentTab === 'policies' && policySection !== 'terms') params.set('section', policySection);
       if (currentTab === 'product-detail' && productLinkId) {
         params.set('id', productLinkId);
       }
@@ -201,7 +210,7 @@ function MainApp() {
     } catch {
       // ignore
     }
-  }, [currentTab, selectedCategory, productLinkId, shopSearchQuery, selectedStorefrontId]);
+  }, [currentTab, selectedCategory, productLinkId, shopSearchQuery, selectedStorefrontId, policySection]);
 
   useEffect(() => {
     const restore = () => {
@@ -212,6 +221,7 @@ function MainApp() {
       setShopSearchQuery(params.get('q') || '');
       setSelectedStorefrontId(params.get('seller') || '');
       setProductLinkId(productId);
+      setPolicySection(readPolicySection(params));
     };
     window.addEventListener('popstate', restore);
     return () => window.removeEventListener('popstate', restore);
@@ -271,11 +281,12 @@ function MainApp() {
   const renderMainContent = () => {
     const needsAuthWait =
       !isAuthReady &&
-      (SELLER_CENTRE_TABS.has(currentTab) || ADMIN_TABS.has(currentTab) || AUTH_REQUIRED_TABS.has(currentTab));
+      (currentTab === 'profile' || SELLER_CENTRE_TABS.has(currentTab) ||
+        ADMIN_TABS.has(currentTab) || AUTH_REQUIRED_TABS.has(currentTab));
 
     if (needsAuthWait) {
       return (
-        <div className="py-20 text-center text-sm font-semibold text-slate-500">
+        <div role="status" className="py-20 text-center text-sm font-semibold text-slate-600">
           Verifying account permissions...
         </div>
       );
@@ -295,6 +306,18 @@ function MainApp() {
         );
       }
       if (!isApprovedSeller) {
+        if (isAdmin) {
+          return (
+            <AccessDeniedPanel
+              icon="seller"
+              title="Approved Seller Account Required"
+              message="Seller Centre is available to approved sellers. Use the Admin Console to review seller applications and manage the marketplace."
+              actionLabel="Open Admin Console"
+              onAction={() => navigateTab('admin-dashboard')}
+              onSecondary={() => navigateTab('shop')}
+            />
+          );
+        }
         if (currentUser.sellerStatus === 'pending') {
           return (
             <AccessDeniedPanel
@@ -316,7 +339,7 @@ function MainApp() {
                 ? 'Your seller privileges are currently suspended. Please review your application status or contact support.'
                 : currentUser.sellerStatus === 'rejected'
                 ? 'Your previous seller application was not approved. Update your business details and reapply.'
-                : 'Buyer accounts cannot access Seller Centre. Apply to become a verified seller to publish products and broadcast live.'
+                : 'Apply to become a verified seller to publish products and broadcast live.'
             }
             actionLabel={currentUser.sellerStatus === 'rejected' ? 'Review Application' : 'Become a Seller'}
             onAction={() => navigateTab('seller-kyc')}
@@ -336,7 +359,7 @@ function MainApp() {
           onAction={() =>
             currentUser.authenticated ? navigateTab('profile') : openAuthModal('Sign in with your administrator credentials.')
           }
-          onSecondary={() => navigateTab('home')}
+          onSecondary={() => navigateTab('shop')}
         />
       );
     }
@@ -513,7 +536,7 @@ function MainApp() {
           />
         );
       case 'policies':
-        return <PolicyPage key={policySection} initialSection={policySection} onBack={() => navigateTab('home')} />;
+        return <PolicyPage activeSection={policySection} onSelectSection={setPolicySection} onBack={() => navigateTab('home')} />;
       default:
         return (
           <HomePage

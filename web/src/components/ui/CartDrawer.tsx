@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useStore } from '../../context/StoreContext';
 import { X, Trash2, Plus, Minus, ShoppingBag, ArrowRight, Package } from 'lucide-react';
 
@@ -10,27 +10,45 @@ interface CartDrawerProps {
 
 export default function CartDrawer({ isOpen, onClose, onProceedToCheckout }: CartDrawerProps) {
   const { cart, removeFromCart, updateCartQty } = useStore();
+  const dialogRef = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!isOpen || !dialog) return;
+    dialog.showModal();
+    return () => dialog.close();
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
+  const closeDrawer = () => {
+    dialogRef.current?.close();
+    onClose();
+  };
   const cartCount = cart.reduce((acc, item) => acc + item.quantity, 0);
   const cartSubtotal = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-slate-900/60 backdrop-blur-sm">
-      <div
-        className="relative flex h-full w-full max-w-md flex-col bg-white shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <dialog
+      ref={dialogRef}
+      aria-labelledby="cart-drawer-title"
+      onCancel={(event) => {
+        event.preventDefault();
+        closeDrawer();
+      }}
+      className="fixed inset-y-0 right-0 left-auto m-0 h-dvh max-h-none w-full max-w-md bg-white p-0 shadow-2xl backdrop:bg-slate-900/60 backdrop:backdrop-blur-sm"
+    >
+      <div className="flex h-full w-full flex-col">
         <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
           <div className="flex items-center gap-2">
             <ShoppingBag className="text-[#0c5c36]" size={22} />
-            <h2 className="text-lg font-black text-slate-900">Your Cart ({cartCount})</h2>
+            <h2 id="cart-drawer-title" className="text-lg font-black text-slate-900">Your Cart ({cartCount})</h2>
           </div>
           <button
             type="button"
-            onClick={onClose}
-            className="rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition"
+            aria-label="Close cart"
+            onClick={closeDrawer}
+            className="rounded-full p-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition"
           >
             <X size={20} />
           </button>
@@ -48,7 +66,7 @@ export default function CartDrawer({ isOpen, onClose, onProceedToCheckout }: Car
               </p>
               <button
                 type="button"
-                onClick={onClose}
+                onClick={closeDrawer}
                 className="mt-6 rounded-full bg-[#0c5c36] px-6 py-2.5 text-xs font-bold text-white hover:bg-emerald-900 transition"
               >
                 Continue Shopping
@@ -131,7 +149,7 @@ export default function CartDrawer({ isOpen, onClose, onProceedToCheckout }: Car
             <button
               type="button"
               onClick={() => {
-                onClose();
+                closeDrawer();
                 onProceedToCheckout();
               }}
               className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#0c5c36] py-3.5 text-xs font-black text-white shadow-lg transition hover:bg-emerald-900"
@@ -142,6 +160,6 @@ export default function CartDrawer({ isOpen, onClose, onProceedToCheckout }: Car
           </div>
         )}
       </div>
-    </div>
+    </dialog>
   );
 }
