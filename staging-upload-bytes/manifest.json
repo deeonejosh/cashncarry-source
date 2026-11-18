@@ -1,0 +1,87 @@
+{
+  "/assets/index-DjAQX0oY.js": {
+    "chunks": [
+      "8ae57cf7e0da38cd-part00.b64.txt",
+      "8ae57cf7e0da38cd-part01.b64.txt",
+      "8ae57cf7e0da38cd-part02.b64.txt",
+      "8ae57cf7e0da38cd-part03.b64.txt",
+      "8ae57cf7e0da38cd-part04.b64.txt"
+    ],
+    "hash": "c85b5400515fcc0a79b192d7ea3f06e0",
+    "mime": "application/javascript",
+    "size": 609702
+  },
+  "/assets/index-uvdl1fkh.css": {
+    "chunks": [
+      "2d975d89ac1f0f82-part00.b64.txt"
+    ],
+    "hash": "81693e6b607562a55bb4f29addf319d5",
+    "mime": "text/css",
+    "size": 79956
+  },
+  "/brand/icon.png": {
+    "chunks": [
+      "fea55c718194c272-part00.b64.txt",
+      "fea55c718194c272-part01.b64.txt",
+      "fea55c718194c272-part02.b64.txt",
+      "fea55c718194c272-part03.b64.txt",
+      "fea55c718194c272-part04.b64.txt",
+      "fea55c718194c272-part05.b64.txt"
+    ],
+    "hash": "77122208994f266d74ba66cb88213715",
+    "mime": "image/png",
+    "size": 808678
+  },
+  "/brand/logo.png": {
+    "chunks": [
+      "5ffbf88aaaf0aed6-part00.b64.txt",
+      "5ffbf88aaaf0aed6-part01.b64.txt",
+      "5ffbf88aaaf0aed6-part02.b64.txt",
+      "5ffbf88aaaf0aed6-part03.b64.txt",
+      "5ffbf88aaaf0aed6-part04.b64.txt"
+    ],
+    "hash": "86dfce55fc84bc89c8741345e40fd941",
+    "mime": "image/png",
+    "size": 664785
+  },
+  "/feed/google-shopping.xml": {
+    "chunks": [
+      "02df3452d829b6d7-part00.b64.txt"
+    ],
+    "hash": "1449acc4ef35ef81ce96f12467c779e2",
+    "mime": "application/xml",
+    "size": 435
+  },
+  "/index.html": {
+    "chunks": [
+      "213456c5dc963e03-part00.b64.txt"
+    ],
+    "hash": "714ccafd8b6227625a6bfbb017596816",
+    "mime": "text/html",
+    "size": 1260
+  },
+  "/manifest.webmanifest": {
+    "chunks": [
+      "27153c4564a08fd6-part00.b64.txt"
+    ],
+    "hash": "c51df62ea271d54e3f43cc2f6ac48f76",
+    "mime": "application/manifest+json",
+    "size": 496
+  },
+  "/robots.txt": {
+    "chunks": [
+      "adada1317532a28b-part00.b64.txt"
+    ],
+    "hash": "f71d20196d4caf35b6a670db8c70b03d",
+    "mime": "text/plain",
+    "size": 26
+  },
+  "/sitemap.xml": {
+    "chunks": [
+      "7efd2a819481844e-part00.b64.txt"
+    ],
+    "hash": "9f6ea792f6f8286d58b74d8c0af2980f",
+    "mime": "application/xml",
+    "size": 109
+  }
+}
