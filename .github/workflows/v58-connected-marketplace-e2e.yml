@@ -1,0 +1,40 @@
+name: V58 isolated connected marketplace E2E (NO REMOTE WRITES)
+on:
+  push:
+    branches: [fix/v58-marketplace-e2e]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: cnc-v58-connected-e2e
+  cancel-in-progress: false
+jobs:
+  marketplace:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Install reproducible dependencies
+        run: npm ci --no-audit --no-fund
+      - name: TypeScript and existing 25 isolated D1 regressions
+        run: npm run lint && npm test
+      - name: Source-built frontend and Worker
+        run: npm run build && npm run bundle:worker
+      - name: Isolated connected owner/seller/buyer D1 & API workflow (NO remote access)
+        run: node scripts/v58-marketplace-e2e.mjs
+      - name: Upload evidence even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cashncarry-v58-connected-marketplace-e2e
+          path: web/reports/v58-isolated-marketplace-e2e.json
+          if-no-files-found: warn
+          retention-days: 30
