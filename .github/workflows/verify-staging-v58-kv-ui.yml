@@ -1,0 +1,41 @@
+name: Verify staging v58 KV frontend bridge (NO DEPLOY)
+on:
+  push:
+    branches: [fix/staging-v58-kv-ui-20261118]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Locked dependency install
+        run: npm ci --no-audit --no-fund
+      - name: Build source and run 25 isolated D1 regressions
+        run: |
+          npm run lint
+          npm test
+          npm run build
+          npm run bundle:worker
+      - name: Verify immutable staged frontend through real backend Worker
+        run: node scripts/verify-staging-kv-ui.mjs
+      - name: Upload build hashes and scripts (no deployment)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cnc-staging-v58-kv-ui-evidence
+          path: |
+            web/dist/staging-v58/
+            web/reports/
+          retention-days: 14
+          if-no-files-found: warn
