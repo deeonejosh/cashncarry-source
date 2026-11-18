@@ -300,6 +300,68 @@ try {
   await expectStatus('/api/auctions', ids.buyerB, 'PATCH',
     { action: 'checkout', id: auctionId }, 503,
     'winning-auction checkout remains fail-closed until verified payment settlement exists');
+  // Isolated support inbox regression: ticket ownership, authorised order
+  // linkage, private owner notes, human escalation and no AI provider calls.
+  const ticketCreated = await expectStatus('/api/support/tickets', ids.buyerA, 'POST',
+    { subject: 'Where is my order?', category: 'order', orderId: purchase.order.id,
+      message: 'Please help track my recent order.' },
+    201, 'buyer creates order-linked customer support ticket');
+  const ticketId = ticketCreated.ticket.id;
+  await expectStatus('/api/support/tickets', ids.buyerB, 'POST',
+    { subject: 'Someone elses order', category: 'order', orderId: purchase.order.id,
+      message: 'Trying to link an order I do not own' },
+    404, 'different buyer cannot attach another buyers order to ticket');
+  await expectStatus('/api/support/tickets/' + ticketId, ids.buyerB, 'GET',
+    undefined, 404, 'unrelated buyer cannot view private support ticket');
+  const buyerList = await expectStatus('/api/support/tickets', ids.buyerA, 'GET',
+    undefined, 200, 'buyer lists only own support tickets');
+  assert.ok(buyerList.tickets.some(t => t.id === ticketId));
+  const otherList = await call('/api/support/tickets', ids.buyerB);
+  assert.equal(otherList.status, 200);
+  assert.ok(!otherList.data.tickets.some(t => t.id === ticketId));
+  await expectStatus('/api/support/tickets/' + ticketId + '/messages', ids.buyerA, 'POST',
+    { message: 'My delivery address is correct.' }, 201,
+    'buyer adds a support ticket reply');
+  await expectStatus('/api/support/tickets/' + ticketId + '/messages', ids.owner, 'POST',
+    { message: 'Internal follow-up assigned to owner.', internal: true }, 201,
+    'MFA owner records a private support note');
+  const buyerDetail = await expectStatus('/api/support/tickets/' + ticketId, ids.buyerA, 'GET',
+    undefined, 200, 'customer retrieves own ticket and authorised order summary');
+  assert.equal(buyerDetail.messages.length, 2);
+  assert.ok(buyerDetail.linkedOrder?.id === purchase.order.id);
+  assert.ok(!buyerDetail.messages.some(m => m.internal === 1));
+  const adminDetail = await call('/api/support/tickets/' + ticketId, ids.owner);
+  assert.equal(adminDetail.status, 200);
+  assert.equal(adminDetail.data.messages.length, 3);
+  assert.equal(adminDetail.data.messages.filter(m => m.internal === 1).length, 1);
+  record('owner sees private support note while customer cannot', { isolated: true });
+  await expectStatus('/api/support/tickets/' + ticketId, ids.buyerA, 'PATCH',
+    { priority: 'high' }, 403, 'customer cannot change support priority');
+  await expectStatus('/api/support/tickets/' + ticketId, ids.buyerA, 'PATCH',
+    { action: 'escalate' }, 200, 'customer requests human escalation');
+  const adminList = await expectStatus('/api/support/tickets?status=escalated', ids.owner, 'GET',
+    undefined, 200, 'MFA owner views escalated support inbox');
+  assert.ok(adminList.tickets.some(t => t.id === ticketId));
+  await expectStatus('/api/support/tickets/' + ticketId, ids.owner, 'PATCH',
+    { status: 'in_progress', priority: 'high' }, 200, 'MFA owner triages support ticket');
+  await expectStatus('/api/support/tickets/' + ticketId + '/ai-draft', ids.owner, 'POST',
+    {}, 503, 'AI drafting cannot run without approved provider and budget');
+  const templates = await expectStatus('/api/support/tickets/' + ticketId + '/reply-templates', ids.owner, 'GET',
+    undefined, 200, 'owner can prepare human-reviewed response templates');
+  assert.equal(templates.aiGenerated, false);
+  const sellerTicket = await expectStatus('/api/support/tickets', ids.seller, 'POST',
+    { subject: 'Fulfilment clarification', category: 'delivery', orderId: purchase.order.id,
+      message: 'This order contains a product from my store.' },
+    201, 'seller can link only an order containing their own item');
+  const sellerTicketDetail = await call('/api/support/tickets/' + sellerTicket.ticket.id, ids.seller);
+  assert.equal(sellerTicketDetail.status, 200);
+  assert.equal(sellerTicketDetail.data.linkedOrder?.id, purchase.order.id);
+  const thirdParty = await call('/api/support/tickets/' + sellerTicket.ticket.id, ids.buyerB);
+  assert.equal(thirdParty.status, 404);
+  const adminQueue = await call('/api/support/tickets', ids.owner);
+  assert.ok(adminQueue.data.tickets.length >= 2);
+  record('support inbox, permissions, linked orders, MFA triage and human escalation pass in disposable D1',
+    { tickets: adminQueue.data.tickets.length, aiProviderCalls: 0 });
   result = { status: 'PASSED', cases: evidence.length, steps: evidence, remoteStagingWrites: 0,
     providerPaymentsTested: false, realStreamingTested: false, authenticatedAccessTests: false };
 } catch(error) {
