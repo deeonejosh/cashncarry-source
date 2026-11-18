@@ -819,7 +819,7 @@ async function run() {
       ).bind(buyerId).first<{n:number}>();
       assert.equal(notices?.n,4,'One notification per real state transition, not per retry');
 
-      // A mixed-seller order cannot be fulfilled using the legacy order-level PK.
+      // Multi-seller paid order: each seller fulfils only their own line items.
       assert.equal((await post('/api/cart',buyerId,{
         id:sellerId+'-product',quantity:1,source:'replacement'
       })).status,200);
@@ -831,19 +831,67 @@ async function run() {
       });
       assert.equal(mixed.status,200);
       const mixedId=(await mixed.json() as any).order.id as string;
+      const unpaidMixed=await post('/api/v1/seller/orders/fulfil',otherId,{
+        orderId:mixedId,status:'processing'
+      });
+      assert.equal(unpaidMixed.status,409,'Cannot fulfil a different unpaid order');
+      const fakeDirect=await authDb.prepare(
+        "INSERT INTO cnc_seller_order_fulfilments(order_id,seller_id) VALUES(?,?)"
+      ).bind(mixedId,otherId);
+      await assert.rejects(async()=>{await fakeDirect.run();},
+        /CNC_SELLER_FULFILMENT_PAYMENT_REQUIRED/,
+        'DB must reject a forged fulfilment before confirmed payment');
       await authDb.prepare(
         "INSERT INTO cnc_flutterwave_payments(order_id,reference,amount_minor) VALUES(?,?,?)"
       ).bind(mixedId,'order-proof-0002',500000).run();
       await authDb.prepare(
         "UPDATE cnc_flutterwave_payments SET transaction_id=?,paid_at=unixepoch() WHERE order_id=?"
       ).bind('999002',mixedId).run();
-      const blocked=await post('/api/v1/seller/orders/fulfil',sellerId,{
+      const sellerA=(await (await list(sellerId)).json() as any).orders;
+      const sellerB=(await (await list(otherId)).json() as any).orders;
+      assert.equal(sellerA.length,2,'First seller sees single and multi-seller orders');
+      assert.equal(sellerB.length,1,'Second seller sees only the multi-seller order');
+      assert.equal(sellerA.find((x:any)=>x.id===mixedId)?.total_minor,250000,
+        'First seller gross item total must not include second seller');
+      assert.equal(sellerB[0].total_minor,250000,'Second seller gross item total isolated');
+      const startA=await post('/api/v1/seller/orders/fulfil',sellerId,{
         orderId:mixedId,status:'processing'
       });
-      assert.equal(blocked.status,409,'Mixed seller order requires per-seller fulfilment design');
-      assert.equal((await blocked.json() as any).code,'FULFILMENT_NOT_READY');
-      assert.equal((await (await list(sellerId)).json() as any).orders.length,1,
-        'Split-seller order must not appear as safely shippable under legacy schema');
+      assert.equal(startA.status,200,'First seller can fulfil their portion');
+      const startB=await post('/api/v1/seller/orders/fulfil',otherId,{
+        orderId:mixedId,status:'processing'
+      });
+      assert.equal(startB.status,200,'Second seller can fulfil independently');
+      const packA=await post('/api/v1/seller/orders/fulfil',sellerId,{
+        orderId:mixedId,status:'packed'
+      });
+      assert.equal(packA.status,200);
+      assert.equal((await (await list(otherId)).json() as any).orders[0].fulfilment_status,
+        'processing','First seller cannot change second seller fulfilment state');
+      assert.equal((await (await list(sellerId)).json() as any).orders.find((x:any)=>x.id===mixedId)?.fulfilment_status,
+        'packed');
+      const skipB=await post('/api/v1/seller/orders/fulfil',otherId,{
+        orderId:mixedId,status:'delivered',trackingNumber:'FORGED'
+      });
+      assert.equal(skipB.status,409,'Second seller cannot skip their state machine');
+      const repeatPack=await post('/api/v1/seller/orders/fulfil',sellerId,{
+        orderId:mixedId,status:'packed'
+      });
+      assert.equal((await repeatPack.json() as any).updated,false,
+        'Retry must be idempotent and not send duplicate notifications');
+      const notOwner=await post('/api/v1/seller/orders/fulfil',otherId,{
+        orderId:orderId,status:'processing'
+      });
+      assert.equal(notOwner.status,404,'Seller cannot change a different seller order');
+      const rows=await authDb.prepare(
+        'SELECT seller_id,status FROM cnc_seller_order_fulfilments WHERE order_id=?'
+      ).bind(mixedId).all<{seller_id:string;status:string}>();
+      assert.equal(rows.results.length,2,'Exactly one fulfilment record per seller');
+      const notices=await authDb.prepare(
+        "SELECT COUNT(*) AS n FROM cnc_notifications WHERE user_id=? AND kind='order'"
+      ).bind(buyerId).first<{n:number}>();
+      assert.equal(notices?.n,7,'All seven genuine transitions notify only once');
+
     });
 
     await test('P0 auction D1 trigger contract: reserve once, reject stale bids, close once and restore unsold stock once', async () => {
