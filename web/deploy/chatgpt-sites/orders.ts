@@ -14,7 +14,7 @@ export async function ordersRoute(request: Request, env: AuthEnvironment & { ORD
   const db = env.AUTH_DB;
   if (url.pathname === '/api/orders') {
     if (request.method !== 'GET') return json({error:'Method not allowed'},405);
-    const {results} = await db.prepare(`SELECT o.id,o.status,o.payment_state,o.created,
+    const {results} = await db.prepare(`SELECT o.id,o.buyer,o.status,o.payment_state,o.delivery_address,o.created,
       SUM(i.quantity*i.price_minor) AS total_minor
       FROM cnc_orders o JOIN cnc_order_items i ON i.order_id=o.id WHERE o.buyer=?
       GROUP BY o.id ORDER BY o.created DESC,o.id LIMIT 50`).bind(account.id).all<{
@@ -37,6 +37,30 @@ export async function ordersRoute(request: Request, env: AuthEnvironment & { ORD
       order_id:string;seller_id:string;store_name:string;status:string;
       carrier:string;tracking_number:string;updated_at:number
     }>();
+    // Item details are selected from the buyer's own orders, never from
+    // client-provided prices. All 50 visible orders can include multiple sellers.
+    const {results:items} = await db.prepare(`
+      SELECT i.order_id,i.product_id,i.seller AS seller_id,
+             COALESCE(st.name,'') AS seller_name,
+             i.name,i.quantity,i.price_minor,COALESCE(p.image,'') AS image
+      FROM cnc_order_items i
+      JOIN cnc_orders o ON o.id=i.order_id
+      LEFT JOIN cnc_seller_stores st ON st.owner=i.seller
+      LEFT JOIN cnc_seller_products p ON p.id=i.product_id
+      WHERE o.buyer=? AND o.id IN (
+        SELECT id FROM cnc_orders WHERE buyer=? ORDER BY created DESC,id LIMIT 50
+      )
+      ORDER BY o.created DESC,i.product_id LIMIT 2000
+    `).bind(account.id,account.id).all<{
+      order_id:string;product_id:string;seller_id:string;seller_name:string;
+      name:string;quantity:number;price_minor:number;image:string
+    }>();
+    const itemsByOrder = new Map<string,typeof items>();
+    for (const item of items) {
+      const group=itemsByOrder.get(item.order_id)||[];
+      group.push(item);
+      itemsByOrder.set(item.order_id,group);
+    }
     const byOrder = new Map<string,typeof fulfilments>();
     for (const item of fulfilments) {
       const group=byOrder.get(item.order_id)||[];
@@ -44,7 +68,8 @@ export async function ordersRoute(request: Request, env: AuthEnvironment & { ORD
       byOrder.set(item.order_id,group);
     }
     return json({orders:results.map(order=>({
-      ...order,fulfilments:byOrder.get(order.id)||[]
+      ...order,items:itemsByOrder.get(order.id)||[],
+      fulfilments:byOrder.get(order.id)||[]
     }))});
   }
   if (request.method !== 'POST') return json({error:'Method not allowed'},405);
