@@ -1,0 +1,96 @@
+name: Desktop 3D glass livestream staging release (NO AUTO DEPLOY)
+on:
+  push:
+    branches: [feature/staging-desktop-livestream-neon-20261119]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  validate-and-package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Install locked dependencies
+        working-directory: web
+        run: npm ci --no-audit --no-fund
+      - name: Type safety and interaction/visual browser tests
+        working-directory: web
+        run: |
+          npm run lint
+          node scripts/seller-empty-browser-test.mjs
+          node scripts/desktop-live-browser-test.mjs
+          node scripts/mobile-live-browser-test.mjs
+          node scripts/seller-bulk-xlsx-browser-test.mjs
+          npm test
+          npm run build
+          npm run bundle:worker
+      - name: Package only the active private-staging UI assets (NO DEPLOY)
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p release-desktop-live
+          node --input-type=module <<'EOF'
+          import fs from 'node:fs';
+          const html=fs.readFileSync('web/dist/index.html','utf8');
+          const files=fs.readdirSync('web/dist/assets');
+          const js=files.find(n=>/^index-[a-zA-Z0-9_-]+\.js$/.test(n));
+          const css=files.find(n=>/^index-[a-zA-Z0-9_-]+\.css$/.test(n));
+          if(!js||!css)throw Error('No hashed JS and CSS entrypoint');
+          const code=fs.readFileSync('web/dist/assets/'+js,'utf8');
+          const style=fs.readFileSync('web/dist/assets/'+css,'utf8');
+          const requiredCode=['The live stage is ready','Your live camera','Cloudflare Stream ready. Your camera connects to viewers when you start.','Bulk Upload Excel','Mobile livestream shopping room','End this livestream?','Livestreaming'];
+          const requiredCss=['cnc-live-empty-hologram','cnc-mobile-host-monitor','cnc-mobile-studio-form','cnc-mobile-live-shell','cnc-cloudflare-stream-player','cnc-desktop-live-workspace','cnc-desktop-studio-modal','cnc-desktop-empty-hologram'];
+          if(!requiredCode.every(t=>code.includes(t)))throw Error('A seller screen or previous feature is missing from compiled UI: '+requiredCode.filter(t=>!code.includes(t)));
+          if(!requiredCss.every(t=>style.includes(t)))throw Error('A required 3D/glass style is missing: '+requiredCss.filter(t=>!style.includes(t)));
+          if(code.includes('Download 10 test gaming products'))throw Error('Removed sample download unexpectedly returned');
+          const stamp='desktop-neon-live-v1-20261119';
+          let fixed=html.replaceAll('/assets/'+js,'/assets/index-OV904MHY.js?v='+stamp)
+                        .replaceAll('/assets/'+css,'/assets/index-DvqBtUTy.css?v='+stamp);
+          fixed=fixed.replace('<meta name="viewport"', '<meta name="cnc-staging-release" content="'+stamp+'" />\n    <meta name="viewport"');
+          if(!fixed.includes('index-OV904MHY.js?v='+stamp)||!fixed.includes('index-DvqBtUTy.css?v='+stamp))
+            throw Error('Staging entrypoints do not map to existing UI routing');
+          fs.writeFileSync('release-desktop-live/index.html',fixed);
+          fs.copyFileSync('web/dist/assets/'+js,'release-desktop-live/index.js');
+          fs.copyFileSync('web/dist/assets/'+css,'release-desktop-live/index.css');
+          fs.writeFileSync('release-desktop-live/manifest.txt', [
+            'source='+process.env.GITHUB_SHA,
+            'environment=private-staging-only',
+            'worker=cashncarry-d1-staging-worker',
+            'scope=desktop-livestream-start-room-ended-frontend-only',
+            'kv_html=cnc:marketplace-3d:7c1a29f:ui:index.html',
+            'kv_js=cnc:marketplace-3d:7c1a29f:ui:assets:index-OV904MHY.js',
+            'kv_css=cnc:marketplace-3d:7c1a29f:ui:assets:index-DvqBtUTy.css',
+            'backend_unchanged=true',
+            'cloudflare_stream_secrets_unchanged=true',
+            'payments_unchanged=true',
+            'production_untouched=true',
+          ].join('\n')+'\n');
+          EOF
+          sha256sum release-desktop-live/index.* > release-desktop-live/hashes.txt
+          cat release-desktop-live/manifest.txt
+          cat release-desktop-live/hashes.txt
+      - name: Commit immutable staging frontend to release branch (NO DEPLOY)
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c artifact/staging-desktop-live-v1-20261119
+          git add -f release-desktop-live/
+          git commit -m "build(staging): verified desktop live start, room, ended glass UI"
+          git push origin HEAD:refs/heads/artifact/staging-desktop-live-v1-20261119
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-live-glass-staging
+          path: |
+            release-desktop-live/
+            web/seller-live-redesign-qa/
+            web/desktop-live-qa-artifacts/
+            web/mobile-live-qa-artifacts/
+          retention-days: 14
