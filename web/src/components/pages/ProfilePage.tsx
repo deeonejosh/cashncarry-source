@@ -219,7 +219,11 @@ export default function ProfilePage({ onNavigate, initialAddressSetup = false }:
                 )}
               </div>
 
-              {currentUser.username && <p className="break-all text-sm font-semibold text-emerald-100">@{currentUser.username}</p>}
+              {currentUser.email && (
+                <p className="flex items-center gap-1.5 break-all text-sm font-semibold text-emerald-100">
+                  <Mail size={15} className="shrink-0" aria-hidden="true" /> {currentUser.email}
+                </p>
+              )}
               <p className="text-xs text-emerald-50 max-w-xl">
                 {currentUser.bio ||
                   (currentUser.authenticated
@@ -228,11 +232,7 @@ export default function ProfilePage({ onNavigate, initialAddressSetup = false }:
               </p>
 
               <div className="flex flex-wrap items-center gap-3 text-xs text-emerald-100">
-                {currentUser.email && (
-                  <span className="inline-flex items-center gap-1">
-                    <Mail size={13} className="shrink-0" /> <span className="break-all">{currentUser.email}</span>
-                  </span>
-                )}
+                {currentUser.username && <span className="break-all font-semibold">@{currentUser.username}</span>}
                 <span className="inline-flex items-center gap-1 font-bold text-emerald-100">
                   <MapPin size={13} /> Delivery State: {currentUser.selectedState || 'Lagos'}
                 </span>
@@ -260,8 +260,10 @@ export default function ProfilePage({ onNavigate, initialAddressSetup = false }:
                     setUsernameDraft(currentUser.username || '');
                     setPhotoDraft(null);
                     setStateDraft(currentUser.selectedState || 'Lagos');
-                    setEditingProfile(!editingProfile);
+                    setEditingProfile((open) => !open);
                   }}
+                  aria-expanded={editingProfile}
+                  aria-controls="cnc-edit-profile"
                   className="inline-flex min-h-[44px] items-center gap-1.5 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-xs font-black text-slate-800 hover:bg-slate-100 transition"
                 >
                   <Edit3 size={14} />
@@ -291,7 +293,7 @@ export default function ProfilePage({ onNavigate, initialAddressSetup = false }:
 
         {/* Inline Edit Profile Form */}
         {editingProfile && currentUser.authenticated && (
-          <form onSubmit={handleSaveProfile} className="rounded-2xl border border-emerald-200 bg-[#EAF7EF]/60 p-5 space-y-4">
+          <form id="cnc-edit-profile" onSubmit={handleSaveProfile} className="rounded-2xl border border-emerald-200 bg-[#EAF7EF]/60 p-5 space-y-4">
             <h3 className="text-xs font-black uppercase tracking-wider text-[#084B26]">
               Edit Account Profile
             </h3>
@@ -307,8 +309,9 @@ export default function ProfilePage({ onNavigate, initialAddressSetup = false }:
                 />
               </div>
               <div>
-                <label className="text-[11px] font-bold text-slate-700">Primary Delivery State</label>
+                <label htmlFor="profile-delivery-state" className="text-[11px] font-bold text-slate-700">Primary Delivery State</label>
                 <select
+                  id="profile-delivery-state"
                   value={stateDraft}
                   onChange={(e) => setStateDraft(e.target.value)}
                   className="mt-1 h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs outline-none focus:border-[#0E6B38]"
@@ -541,9 +544,11 @@ export default function ProfilePage({ onNavigate, initialAddressSetup = false }:
                 openAuthModal('Sign in to save a delivery address.');
               } else {
                 setRecipient(currentUser.name);
-                setShowAddressForm(!showAddressForm);
+                setShowAddressForm((open) => !open);
               }
             }}
+            aria-expanded={showAddressForm}
+            aria-controls="cnc-address-form"
             className="flex items-center gap-1.5 rounded-xl bg-[#0E6B38] px-4 py-2 text-xs font-bold text-white hover:bg-[#084B26] transition"
           >
             <Plus size={14} /> Add Address
@@ -551,7 +556,7 @@ export default function ProfilePage({ onNavigate, initialAddressSetup = false }:
         </div>
 
         {showAddressForm && (
-          <form onSubmit={handleSaveAddress} className="rounded-2xl border border-dashed border-emerald-300 bg-emerald-50/40 p-5 space-y-3">
+          <form id="cnc-address-form" onSubmit={handleSaveAddress} className="rounded-2xl border border-dashed border-emerald-300 bg-emerald-50/40 p-5 space-y-3">
             <h4 className="text-xs font-black text-[#0E6B38]">New Delivery Location</h4>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
@@ -601,8 +606,9 @@ export default function ProfilePage({ onNavigate, initialAddressSetup = false }:
                 />
               </div>
               <div>
-                <label className="text-[11px] font-bold text-slate-700">State</label>
+                <label htmlFor="profile-address-state" className="text-[11px] font-bold text-slate-700">State</label>
                 <select
+                  id="profile-address-state"
                   value={state}
                   onChange={(e) => setState(e.target.value)}
                   className="mt-1 h-10 w-full rounded-xl border border-slate-200 px-3 text-xs outline-none bg-white"
