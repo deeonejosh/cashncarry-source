@@ -552,7 +552,7 @@ export default function CreateModal({ isOpen, onClose, onNavigate }: CreateModal
               </div>
 
               <div>
-                <label className="flex items-center gap-1.5 text-xs font-black text-slate-700">
+                <label htmlFor="video-product" className="flex items-center gap-1.5 text-xs font-black text-slate-700">
                   <Tag size={14} className="text-orange-500" />
                   <span>Tag Your Published Product</span>
                 </label>
@@ -562,6 +562,7 @@ export default function CreateModal({ isOpen, onClose, onNavigate }: CreateModal
                   </div>
                 ) : (
                   <select
+                    id="video-product"
                     value={selectedProductId}
                     onChange={(e) => setSelectedProductId(e.target.value)}
                     className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs font-semibold outline-none focus:border-[#0c5c36]"
@@ -671,8 +672,9 @@ export default function CreateModal({ isOpen, onClose, onNavigate }: CreateModal
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-black text-slate-700">Category</label>
+                  <label htmlFor="broadcast-category" className="text-xs font-black text-slate-700">Category</label>
                   <select
+                    id="broadcast-category"
                     value={streamCategory}
                     onChange={(e) => setStreamCategory(e.target.value)}
                     className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs font-semibold outline-none focus:border-[#0c5c36]"
@@ -686,8 +688,9 @@ export default function CreateModal({ isOpen, onClose, onNavigate }: CreateModal
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs font-black text-slate-700">Pin Published Product</label>
+                  <label htmlFor="broadcast-product" className="text-xs font-black text-slate-700">Pin Published Product</label>
                   <select
+                    id="broadcast-product"
                     value={streamProductId}
                     onChange={(e) => setStreamProductId(e.target.value)}
                     className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs font-semibold outline-none focus:border-[#0c5c36]"
