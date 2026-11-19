@@ -193,6 +193,7 @@ interface StoreContextType {
     title: string;
     category: string;
     pinnedProductId?: string;
+    broadcastConnected?: boolean;
   }) => Promise<{ ok: boolean; roomId?: string; error?: string }>;
   joinLiveRoom: (roomId: string) => Promise<void>;
   likeLiveRoom: (roomId: string) => Promise<void>;
