@@ -611,7 +611,7 @@ function MainApp() {
         onNavigate={navigateTab}
       />
 
-      <AuthModal />
+      <AuthModal onNavigate={navigateTab} />
 
       {toasts.length > 0 && (
         <div className="fixed bottom-20 left-1/2 z-50 -translate-x-1/2 flex flex-col gap-2 md:bottom-6">

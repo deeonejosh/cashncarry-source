@@ -6,7 +6,7 @@ import { useStore } from '../../context/StoreContext';
 
 type AuthTab = 'login' | 'register' | 'verify' | 'reset';
 
-export default function AuthModal() {
+export default function AuthModal({ onNavigate }: { onNavigate: (tab: string) => void }) {
   const { authModal, closeAuthModal, loginWithApi, registerWithApi, verifyWithApi } = useStore();
   const [tab, setTab] = useState<AuthTab>('login');
   const [email, setEmail] = useState('');
@@ -35,8 +35,8 @@ export default function AuthModal() {
           setShowMfaInput(false);
           closeAuthModal();
           // Preserve a buyer's current checkout; privileged roles open their authorised workspaces.
-          if (res.user?.role === 'admin') window.location.assign('/admin');
-          else if (res.user?.role === 'seller') window.location.assign('/seller-centre');
+          if (res.user?.role === 'admin') onNavigate('admin-dashboard');
+          else if (res.user?.role === 'seller') onNavigate('seller-dashboard');
         } else {
           if (res.mfaRequired) setShowMfaInput(true);
           setErrorMsg(res.error || 'Sign-in failed. Check your email and password.');

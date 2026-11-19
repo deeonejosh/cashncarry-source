@@ -4,6 +4,11 @@
 import backend from './backend-v57.mjs';
 
 const STAGING_ORIGIN = 'https://cashncarry-d1-staging-worker.cashncarry-workforce-2026.workers.dev';
+const WORKSPACE_TABS = new Map([
+  ['/admin', 'admin-dashboard'],
+  ['/seller-centre', 'seller-dashboard'],
+]);
+
 const UI_FILES = Object.freeze({
   '/': {
     key: 'cnc:v58:ui:index.html',
@@ -28,6 +33,14 @@ export default {
     const permitted = url.origin === STAGING_ORIGIN
       && env.AUTH_ORIGIN === STAGING_ORIGIN;
     if (permitted && (request.method === 'GET' || request.method === 'HEAD')) {
+      // Restore old workspace links and tabs left on a failed sign-in redirect.
+      const workspaceTab = WORKSPACE_TABS.get(url.pathname.replace(/\/$/, ''));
+      if (workspaceTab) {
+        return new Response(null, {
+          status: 302,
+          headers: { location: '/?tab=' + workspaceTab, 'cache-control': 'no-store' },
+        });
+      }
       const file = UI_FILES[url.pathname];
       if (file) {
         // A missing binding or partial asset upload must never show an
