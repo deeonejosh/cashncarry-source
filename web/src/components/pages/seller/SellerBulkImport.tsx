@@ -1,7 +1,8 @@
 import React, { useRef, useState } from 'react';
 import { FileSpreadsheet, Download, Upload, X, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { api } from '../../../lib/api';
-import { BULK_HEADERS, BULK_MAX_ROWS, parseSellerSpreadsheet, type BulkImportRow } from '../../../lib/seller-spreadsheet';
+import { BULK_MAX_ROWS, parseSellerSpreadsheet, type BulkImportRow } from '../../../lib/seller-spreadsheet';
+import { buildSellerWorkbook, downloadExcel, sampleGamingProducts } from '../../../lib/seller-spreadsheet-export';
 import type { SellerProductItem } from '../../../types';
 
 type Props = {
@@ -16,6 +17,7 @@ export default function SellerBulkImport({ sellerName, existingProducts, onClose
   const fileInput = useRef<HTMLInputElement>(null);
   const [rows, setRows] = useState<BulkImportRow[]>([]);
   const [fileName, setFileName] = useState('');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [reading, setReading] = useState(false);
   const [importing, setImporting] = useState(false);
   const [notice, setNotice] = useState('');
@@ -24,15 +26,15 @@ export default function SellerBulkImport({ sellerName, existingProducts, onClose
   const completed = rows.filter(row => row.status === 'imported').length;
 
   const downloadTemplate = () => {
-    const text = '\uFEFF' + BULK_HEADERS.join(',') + '\r\n';
-    const url = URL.createObjectURL(new Blob([text], { type: 'text/csv;charset=utf-8' }));
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = 'cashncarry-seller-products-template.csv';
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-    URL.revokeObjectURL(url);
+    downloadExcel(buildSellerWorkbook([]), 'cashncarry-seller-products-template.xlsx');
+  };
+
+  const downloadSample = () => {
+    downloadExcel(buildSellerWorkbook(sampleGamingProducts()), 'cashncarry-10-gaming-accessories-TEST.xlsx');
+  };
+
+  const downloadUploadedFile = () => {
+    if (selectedFile) downloadExcel(selectedFile, selectedFile.name);
   };
 
   const readFile = async (file?: File) => {
@@ -40,6 +42,7 @@ export default function SellerBulkImport({ sellerName, existingProducts, onClose
     setReading(true);
     setRows([]);
     setFileName(file.name);
+    setSelectedFile(file);
     setNotice('');
     try {
       const parsed = await parseSellerSpreadsheet(file, existingProducts, sellerName);
@@ -114,19 +117,29 @@ export default function SellerBulkImport({ sellerName, existingProducts, onClose
         </header>
 
         <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-5 sm:p-6">
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-3">
             <button type="button" onClick={downloadTemplate}
-              className="flex items-center justify-center gap-2 rounded-xl border border-emerald-700 px-4 py-3 text-sm font-bold text-emerald-800 hover:bg-emerald-50">
-              <Download size={17} /> Download CSV template (opens in Excel)
+              className="flex items-center justify-center gap-2 rounded-xl border border-emerald-700 px-4 py-3 text-xs font-bold text-emerald-800 hover:bg-emerald-50">
+              <Download size={17} /> Download blank Excel template
             </button>
-            <label className={'flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-[#0c5c36] px-4 py-3 text-sm font-bold text-white hover:bg-emerald-900 ' +
+            <button type="button" onClick={downloadSample}
+              className="flex items-center justify-center gap-2 rounded-xl border border-emerald-700 px-4 py-3 text-xs font-bold text-emerald-800 hover:bg-emerald-50">
+              <FileSpreadsheet size={17} /> Download 10 test gaming products
+            </button>
+            <label className={'flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-[#0c5c36] px-4 py-3 text-xs font-bold text-white hover:bg-emerald-900 ' +
               (importing || reading ? 'pointer-events-none opacity-50' : '')}>
-              <Upload size={17} /> {reading ? 'Reading file...' : 'Choose spreadsheet'}
+              <Upload size={17} /> {reading ? 'Reading file...' : 'Upload Excel / CSV'}
               <input ref={fileInput} type="file" accept=".xlsx,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 className="sr-only" disabled={importing || reading}
                 onChange={event => void readFile(event.currentTarget.files?.[0])} />
             </label>
           </div>
+          {selectedFile && (
+            <button type="button" onClick={downloadUploadedFile} disabled={importing}
+              className="inline-flex items-center gap-2 text-xs font-bold text-emerald-800 underline underline-offset-4 disabled:opacity-50">
+              <Download size={15} /> Download uploaded file: {fileName}
+            </button>
+          )}
           <p className="text-xs text-slate-600">
             Required columns: <strong>title, price_ngn, stock, category, description</strong>.
             Optional: brand, image_url, compare_at_ngn. Prices are in naira, not kobo.
@@ -135,7 +148,7 @@ export default function SellerBulkImport({ sellerName, existingProducts, onClose
           <p className="rounded-xl bg-slate-50 p-3 text-xs text-slate-700">
             Products are saved as <strong>drafts</strong>, never automatically published.
             Sellers must submit them for review before they can appear in the shop.
-            The spreadsheet stays in your browser; only validated product details are submitted.
+            The spreadsheet stays in your browser; only validated product details are submitted. You can download your original file again while this window is open.
           </p>
 
           {notice && <p role="alert" className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
