@@ -5,6 +5,8 @@ import {
 } from 'lucide-react';
 import type { LiveRoom, ProductItem, LiveComment } from '../../types';
 import './mobile-live-glass.css';
+import CloudflareStreamPlayer from './CloudflareStreamPlayer';
+import {validWhep} from '../../lib/cloudflare-stream-webrtc';
 
 interface Props {
   room: LiveRoom;
@@ -44,7 +46,7 @@ export default function MobileLiveStage({
   const pinned = room.pinnedProduct || sellerProducts.find(p => p.id === room.pinnedProductId) || null;
   const featured = pinned || sellerProducts[0] || null;
   const available = sellerProducts.filter(p => p.publication === 'published' && !p.archived);
-  const videoUrl = videoConfigured && /^https:\/\//i.test(room.streamUrl || '') ? room.streamUrl : null;
+  const videoUrl = videoConfigured && validWhep(room.streamUrl) ? room.streamUrl : null;
 
   useEffect(() => { chatEnd.current?.scrollIntoView({ behavior: 'auto', block: 'end' }); }, [comments.length, room.id]);
   useEffect(() => { setPanel(null); setConfirmEnd(false); setMoreRooms(false); }, [room.id]);
@@ -72,7 +74,7 @@ export default function MobileLiveStage({
         <span className="cnc-mobile-live-planet" />
         <span className="cnc-mobile-live-floor" />
       </div>
-      {videoUrl && <video className="cnc-mobile-live-video" src={videoUrl} autoPlay playsInline muted />}
+      {videoUrl && <CloudflareStreamPlayer url={videoUrl} className="cnc-mobile-live-video" />}
       <div className="cnc-mobile-live-shade" aria-hidden="true" />
 
       <header className="cnc-mobile-live-top">
