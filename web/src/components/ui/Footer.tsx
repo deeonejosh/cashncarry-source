@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronDown, FileText, RotateCcw, ShieldCheck } from 'lucide-react';
+import { ChevronDown, FileText, Package, RotateCcw, ShieldCheck } from 'lucide-react';
 import BrandLogo from './BrandLogo';
 import NewsletterSignup from './NewsletterSignup';
 import { useStore } from '../../context/StoreContext';
@@ -35,7 +35,7 @@ export default function Footer({setCurrentTab,onSelectPolicy}:{setCurrentTab:(ta
   const go=(tab:string,section?:FooterLink['section'])=>{
     if(tab==='policies') onSelectPolicy(section || 'terms');
     else setCurrentTab(tab);
-    window.scrollTo({top:0,behavior:'smooth'});
+    window.scrollTo({ top: 0, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
   };
   const renderGroup=(group:FooterSection)=> (
     <section className="space-y-2" key={group.title}>
@@ -57,14 +57,18 @@ export default function Footer({setCurrentTab,onSelectPolicy}:{setCurrentTab:(ta
         {!isAdmin && !isApprovedSeller && <NewsletterSignup onPrivacy={() => go('policies', 'privacy')} />}
         <nav aria-label="Footer links and policies" className="cnc-footer-policy min-w-0 rounded-2xl border p-4 sm:p-6">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-            <div className="cnc-footer-logo"><BrandLogo className="h-7 w-auto" /></div>
-            <p className="text-sm text-emerald-50">Shop and sell across Nigeria.</p>
+            <div className="cnc-footer-logo"><BrandLogo className="h-9 w-auto sm:h-10" /></div>
+            <p className="text-sm font-bold text-emerald-50 sm:text-base">Shop and sell across Nigeria.</p>
           </div>
-          <div className="mt-4 flex flex-wrap gap-2">
+          <div className="cnc-footer-policy-shortcuts mt-4 flex flex-wrap gap-2">
             {quickPolicies.map(({ label, section, icon: Icon }) => (
               <button key={section} type="button" onClick={() => go('policies', section)}
-                className="cnc-footer-policy-link inline-flex min-h-11 items-center gap-1.5 rounded-xl border px-3 text-xs font-bold">
-                <Icon size={15} aria-hidden="true" />{label}
+                className="cnc-footer-policy-link inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border px-2 text-xs font-bold sm:px-3">
+                <span className="cnc-footer-policy-icon" aria-hidden="true">
+                  <Icon size={18} strokeWidth={2.4} />
+                  {section === 'returns' && <Package size={12} className="cnc-footer-policy-package" />}
+                </span>
+                {label}
               </button>
             ))}
           </div>

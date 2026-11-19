@@ -79,15 +79,16 @@ export default function Navbar({
   const initials = (currentUser.name || 'G').trim().charAt(0).toUpperCase();
 
   return (
-    <header className={`cnc-depth-nav sticky top-0 z-40 w-full border-b border-slate-200 bg-white/95 backdrop-blur-md ${currentTab === 'for-you' ? 'hidden' : ''}`}>
+    <header className={`cnc-depth-nav cnc-site-header sticky top-0 z-40 w-full lg:border-b lg:border-slate-200 lg:bg-white/95 lg:backdrop-blur-md ${currentTab === 'for-you' ? 'hidden' : ''}`}>
       {/* Main Header */}
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 md:px-8">
+      <div className="cnc-header-bar mx-auto flex max-w-7xl items-center justify-between gap-3 px-3 py-2 lg:gap-4 lg:px-8 lg:py-3">
         <button
           type="button"
           onClick={() => setCurrentTab('home')}
-          className="flex items-center gap-2 shrink-0 text-left"
+          className="cnc-header-brand flex min-w-0 items-center text-left"
+          aria-label="Cash N Carry Nigeria home"
         >
-          <BrandLogo />
+          <BrandLogo className="h-10 max-w-full w-auto sm:h-11 lg:h-9" />
         </button>
 
         {/* Category Menu */}
@@ -374,18 +375,18 @@ export default function Navbar({
           </button>
         </div>
 
-        {/* Mobile Hamburger */}
-        <div className="flex items-center gap-2 lg:hidden">
+        {/* Mobile actions */}
+        <div className="flex shrink-0 items-center gap-2 lg:hidden">
           <button
             type="button"
             onClick={() => setCartOpen(true)}
-            className="relative rounded-full p-2 text-slate-700 hover:bg-slate-100"
-            aria-label="Cart"
+            className="cnc-header-action cnc-header-cart"
+            aria-label={cartCount ? `Cart, ${cartCount} ${cartCount === 1 ? 'item' : 'items'}` : 'Cart'}
           >
-            <ShoppingBag size={22} />
+            <ShoppingBag size={22} aria-hidden="true" />
             {cartCount > 0 && (
-              <span className="absolute right-0 top-0 flex h-4 w-4 items-center justify-center rounded-full bg-orange-700 text-[10px] font-black text-white">
-                {cartCount}
+              <span aria-hidden="true" className="cnc-header-cart-count">
+                {cartCount > 99 ? '99+' : cartCount}
               </span>
             )}
           </button>
@@ -393,9 +394,11 @@ export default function Navbar({
             type="button"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             aria-label={mobileMenuOpen ? 'Close mobile menu' : 'Open mobile menu'}
-            className="rounded-xl p-2 text-slate-700 hover:bg-slate-100"
+            aria-expanded={mobileMenuOpen}
+            aria-controls="cnc-mobile-menu"
+            className="cnc-header-action cnc-header-menu"
           >
-            {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
+            {mobileMenuOpen ? <X size={22} aria-hidden="true" /> : <Menu size={22} aria-hidden="true" />}
           </button>
         </div>
       </div>
@@ -507,8 +510,7 @@ export default function Navbar({
       </nav>
 
       {/* Mobile Drawer */}
-      {mobileMenuOpen && (
-        <div className="max-h-[70dvh] overflow-y-auto border-t border-slate-200 bg-white p-4 lg:hidden">
+      <div id="cnc-mobile-menu" hidden={!mobileMenuOpen} className="cnc-header-drawer max-h-[70dvh] overflow-y-auto p-4 lg:hidden">
           <form onSubmit={handleSearchSubmit} className="relative mb-4">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
             <input
@@ -596,8 +598,7 @@ export default function Navbar({
               </button>
             )}
           </div>
-        </div>
-      )}
+      </div>
     </header>
   );
 }
