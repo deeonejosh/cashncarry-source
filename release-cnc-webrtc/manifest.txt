@@ -1,0 +1,9 @@
+source=83c5874b89bb32cf503914e899ea7b69dc046d9f
+environment=private_staging_only
+worker=cashncarry-d1-staging-worker
+stream_service=Cloudflare Stream WebRTC WHIP/WHEP
+scope=approved_single_seller_pilot
+kv_html=cnc:marketplace-3d:7c1a29f:ui:index.html
+kv_js=cnc:marketplace-3d:7c1a29f:ui:assets:index-OV904MHY.js
+kv_css=cnc:marketplace-3d:7c1a29f:ui:assets:index-DvqBtUTy.css
+production_untouched=true
