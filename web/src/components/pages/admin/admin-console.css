@@ -1,0 +1,287 @@
+.cnc-admin-console {
+  --admin-ink: #14241c;
+  --admin-muted: #4b6256;
+  --admin-border: #d6e1d3;
+  --admin-panel: #fffdf7;
+  display: grid;
+  grid-template-columns: clamp(220px, 19vw, 285px) minmax(0, 1fr);
+  min-height: 100dvh;
+  color: var(--admin-ink);
+  background: radial-gradient(ellipse at top right, #f7f5e9, transparent 65%), #edf4e9;
+}
+
+.cnc-admin-sidebar {
+  position: sticky;
+  top: 0;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  overflow: auto;
+  padding: 24px 16px;
+  color: #fffdf3;
+  background: radial-gradient(ellipse at 0% 100%, #1a624a, transparent 55%), linear-gradient(150deg, #124736, #062c21);
+  box-shadow: inset -1px 0 rgb(255 255 255 / .12);
+}
+
+.cnc-admin-logo {
+  display: block;
+  width: min(194px, 100%);
+  align-self: center;
+  padding: 7px 12px;
+  border-radius: 13px;
+  background: #f2faed;
+}
+
+.cnc-admin-sidebar nav {
+  display: grid;
+  gap: 8px;
+  padding-top: 20px;
+  border-top: 1px solid rgb(236 255 245 / .24);
+}
+
+.cnc-admin-sidebar button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 10px 12px;
+  border-radius: 11px;
+  font-size: .9rem;
+  font-weight: 650;
+  text-align: left;
+}
+
+.cnc-admin-sidebar svg, .cnc-admin-button svg, .cnc-admin-queue > button > svg { flex: none; }
+.cnc-admin-sidebar button:hover { background-color: #205d47; }
+.cnc-admin-sidebar button[aria-current] {
+  color: #103626;
+  background: linear-gradient(105deg, #c4edd1, #edf9e6);
+  box-shadow: inset 3px 0 #e37925, 0 4px 10px #052e25;
+}
+.cnc-admin-sidebar button:focus-visible { outline-color: #fed19b; }
+.cnc-admin-sidebar .cnc-admin-email {
+  margin-top: 12px;
+  border: 1px solid #4f8c72;
+  background-color: #164d3e;
+}
+.cnc-admin-back { color: #d5eee0; }
+.cnc-admin-sidebar-art {
+  position: relative;
+  min-height: 160px;
+  margin-top: auto;
+}
+.cnc-admin-sidebar-art .cnc-depth-artwork {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 170px;
+  height: 145px;
+  transform: translateX(-50%);
+}
+
+.cnc-admin-header, .cnc-admin-panel-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.cnc-admin-header {
+  min-height: 74px;
+  padding: 14px clamp(14px, 2.4vw, 34px);
+  border-bottom: 1px solid var(--admin-border);
+  background: #fffdf6;
+}
+.cnc-admin-header h1 { font-size: clamp(1.12rem, 2vw, 1.65rem); font-weight: 800; line-height: 1.16; }
+.cnc-admin-header p, .cnc-admin-panel-title p, .cnc-admin-page-title p { color: var(--admin-muted); font-size: .9rem; }
+.cnc-admin-page-title h2 { font-size: clamp(1.6rem, 3vw, 2.45rem); font-weight: 850; line-height: 1.17; }
+.cnc-admin-page-title p { margin-top: 5px; }
+
+.cnc-admin-content { display: grid; gap: 18px; padding: clamp(12px, 2.4vw, 34px); }
+.cnc-admin-panel, .cnc-admin-metric {
+  display: grid;
+  align-content: start;
+  gap: 15px;
+  min-width: 0;
+  padding: clamp(14px, 1.6vw, 23px);
+  border: 1px solid var(--admin-border);
+  border-radius: 17px;
+  background: var(--admin-panel);
+  box-shadow: 0 3px 0 #dfebde, 0 9px 24px rgb(20 67 48 / .07);
+}
+
+.cnc-admin-panel-title { align-items: flex-start; }
+.cnc-admin-panel h2, .cnc-admin-thread h3 { font-size: clamp(1.12rem, 1.7vw, 1.45rem); font-weight: 800; line-height: 1.2; }
+.cnc-admin-panel-title p { overflow-wrap: anywhere; margin-top: 5px; }
+.cnc-admin-metrics { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr)); }
+.cnc-admin-metric { gap: 6px; background: linear-gradient(138deg, #fffdf6, #edf5e8); }
+.cnc-admin-metric strong { font-size: 1.85rem; line-height: 1.1; }
+.cnc-admin-metric h3 { font-weight: 750; font-size: .89rem; }
+.cnc-admin-metric p { color: var(--admin-muted); font-size: .79rem; }
+
+.cnc-admin-emblem {
+  display: inline-grid;
+  place-items: center;
+  width: 39px;
+  height: 39px;
+  flex: none;
+  color: #13573d;
+  border: 1px solid #c0dfc5;
+  border-radius: 11px;
+  background: linear-gradient(145deg, #f1faee, #c7e6cf);
+  box-shadow: inset 0 1px 0 white, 0 3px 0 #c2d9c5, 0 4px 9px rgb(20 67 48 / .10);
+}
+
+.cnc-admin-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: fit-content;
+  min-height: 42px;
+  padding: 8px 13px;
+  border: 1px solid #ccd9cb;
+  border-radius: 10px;
+  background: linear-gradient(#fffdf9, #f4f6eb);
+  box-shadow: 0 2px 2px rgb(8 45 32 / .08);
+  color: #174a35;
+  font-size: .84rem;
+  font-weight: 750;
+}
+.cnc-admin-button:hover { background: #e1efdf; }
+.cnc-admin-button:disabled { opacity: .5; }
+.cnc-admin-primary { color: white; background: linear-gradient(#197255, #0b5137); border-color: #154b35; }
+.cnc-admin-primary:hover { background: #094831; }
+.cnc-admin-danger { color: #8b2f24; border-color: #e4b5a4; background: #fff6ef; }
+.cnc-admin-danger:hover { background: #fce8e0; }
+
+.cnc-admin-status {
+  display: inline-block;
+  justify-self: start;
+  max-width: 100%;
+  padding: 3px 8px;
+  border-radius: 25px;
+  color: #174833;
+  background: #deece0;
+  font-size: .73rem;
+  font-weight: 750;
+  text-transform: capitalize;
+  line-height: 1.25;
+}
+.cnc-admin-status:is([data-status=pending], [data-status=open], [data-status=waiting_for_customer]) { color: #743a0b; background: #ffebca; }
+.cnc-admin-status:is([data-status=rejected], [data-status=suspended], [data-status=escalated]) { color: #822b23; background: #f8ded1; }
+
+.cnc-admin-queue { display: grid; align-content: start; gap: 8px; }
+.cnc-admin-queue > button, .cnc-admin-seller > button {
+  display: grid;
+  width: 100%;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 50px;
+  padding: 10px 12px;
+  text-align: left;
+  color: #204f39;
+  border: 1px solid var(--admin-border);
+  border-radius: 10px;
+  background: #fbfaf2;
+}
+.cnc-admin-seller > button { grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr) auto; }
+.cnc-admin-queue > button:hover, .cnc-admin-seller > button:hover { background: #eef5e8; }
+.cnc-admin-queue > button[aria-pressed="true"], .cnc-admin-seller > button[aria-expanded="true"] {
+  border-color: #d7a579;
+  background: #fff1e2;
+}
+.cnc-admin-queue-name, .cnc-admin-seller-email { overflow-wrap: anywhere; }
+.cnc-admin-queue-name strong { display: block; font-size: .9rem; color: var(--admin-ink); }
+.cnc-admin-queue-name small, .cnc-admin-seller-email { display: block; font-size: .8rem; color: var(--admin-muted); }
+.cnc-admin-review { padding: 13px 15px 16px; border: 1px solid #ead7c2; border-top: 0; border-radius: 0 0 12px 12px; background: #fffbf4; }
+.cnc-admin-review > * + * { margin-top: 13px; }
+.cnc-admin-facts, .cnc-admin-product {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px solid var(--admin-border);
+  background: #f3f7ed;
+}
+.cnc-admin-facts { grid-template-columns: repeat(auto-fit, minmax(min(100%, 130px), 1fr)); }
+.cnc-admin-facts dt, .cnc-admin-product dt, .cnc-admin-product-name p { color: var(--admin-muted); font-size: .8rem; }
+.cnc-admin-facts dd, .cnc-admin-product dd { font-weight: 650; font-size: .88rem; overflow-wrap: anywhere; }
+.cnc-admin-product { grid-template-columns: auto minmax(0, 1fr) minmax(105px, auto) auto; align-items: center; }
+.cnc-admin-product .cnc-admin-emblem { width: 52px; height: 52px; }
+.cnc-admin-product h3 { font-size: 1.02rem; font-weight: 800; overflow-wrap: anywhere; }
+.cnc-admin-product-facts > div { display: flex; justify-content: space-between; gap: 8px; }
+.cnc-admin-product .cnc-admin-actions { flex-direction: column; align-items: stretch; }
+.cnc-admin-product .cnc-admin-actions button { width: 100%; }
+.cnc-admin-description { white-space: pre-wrap; overflow-wrap: anywhere; font-size: .9rem; }
+.cnc-admin-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.cnc-admin-field { display: grid; gap: 5px; min-width: 0; color: var(--admin-ink); font-size: .85rem; font-weight: 650; }
+.cnc-admin-field :is(textarea, select) {
+  min-height: 42px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #bdcfbe;
+  border-radius: 9px;
+  background: #fffef9;
+  color: var(--admin-ink);
+  font-weight: 400;
+}
+.cnc-admin-field select { text-transform: capitalize; }
+.cnc-admin-empty { display: grid; justify-items: center; align-content: center; gap: 10px; min-height: 116px; padding: 18px; text-align: center; color: var(--admin-muted); font-size: .9rem; }
+.cnc-admin-error { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; padding: 12px; border-radius: 10px; background: #fff0e9; color: #792f23; }
+.cnc-admin-audit { display: grid; gap: 6px; }
+.cnc-admin-audit li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 13px; padding: 9px; border-bottom: 1px solid var(--admin-border); }
+.cnc-admin-audit li p, .cnc-admin-audit li > span:last-child { font-size: .82rem; color: var(--admin-muted); }
+
+.cnc-admin-support { display: grid; gap: 12px; }
+.cnc-admin-split { display: grid; grid-template-columns: minmax(240px, .85fr) minmax(0, 1.6fr); gap: 14px; }
+.cnc-admin-split > :first-child .cnc-admin-panel-title { flex-wrap: wrap; }
+.cnc-admin-filter { grid-template-columns: auto minmax(0, 1fr); align-items: center; }
+.cnc-admin-thread { min-height: 280px; }
+.cnc-admin-order {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  border-radius: 11px;
+  background: #edf4e8;
+}
+.cnc-admin-order .cnc-admin-field { flex: 1 1 120px; }
+.cnc-admin-linked-order { display: flex; align-items: center; gap: 8px; flex: 2 1 200px; overflow-wrap: anywhere; font-size: .85rem; }
+.cnc-admin-linked-order p { color: var(--admin-muted); }
+.cnc-admin-messages { display: grid; gap: 9px; max-height: 55dvh; overflow: auto; padding-right: 4px; }
+.cnc-admin-message { padding: 10px 12px; border: 1px solid #dfdbcf; border-radius: 11px; background: #f7f2e8; }
+.cnc-admin-message[data-kind=support] { border-color: #d2e2d2; background: #ecf4eb; }
+.cnc-admin-message[data-kind=private] { border-color: #ebc581; background: #fff0cc; }
+.cnc-admin-message header, .cnc-admin-message strong { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; }
+.cnc-admin-message header span { color: var(--admin-muted); font-size: .76rem; }
+.cnc-admin-message p { padding-top: 5px; white-space: pre-wrap; overflow-wrap: anywhere; font-size: .88rem; }
+.cnc-admin-compose { display: grid; gap: 9px; padding-top: 12px; border-top: 1px solid var(--admin-border); }
+.cnc-admin-compose .cnc-admin-primary { justify-self: end; background: #a74409; border-color: #873707; }
+.cnc-admin-compose .cnc-admin-primary:hover { background: #873707; }
+.cnc-admin-check { display: flex; align-items: center; gap: 7px; font-size: .83rem; }
+.cnc-admin-check input { accent-color: #14563e; }
+
+@media (max-width: 1100px) {
+  .cnc-admin-split { grid-template-columns: minmax(0, 1fr); }
+  .cnc-admin-split .cnc-admin-queue { max-height: 290px; overflow: auto; padding: 4px; }
+}
+@media (max-width: 740px) {
+  .cnc-admin-console { grid-template-columns: minmax(0, 1fr); }
+  .cnc-admin-sidebar { position: static; height: auto; gap: 12px; padding: 12px; }
+  .cnc-admin-logo { align-self: start; width: 154px; }
+  .cnc-admin-sidebar nav { grid-template-columns: repeat(2, minmax(0, 1fr)); padding-top: 10px; }
+  .cnc-admin-sidebar .cnc-admin-email { margin-top: 0; }
+  .cnc-admin-sidebar .cnc-admin-back { min-height: 32px; align-self: start; }
+  .cnc-admin-sidebar-art { display: none; }
+  .cnc-admin-seller-email { display: none; }
+  .cnc-admin-seller > button { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .cnc-admin-product { grid-template-columns: auto minmax(0, 1fr); }
+  .cnc-admin-product-facts, .cnc-admin-product .cnc-admin-actions { grid-column: 1 / -1; }
+  .cnc-admin-product .cnc-admin-actions { flex-direction: row; align-items: center; }
+  .cnc-admin-product .cnc-admin-actions button { width: auto; }
+  .cnc-admin-audit li { grid-template-columns: auto minmax(0, 1fr); }
+  .cnc-admin-audit li > span:last-child { grid-column: 2; }
+}
