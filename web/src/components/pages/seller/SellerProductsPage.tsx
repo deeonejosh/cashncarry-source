@@ -4,12 +4,15 @@ import { useStore } from '../../../context/StoreContext';
 import { SellerProductItem } from '../../../types';
 import { categories } from '../../../lib/data';
 import ProductPhotoField from './ProductPhotoField';
-import { Package, Plus, Edit, Archive, CheckCircle2, Clock, Send, EyeOff, X } from 'lucide-react';
+import SellerBulkImport from './SellerBulkImport';
+import { buildSellerWorkbook, downloadExcel, sellerWorkbookFromListings } from '../../../lib/seller-spreadsheet-export';
+import { Package, Plus, Edit, Archive, CheckCircle2, Clock, Send, EyeOff, X, FileSpreadsheet, Download, Upload } from 'lucide-react';
 
 export default function SellerProductsPage() {
   const {
     sellerStore,
     sellerProducts,
+    refreshSellerData,
     createSellerProduct,
     updateSellerProduct,
     submitSellerProductForReview,
@@ -19,10 +22,26 @@ export default function SellerProductsPage() {
   } = useStore();
 
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showBulkImport, setShowBulkImport] = useState(false);
   const [editingProduct, setEditingProduct] = useState<SellerProductItem | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [actionProductId, setActionProductId] = useState<string | null>(null);
+
+  const downloadTemplate = () => downloadExcel(buildSellerWorkbook([]), 'cashncarry-seller-products-template.xlsx');
+
+  const exportProducts = () => {
+    if (!sellerProducts.length) {
+      showToast('No products to export. Download the Excel template to get started.', 'info');
+      return;
+    }
+    try {
+      const date = new Date().toISOString().slice(0, 10);
+      downloadExcel(sellerWorkbookFromListings(sellerProducts), 'cashncarry-my-products-' + date + '.xlsx');
+    } catch {
+      showToast('Could not generate the product export.', 'error');
+    }
+  };
 
   // Create form states
   const [name, setName] = useState('');
@@ -130,13 +149,28 @@ export default function SellerProductsPage() {
           </p>
         </div>
 
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl bg-orange-200 px-4 py-2.5 text-xs font-black text-orange-950 hover:bg-orange-300"
-        >
-          <Plus size={16} />
-          <span>Add New Product</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button type="button" onClick={() => setShowBulkImport(true)}
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-orange-200 px-4 py-2.5 text-xs font-black text-orange-950 hover:bg-orange-300">
+            <Upload size={16} />
+            <span>Bulk Upload Excel</span>
+          </button>
+          <button type="button" onClick={downloadTemplate}
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-xl border border-white/50 bg-white/15 px-4 py-2.5 text-xs font-black text-white hover:bg-white/25">
+            <FileSpreadsheet size={16} />
+            <span>Download Template</span>
+          </button>
+          <button type="button" onClick={exportProducts}
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-xl border border-white/50 bg-white/15 px-4 py-2.5 text-xs font-black text-white hover:bg-white/25">
+            <Download size={16} />
+            <span>Download My Products</span>
+          </button>
+          <button type="button" onClick={() => setShowAddModal(true)}
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-orange-200 px-4 py-2.5 text-xs font-black text-orange-950 hover:bg-orange-300">
+            <Plus size={16} />
+            <span>Add New Product</span>
+          </button>
+        </div>
       </div>
 
       <div className="cnc-workspace-panel cnc-inventory-table overflow-x-auto rounded-2xl border" role="region" aria-label="Product inventory" tabIndex={0}>
@@ -251,6 +285,16 @@ export default function SellerProductsPage() {
           </tbody>
         </table>
       </div>
+
+      {showBulkImport && (
+        <SellerBulkImport
+          sellerName={sellerStore?.name || 'Verified Seller'}
+          existingProducts={sellerProducts}
+          onClose={() => setShowBulkImport(false)}
+          onImported={refreshSellerData}
+          showToast={showToast}
+        />
+      )}
 
       {/* Add Product Modal */}
       {showAddModal && (
