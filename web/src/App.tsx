@@ -582,7 +582,7 @@ function MainApp() {
         data-cnc-route={currentTab}
         className={
           currentTab === 'for-you'
-            ? 'cnc-video-stage w-full h-[100dvh] md:h-[100vh] p-0 m-0 overflow-hidden bg-black flex-1'
+            ? 'cnc-video-stage relative w-full min-h-0 flex-1 overflow-hidden bg-black'
             : showAdminWorkspace ? 'cnc-page cnc-admin-workspace flex-1'
             : `cnc-page ${SELLER_CENTRE_TABS.has(currentTab) || ADMIN_TABS.has(currentTab) ? 'cnc-dashboard' : ''} flex-1 min-w-0 mx-auto max-w-7xl w-full px-3 pt-4 pb-24 sm:px-4 md:px-8 md:pt-6 md:pb-8`
         }
