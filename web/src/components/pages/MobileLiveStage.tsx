@@ -6,7 +6,7 @@ import {
 import type { LiveRoom, ProductItem, LiveComment } from '../../types';
 import './mobile-live-glass.css';
 import CloudflareStreamPlayer from './CloudflareStreamPlayer';
-import {validWhep} from '../../lib/cloudflare-stream-webrtc';
+import {getLivePublisherPreview,validWhep} from '../../lib/cloudflare-stream-webrtc';
 
 interface Props {
   room: LiveRoom;
@@ -47,6 +47,9 @@ export default function MobileLiveStage({
   const featured = pinned || sellerProducts[0] || null;
   const available = sellerProducts.filter(p => p.publication === 'published' && !p.archived);
   const videoUrl = videoConfigured && validWhep(room.streamUrl) ? room.streamUrl : null;
+  // The host should see their real local camera rather than an echoed WHEP
+  // receiver (which produces latency, silence and a black screen on some phones).
+  const ownCamera = isHost ? getLivePublisherPreview() : null;
 
   useEffect(() => { chatEnd.current?.scrollIntoView({ behavior: 'auto', block: 'end' }); }, [comments.length, room.id]);
   useEffect(() => { setPanel(null); setConfirmEnd(false); setMoreRooms(false); }, [room.id]);
@@ -74,7 +77,11 @@ export default function MobileLiveStage({
         <span className="cnc-mobile-live-planet" />
         <span className="cnc-mobile-live-floor" />
       </div>
-      {videoUrl && <CloudflareStreamPlayer url={videoUrl} className="cnc-mobile-live-video" />}
+      {ownCamera ? (
+        <SellerCameraMonitor media={ownCamera}/>
+      ) : videoUrl ? (
+        <CloudflareStreamPlayer url={videoUrl} className="cnc-mobile-live-video" />
+      ) : null}
       <div className="cnc-mobile-live-shade" aria-hidden="true" />
 
       <header className="cnc-mobile-live-top">
@@ -105,12 +112,12 @@ export default function MobileLiveStage({
       </header>
 
       <div className="cnc-mobile-live-hero">
-        {featured?.image && !videoUrl ? (
+        {featured?.image && !videoUrl && !ownCamera ? (
           <img className="cnc-mobile-live-hero-product" src={featured.image} alt={featured.title} loading="eager"/>
-        ) : !videoUrl ? (
+        ) : !videoUrl && !ownCamera ? (
           <div className="cnc-mobile-live-hero-icon"><ShoppingBag size={66} strokeWidth={1.4}/></div>
         ) : null}
-        {!videoUrl && <div className="cnc-mobile-live-video-state" role="status">
+        {!videoUrl && !ownCamera && <div className="cnc-mobile-live-video-state" role="status">
           <span className="cnc-mobile-live-video-dot"/>
           {videoConfigured ? 'Waiting for video connection' : 'Video broadcasting is not configured'}
         </div>}
@@ -214,4 +221,22 @@ export default function MobileLiveStage({
       </div>}
     </section>
   );
+}
+
+/** Local preview uses exactly the MediaStream handed to Cloudflare WHIP.
+ * Do not stop its tracks here: the broadcast owns the camera lifecycle. */
+function SellerCameraMonitor({media}: {media:MediaStream}) {
+  const ref=useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    const video=ref.current;
+    if (!video) return;
+    video.srcObject=media;
+    video.muted=true;
+    void video.play().catch(()=>{});
+    return () => { video.srcObject=null; };
+  },[media]);
+  return <div className="cnc-mobile-host-monitor">
+    <video ref={ref} autoPlay playsInline muted className="cnc-mobile-live-video" aria-label="Your live camera preview"/>
+    <span className="cnc-mobile-host-monitor-label"><span aria-hidden="true"/> Your live camera</span>
+  </div>;
 }
