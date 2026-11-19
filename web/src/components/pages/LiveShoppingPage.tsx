@@ -1,8 +1,12 @@
 import DepthArtwork from '../ui/DepthArtwork';
 import MobileLiveStage from './MobileLiveStage';
 import MobileLiveEmptyStage from './MobileLiveEmptyStage';
+import DesktopLiveEmptyStage from './DesktopLiveEmptyStage';
+import DesktopHostPreview from './DesktopHostPreview';
+import DesktopLiveMediaControls from './DesktopLiveMediaControls';
+import './desktop-live-glass.css';
 import CloudflareStreamPlayer from './CloudflareStreamPlayer';
-import {stopCloudflareStream,validWhep} from '../../lib/cloudflare-stream-webrtc';
+import {getLivePublisherPreview,stopCloudflareStream,validWhep} from '../../lib/cloudflare-stream-webrtc';
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../../context/StoreContext';
 import { LiveComment, ProductItem } from '../../types';
@@ -19,6 +23,10 @@ import {
   AlertCircle,
   RefreshCw,
   Package,
+  Pin,
+  Share2,
+  BarChart3,
+  Mic,
 } from 'lucide-react';
 
 interface LiveShoppingPageProps {
@@ -26,6 +34,7 @@ interface LiveShoppingPageProps {
   onProceedToCheckout: () => void;
   onOpenCreate?: () => void;
   onExit?: () => void;
+  onSellerCentre?: () => void;
 }
 
 export default function LiveShoppingPage({
@@ -33,6 +42,7 @@ export default function LiveShoppingPage({
   onProceedToCheckout,
   onOpenCreate,
   onExit,
+  onSellerCentre,
 }: LiveShoppingPageProps) {
   const {
     currentUser,
@@ -64,6 +74,8 @@ export default function LiveShoppingPage({
   const [heartsCount, setHeartsCount] = useState(0);
   const [pinModalOpen, setPinModalOpen] = useState(false);
   const [giftingModalOpen, setGiftingModalOpen] = useState(false);
+  const [desktopEndConfirm, setDesktopEndConfirm] = useState(false);
+  const [desktopAnalyticsOpen, setDesktopAnalyticsOpen] = useState(false);
 
   const isHost = Boolean(isApprovedSeller && activeRoom && activeRoom.sellerId === currentUser.id);
   const ownPublishedProducts = sellerProducts.filter((p) => p.publication === 'published' && p.stock > 0);
@@ -153,22 +165,13 @@ export default function LiveShoppingPage({
         onOpenCreate={onOpenCreate}
         onExit={onExit}
       />
-      <div className="hidden md:block mx-auto max-w-xl rounded-3xl border border-dashed border-slate-200 bg-white p-12 text-center space-y-4 my-8">
-        <DepthArtwork icon={Radio} />
-        <h1 className="text-xl font-black text-slate-900">No live streams</h1>
-        <p className="text-xs text-slate-500 max-w-sm mx-auto">
-          Live seller streams will appear here.
-        </p>
-        {isApprovedSeller && onOpenCreate && (
-          <button
-            type="button"
-            onClick={onOpenCreate}
-            className="rounded-xl bg-rose-600 px-6 py-3 text-xs font-black text-white hover:bg-rose-700 transition"
-          >
-            Go Live Now
-          </button>
-        )}
-      </div>
+      <DesktopLiveEmptyStage isApprovedSeller={isApprovedSeller}
+        liveStreamingConfigured={liveStreamingConfigured}
+        hasEndedRoom={liveRooms.some(room=>room.status==='ended' && room.sellerId===currentUser.id)}
+        onOpenCreate={onOpenCreate}
+        onExit={onExit}
+        onSellerCentre={onSellerCentre}
+      />
       </>
     );
   }
@@ -210,7 +213,23 @@ export default function LiveShoppingPage({
       onSelectProduct={onSelectProduct}
       onShareNotice={(text) => showToast(text, 'info')}
     />
-    <div className="hidden md:block space-y-6 pb-16">
+    <div className="cnc-desktop-live-workspace hidden md:block space-y-6 pb-16">
+      <div className="cnc-desktop-live-heading">
+        <div>
+          <span className="cnc-desktop-live-eyebrow"><Radio size={15}/> CASH N CARRY LIVE</span>
+          <h1>Livestreaming <span>Seller Experience</span></h1>
+          <p>Shop live, pin products and chat with buyers.</p>
+        </div>
+        <div className="cnc-desktop-live-heading-actions">
+          <span className="cnc-desktop-live-heading-pill"><CheckCircle2 size={16}/>
+            {liveStreamingConfigured ? 'Cloudflare Stream configured' : 'Stream not configured'}
+          </span>
+          <button type="button" className="cnc-desktop-neon-secondary" onClick={()=>{
+            if(isHost)setDesktopEndConfirm(true);
+            else onExit?.();
+          }}> {isHost ? 'End or leave room' : 'Return to shop'}</button>
+        </div>
+      </div>
       {/* Room Selector */}
       {activeRooms.length > 1 && (
         <div className="flex items-center gap-2 overflow-x-auto pb-1">
@@ -239,10 +258,10 @@ export default function LiveShoppingPage({
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+      <div className="cnc-desktop-live-grid grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Live Room Stage */}
-        <div className="relative aspect-[4/3] sm:aspect-video w-full overflow-hidden rounded-3xl bg-slate-950 shadow-2xl lg:col-span-2 border border-slate-800 flex flex-col justify-between p-6 text-white">
-          <div className="flex items-center justify-between gap-3">
+        <div className="cnc-desktop-live-stage relative aspect-[4/3] sm:aspect-video w-full overflow-hidden rounded-3xl bg-slate-950 shadow-2xl lg:col-span-2 border border-slate-800 flex flex-col justify-between p-6 text-white">
+          <div className="cnc-desktop-live-stage-top flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 rounded-full bg-black/60 px-3.5 py-1.5 border border-white/10">
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-700 text-xs font-black">
                 {activeRoom.sellerName.slice(0, 2).toUpperCase()}
@@ -268,23 +287,24 @@ export default function LiveShoppingPage({
             </div>
           </div>
 
-          {liveStreamingConfigured && validWhep(activeRoom.streamUrl) && (
-            <div className="absolute inset-0 z-0">
+          <div className="cnc-desktop-live-stage-art" aria-hidden="true"><Radio size={78}/></div>
+          {isHost && getLivePublisherPreview() ? (
+            <DesktopHostPreview />
+          ) : liveStreamingConfigured && validWhep(activeRoom.streamUrl) ? (
+            <div className="cnc-desktop-live-stage-video">
               <CloudflareStreamPlayer url={activeRoom.streamUrl} className="h-full w-full object-cover" />
             </div>
-          )}
-          <div className="my-auto text-center space-y-2 py-8 relative z-10">
+          ) : null}
+          <div className="cnc-desktop-live-stage-title my-auto text-center space-y-2 py-8 relative z-10">
             <h1 className="text-xl sm:text-2xl font-black">{activeRoom.title}</h1>
-            <p className="text-xs text-slate-400">
-              {liveStreamingConfigured
-                ? 'Video connection pending verification.'
-                : 'Broadcast unavailable in this staging environment.'}
-            </p>
+            {!validWhep(activeRoom.streamUrl) && (
+              <p className="text-xs">Live video is not connected to this room.</p>
+            )}
           </div>
 
-          <div className="flex flex-wrap items-end justify-between gap-3">
+          <div className="cnc-desktop-live-stage-bottom flex flex-wrap items-end justify-between gap-3">
             {pinnedProduct ? (
-              <div className="flex max-w-sm items-center gap-3 rounded-2xl bg-black/80 p-2.5 border border-white/20">
+              <div className="cnc-desktop-live-pinned flex max-w-sm items-center gap-3 rounded-2xl bg-black/80 p-2.5 border border-white/20">
                 {pinnedProduct.image ? (
                   <img
                     src={pinnedProduct.image}
@@ -325,48 +345,27 @@ export default function LiveShoppingPage({
               </div>
             )}
 
-            {isHost && (
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setPinModalOpen(true)}
-                  className="rounded-xl bg-emerald-700 px-3.5 py-2 text-xs font-black text-white hover:bg-emerald-600"
-                >
-                  Pin Product
-                </button>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    await stopCloudflareStream();
-                    const result = await endLiveRoom(activeRoom.id);
-                    if (!result.ok) showToast(result.error || 'Could not end the stream.', 'error');
-                  }}
-                  className="rounded-xl bg-rose-600 px-3.5 py-2 text-xs font-black text-white hover:bg-rose-700"
-                >
-                  End Stream
-                </button>
-              </div>
-            )}
+
           </div>
         </div>
 
         {/* Live Audience Chat */}
-        <div className="flex h-[min(58dvh,500px)] min-h-[280px] flex-col rounded-3xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-          <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50 px-4 py-3">
+        <div className="cnc-desktop-live-chat flex h-[min(58dvh,500px)] min-h-[280px] flex-col rounded-3xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+          <div className="cnc-desktop-live-chat-head flex items-center justify-between border-b border-slate-100 bg-slate-50 px-4 py-3">
             <div className="flex items-center gap-2 text-xs font-black text-slate-800">
               <MessageCircle size={15} className="text-[#0c5c36]" />
               <span>Live Chat</span>
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-4 space-y-2.5">
+          <div className="cnc-desktop-live-chat-list flex-1 overflow-y-auto p-4 space-y-2.5" role="log" aria-label="Live chat messages">
             {comments.length === 0 ? (
               <div className="py-12 text-center text-xs text-slate-400">
                 No messages yet. Say hello to the seller!
               </div>
             ) : (
               comments.map((c) => (
-                <div key={c.id} className="rounded-2xl bg-slate-50 p-2.5 text-xs text-slate-800">
+                <div key={c.id} className="cnc-desktop-live-comment rounded-2xl bg-slate-50 p-2.5 text-xs text-slate-800">
                   <div className="font-bold text-[11px] text-[#0c5c36]">{c.userName}</div>
                   <div>{c.body}</div>
                 </div>
@@ -374,7 +373,7 @@ export default function LiveShoppingPage({
             )}
           </div>
 
-          <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50 px-4 py-2">
+          <div className="cnc-desktop-live-chat-actions flex items-center justify-between border-t border-slate-100 bg-slate-50 px-4 py-2">
             <button
               type="button"
               onClick={() => setGiftingModalOpen(true)}
@@ -394,7 +393,7 @@ export default function LiveShoppingPage({
             </button>
           </div>
 
-          <form onSubmit={handleSendComment} className="border-t border-slate-200 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] flex gap-2">
+          <form onSubmit={handleSendComment} className="cnc-desktop-live-chat-form border-t border-slate-200 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] flex gap-2">
             <input
               type="text"
               value={newComment}
@@ -412,8 +411,47 @@ export default function LiveShoppingPage({
           </form>
         </div>
       </div>
-
+      <div className="cnc-desktop-live-toolbar" aria-label="Livestream controls">
+        {isHost && <DesktopLiveMediaControls/>}
+        <button type="button" onClick={async()=>{
+          const url=new URL(window.location.href);url.searchParams.set('tab','live');url.searchParams.set('room',activeRoom.id);
+          try{
+            if(navigator.share) await navigator.share({title:activeRoom.title,url:url.href});
+            else if(navigator.clipboard?.writeText){await navigator.clipboard.writeText(url.href);showToast('Livestream link copied.','info');}
+            else showToast('Sharing is unavailable in this browser.','info');
+          }catch(error){if(!(error instanceof Error&&error.name==='AbortError'))showToast('Could not share livestream.','error');}
+        }}><Share2 size={18}/> Share</button>
+        <button type="button" onClick={()=>setDesktopAnalyticsOpen(x=>!x)}
+          aria-expanded={desktopAnalyticsOpen}><BarChart3 size={19}/> Analytics</button>
+        {isHost && <button type="button" onClick={()=>setPinModalOpen(true)}><Pin size={19}/> Pin product</button>}
+        {isHost && <button type="button" className="cnc-desktop-live-end" onClick={()=>setDesktopEndConfirm(true)}>
+          <X size={18}/> End live</button>}
+      </div>
+      {desktopAnalyticsOpen&&<div className="cnc-desktop-live-analytics" aria-label="Loaded live room metrics">
+        <strong>Room activity</strong>
+        <span><Users size={16}/>{activeRoom.viewerCount.toLocaleString('en-NG')} viewers reported</span>
+        <span><Heart size={16}/>{activeRoom.heartsCount.toLocaleString('en-NG')} likes</span>
+        <span><MessageCircle size={16}/>{comments.length} comments loaded</span>
+      </div>}
     </div>
+    {desktopEndConfirm&&isHost&&(
+      <div className="cnc-desktop-live-end-backdrop">
+        <div className="cnc-desktop-live-end-dialog" role="alertdialog" aria-modal="true" aria-labelledby="cnc-desktop-end-title">
+          <Radio size={34}/>
+          <h2 id="cnc-desktop-end-title">End this livestream?</h2>
+          <p>Buyers will leave the live shopping room and your Cloudflare broadcast will stop.</p>
+          <div>
+            <button type="button" className="cnc-desktop-neon-secondary" onClick={()=>setDesktopEndConfirm(false)}>Keep streaming</button>
+            <button type="button" className="cnc-desktop-neon-primary" onClick={async()=>{
+              setDesktopEndConfirm(false);
+              await stopCloudflareStream();
+              const result=await endLiveRoom(activeRoom.id);
+              if(!result.ok)showToast(result.error||'Could not end livestream.','error');
+            }}>End livestream</button>
+          </div>
+        </div>
+      </div>
+    )}
 
       {/* Host Pin Product Modal */}
       {pinModalOpen && isHost && (
