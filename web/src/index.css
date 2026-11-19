@@ -706,3 +706,71 @@ button:disabled { cursor: not-allowed; }
   box-shadow: inset 0 1px 0 white, 0 8px 26px rgb(18 84 48 / .13);
 }
 .cnc-account-art { filter: drop-shadow(0 7px 10px rgb(12 66 41 / .18)); }
+
+.cnc-workspace-hero {
+  color: #f3fff8;
+  background: radial-gradient(ellipse at 74% 30%, #137855, transparent 60%), #063629;
+  box-shadow: inset 0 1px 0 rgb(201 255 224 / .28), 0 6px 16px rgb(7 57 36 / .17);
+}
+.cnc-workspace-hero button:focus-visible {
+  outline: 2px solid #ffca85;
+  outline-offset: 3px;
+}
+.cnc-workspace-panel,
+.cnc-account-stats > button {
+  border-color: #cde2d5;
+  background: linear-gradient(150deg, #fffefa, #f5f8ee);
+  box-shadow: inset 0 1px 0 #fff, 0 3px 10px rgb(11 67 42 / .09);
+}
+.cnc-workspace-mint { background: linear-gradient(135deg, #f2fbf3, #dff4e7); }
+.cnc-account-avatar {
+  color: #063e27;
+  background: linear-gradient(150deg, #d6ffe2, #93dfb3);
+  box-shadow: inset 0 1px 0 white, 0 3px 0 #4f9d74;
+}
+.cnc-account-stats > button:hover, .cnc-seller-shortcut:hover { border-color: #438d68; }
+.cnc-account-stats > button:last-child { border-color: #e8cc99; background: linear-gradient(#fffaf0, #fff1d6); }
+
+.cnc-policy-page .cnc-depth-artwork { right: 6%; opacity: .75; }
+.cnc-policy-nav { display: grid; gap: .3rem; }
+.cnc-policy-nav button { min-height: 2.75rem; }
+.cnc-policy-nav button[aria-pressed="true"] { box-shadow: inset 3px 0 0 #ffb65e, 0 2px 5px rgb(14 81 45 / .2); }
+.cnc-policy-reader p { max-width: 75ch; }
+.cnc-policy-reader :where(h2, h3) { color: #123b28; }
+.cnc-policy-reader h2 { font-size: clamp(1.25rem, 2.8vw, 1.85rem); }
+.cnc-policy-reader :where(p, li) { font-size: .9rem; line-height: 1.65; }
+
+.cnc-seller-hero-art { filter: drop-shadow(0 5px 8px rgb(0 25 15 / .27)); }
+.cnc-seller-products-art { margin-inline-start: auto; }
+.cnc-seller-products-art .cnc-depth-artwork { height: 5rem; }
+.cnc-seller-metric { display: flex; min-width: 0; flex-direction: column; overflow-wrap: anywhere; }
+.cnc-seller-metric-art, .cnc-seller-shortcut > svg, .cnc-menu-glyph {
+  box-sizing: content-box;
+  padding: .4rem;
+  border-radius: .65rem;
+  background: linear-gradient(145deg, #e6f9ed, #bee6ce);
+  box-shadow: inset 0 1px 0 #fff, 0 2px 0 #91bda5;
+}
+.cnc-seller-metric-art { align-self: end; margin-top: auto; color: #13623d; }
+.cnc-inventory-table { scrollbar-color: #75aa90 #e8f3eb; }
+.cnc-inventory-table :where(th, td) { border-color: #d7e9dc; }
+.cnc-inventory-table :focus-visible, .cnc-inventory-table:focus-visible,
+.cnc-header-drawer :is(button, input):focus-visible { outline: 2px solid #966020; outline-offset: -2px; }
+.cnc-menu-tile { position: relative; border: 1px solid rgb(6 68 43 / .12); box-shadow: inset 0 1px 0 #fff, 0 2px 5px rgb(6 52 32 / .08); }
+.cnc-menu-tile:hover { border-color: #65a788; }
+.cnc-menu-glyph { display: grid; flex: 0 0 auto; place-items: center; }
+
+@media (max-width: 767px) {
+  .cnc-policy-page .cnc-depth-artwork { display: none; }
+  .cnc-seller-hero { grid-template-columns: minmax(0, 1fr) auto; }
+  .cnc-seller-hero > div:last-child { grid-column: 1 / -1; }
+  .cnc-seller-hero-art { max-width: 26vw; }
+}
+@media (max-width: 375px) {
+  .cnc-menu-tile { font-size: .75rem; }
+  .cnc-menu-glyph { padding: .25rem; }
+}
+@media (prefers-reduced-motion: no-preference) and (hover: hover) and (pointer: fine) {
+  :is(.cnc-seller-shortcut, .cnc-menu-tile) { transition: transform .2s ease, border-color .2s ease; }
+  :is(.cnc-seller-shortcut, .cnc-menu-tile):hover { transform: perspective(450px) translateY(-2px) rotateX(3deg); }
+}

@@ -1,4 +1,5 @@
 import React from 'react';
+import DepthArtwork from '../ui/DepthArtwork';
 import { ShieldCheck, FileText, Lock, RefreshCw, Scale, Award, ArrowLeft, CheckCircle2, AlertCircle } from 'lucide-react';
 
 export type PolicySection = 'terms' | 'privacy' | 'returns' | 'escrow' | 'seller-code';
@@ -11,10 +12,11 @@ interface PolicyPageProps {
 
 export default function PolicyPage({ activeSection, onSelectSection, onBack }: PolicyPageProps) {
   return (
-    <div className="min-h-screen bg-slate-50 pb-20">
+    <div className="cnc-policy-page mx-auto max-w-6xl space-y-4 pb-10">
       {/* Top Header */}
-      <div className="bg-[#073c22] text-white py-8 px-4 md:px-8 border-b border-emerald-950">
-        <div className="max-w-5xl mx-auto space-y-3">
+      <div className="cnc-workspace-hero cnc-depth-banner rounded-3xl px-5 py-5 text-white md:px-8">
+        <DepthArtwork icon={ShieldCheck} />
+        <div className="space-y-3">
           <button
             onClick={onBack}
             className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-200 hover:text-white transition"
@@ -22,9 +24,9 @@ export default function PolicyPage({ activeSection, onSelectSection, onBack }: P
             <ArrowLeft size={16} />
             <span>Back to Marketplace</span>
           </button>
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="max-w-[48rem] space-y-3">
             <div>
-              <h1 className="text-2xl md:text-3xl font-black tracking-tight">Legal & Policies</h1>
+              <h1 className="text-2xl md:text-4xl font-black tracking-tight">Legal & Policies</h1>
               <p className="text-xs md:text-sm text-emerald-200/90 font-medium">
                 Policy information is under legal review. Statutory consumer rights remain applicable.
               </p>
@@ -37,10 +39,10 @@ export default function PolicyPage({ activeSection, onSelectSection, onBack }: P
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-4 md:px-8 mt-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="mx-auto">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-[minmax(11rem,1fr)_minmax(0,3.2fr)]">
           {/* Sidebar Nav */}
-          <div className="md:col-span-1 space-y-1 bg-white p-2 rounded-2xl border border-slate-200 shadow-sm h-fit">
+          <nav aria-label="Policy sections" className="cnc-policy-nav cnc-workspace-panel rounded-2xl border p-2 md:self-start">
             <button
               aria-pressed={activeSection === 'terms'}
               onClick={() => onSelectSection('terms')}
@@ -105,10 +107,10 @@ export default function PolicyPage({ activeSection, onSelectSection, onBack }: P
               <Award size={16} />
               <span>Seller CAC Code</span>
             </button>
-          </div>
+          </nav>
 
           {/* Content Area */}
-          <div className="md:col-span-3 bg-white p-6 md:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
+          <div className="cnc-policy-reader cnc-workspace-panel min-w-0 space-y-6 rounded-3xl border p-5 md:p-8">
             {activeSection === 'terms' && (
               <div className="space-y-5 text-slate-700 text-xs md:text-sm leading-relaxed">
                 <div className="border-b border-slate-100 pb-3">

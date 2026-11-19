@@ -120,35 +120,35 @@ export default function SellerProductsPage() {
   };
 
   return (
-    <div className="space-y-6 pb-16">
-      <div className="cnc-depth-banner cnc-depth-light-banner flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
-        <DepthArtwork icon={Package} />
+    <div className="space-y-4 pb-16">
+      <div className="cnc-workspace-hero cnc-seller-products-hero flex flex-col items-start justify-between gap-4 rounded-3xl p-5 sm:flex-row sm:items-center sm:p-6">
+        <div className="cnc-seller-products-art hidden md:block"><DepthArtwork icon={Package} /></div>
         <div>
-          <h1 className="text-2xl font-black text-slate-900 sm:text-3xl">Products</h1>
-          <p className="mt-1 text-xs text-slate-500">
+          <h1 className="text-2xl font-black text-white sm:text-4xl">Products</h1>
+          <p className="mt-1 max-w-xl text-sm text-emerald-100">
             Save a draft, then submit it for admin review. Approved listings appear in the shop.
           </p>
         </div>
 
         <button
           onClick={() => setShowAddModal(true)}
-          className="flex items-center gap-1.5 rounded-2xl bg-[#0c5c36] px-5 py-2.5 text-xs font-black text-white hover:bg-emerald-900 shadow transition"
+          className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl bg-orange-200 px-4 py-2.5 text-xs font-black text-orange-950 hover:bg-orange-300"
         >
           <Plus size={16} />
           <span>Add New Product</span>
         </button>
       </div>
 
-      <div className="overflow-x-auto rounded-3xl border border-slate-200 bg-white shadow-sm">
-        <table className="w-full text-left text-xs">
-          <thead className="border-b border-slate-100 bg-slate-50 text-[11px] font-black uppercase text-slate-400">
+      <div className="cnc-workspace-panel cnc-inventory-table overflow-x-auto rounded-2xl border" role="region" aria-label="Product inventory" tabIndex={0}>
+        <table className="w-full min-w-[43rem] text-left text-sm">
+          <thead className="border-b border-emerald-100 bg-emerald-50 text-xs font-extrabold tracking-wide text-emerald-950">
             <tr>
-              <th className="py-3 px-4">Product</th>
-              <th className="py-3 px-4">Price (NGN)</th>
-              <th className="py-3 px-4">Stock</th>
-              <th className="py-3 px-4">Category</th>
-              <th className="py-3 px-4">Status</th>
-              <th className="py-3 px-4 text-right">Actions</th>
+              <th scope="col" className="py-3 px-4">Product</th>
+              <th scope="col" className="py-3 px-4">Price (NGN)</th>
+              <th scope="col" className="py-3 px-4">Stock</th>
+              <th scope="col" className="py-3 px-4">Category</th>
+              <th scope="col" className="py-3 px-4">Status</th>
+              <th scope="col" className="py-3 px-4 text-right">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -228,8 +228,8 @@ export default function SellerProductsPage() {
                       <button
                         onClick={() => handleOpenEdit(prod)}
                         disabled={actionProductId !== null}
-                        className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
-                        title="Edit product"
+                        className="grid min-h-10 min-w-10 place-items-center rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+                        aria-label="Edit product" title="Edit product"
                       >
                         <Edit size={15} />
                       </button>
@@ -238,7 +238,7 @@ export default function SellerProductsPage() {
                           onClick={() => void runProductAction(prod.id, () => archiveSellerProduct(prod.id))}
                           disabled={actionProductId !== null}
                           className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
-                          title="Archive product"
+                          aria-label="Archive product" title="Archive product"
                         >
                           <Archive size={15} />
                         </button>

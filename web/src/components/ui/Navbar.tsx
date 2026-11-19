@@ -511,7 +511,7 @@ export default function Navbar({
 
       {/* Mobile Drawer */}
       <div id="cnc-mobile-menu" hidden={!mobileMenuOpen} className="cnc-header-drawer max-h-[70dvh] overflow-y-auto p-4 lg:hidden">
-          <form onSubmit={handleSearchSubmit} className="relative mb-4">
+          <form onSubmit={handleSearchSubmit} className="cnc-menu-search relative mb-4">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
             <input
               type="text"
@@ -519,11 +519,11 @@ export default function Navbar({
               onChange={(e) => setSearchQuery(e.target.value)}
               aria-label="Search products and stores"
               placeholder="Search products and stores"
-              className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-16 text-xs outline-none focus:border-emerald-600"
+              className="h-12 w-full rounded-xl border border-emerald-100 bg-white pl-9 pr-20 text-sm outline-none focus:border-emerald-600"
             />
             <button
               type="submit"
-              className="absolute right-1 top-1/2 -translate-y-1/2 rounded-lg bg-[#0c5c36] px-3 py-1 text-[11px] font-bold text-white"
+              className="absolute right-1 top-1/2 -translate-y-1/2 min-h-9 rounded-lg bg-[#0c5c36] px-3 text-xs font-bold text-white"
             >
               Search
             </button>
@@ -535,7 +535,7 @@ export default function Navbar({
               <LogIn size={16} /> Sign In / Create Account
             </button>
           )}
-          <div className="grid grid-cols-2 gap-2 text-xs font-bold text-slate-800">
+          <div className="cnc-menu-tiles grid grid-cols-2 gap-2 text-sm font-bold text-slate-800">
             <button
               type="button"
               onClick={() => { setCurrentTab('for-you'); setMobileMenuOpen(false); }}
@@ -553,30 +553,30 @@ export default function Navbar({
             <button
               type="button"
               onClick={() => { setCurrentTab('live'); setMobileMenuOpen(false); }}
-              className="flex items-center gap-2 rounded-xl bg-rose-50 p-2.5 text-left text-rose-700"
+              className="cnc-menu-tile flex min-h-12 items-center gap-2 rounded-xl bg-rose-50 px-2 py-2.5 text-left text-rose-700"
             >
-              <Radio size={16} /> Livestreams
+              <span className="cnc-menu-glyph" aria-hidden="true"><Radio size={17} /></span> Livestreams
             </button>
             <button
               type="button"
               onClick={() => { setCurrentTab('auctions'); setMobileMenuOpen(false); }}
-              className="flex items-center gap-2 rounded-xl bg-amber-50 p-2.5 text-left text-amber-800"
+              className="cnc-menu-tile flex min-h-12 items-center gap-2 rounded-xl bg-amber-50 px-2 py-2.5 text-left text-amber-800"
             >
-              <Gavel size={16} /> Auctions
+              <span className="cnc-menu-glyph" aria-hidden="true"><Gavel size={17} /></span> Auctions
             </button>
             <button
               type="button"
               onClick={() => { setCurrentTab('orders'); setMobileMenuOpen(false); }}
-              className="flex items-center gap-2 rounded-xl bg-slate-50 p-2.5 text-left"
+              className="cnc-menu-tile flex min-h-12 items-center gap-2 rounded-xl bg-slate-50 px-2 py-2.5 text-left"
             >
-              <Package size={16} /> Orders
+              <span className="cnc-menu-glyph" aria-hidden="true"><Package size={17} /></span> Orders
             </button>
             <button
               type="button"
               onClick={() => { setCurrentTab('profile'); setMobileMenuOpen(false); }}
-              className="flex items-center gap-2 rounded-xl bg-slate-50 p-2.5 text-left"
+              className="cnc-menu-tile flex min-h-12 items-center gap-2 rounded-xl bg-slate-50 px-2 py-2.5 text-left"
             >
-              <User size={16} /> Profile
+              <span className="cnc-menu-glyph" aria-hidden="true"><User size={17} /></span> Profile
             </button>
             <button
               type="button"
@@ -584,17 +584,17 @@ export default function Navbar({
                 setCurrentTab(isApprovedSeller ? 'seller-dashboard' : 'seller-kyc');
                 setMobileMenuOpen(false);
               }}
-              className="flex items-center gap-2 rounded-xl bg-emerald-50 p-2.5 text-left text-emerald-800 font-black"
+              className="cnc-menu-tile flex min-h-12 items-center gap-2 rounded-xl bg-emerald-50 px-2 py-2.5 text-left text-emerald-800 font-black"
             >
-              <Store size={16} /> {isApprovedSeller ? 'Seller Centre' : 'Become a Seller'}
+              <span className="cnc-menu-glyph" aria-hidden="true"><Store size={17} /></span> {isApprovedSeller ? 'Seller Centre' : 'Become a Seller'}
             </button>
             {isAdmin && (
               <button
                 type="button"
                 onClick={() => { setCurrentTab('admin-dashboard'); setMobileMenuOpen(false); }}
-                className="flex items-center gap-2 rounded-xl bg-purple-50 p-2.5 text-left text-purple-800 font-black"
+                className="cnc-menu-tile flex min-h-12 items-center gap-2 rounded-xl bg-purple-50 px-2 py-2.5 text-left text-purple-800 font-black"
               >
-                <ShieldCheck size={16} /> Admin Console
+                <span className="cnc-menu-glyph" aria-hidden="true"><ShieldCheck size={17} /></span> Admin Console
               </button>
             )}
           </div>

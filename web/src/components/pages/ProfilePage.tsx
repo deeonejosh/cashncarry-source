@@ -145,20 +145,20 @@ export default function ProfilePage({ onNavigate, initialAddressSetup = false }:
   }
 
   return (
-    <div className="space-y-6 pb-24">
+    <div className="cnc-account-page space-y-4 pb-24">
       {/* Profile Header */}
-      <div className="rounded-3xl border border-slate-200 bg-white p-6 md:p-8 shadow-sm space-y-5">
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-          <div className="flex items-start gap-4">
+      <div className="cnc-workspace-hero rounded-3xl p-4 sm:p-6 space-y-5">
+        <div className="cnc-account-identity grid items-center gap-4 md:grid-cols-[minmax(0,1fr)_auto_auto]">
+          <div className="flex min-w-0 items-start gap-3 sm:gap-4">
             <div className="relative shrink-0">
               {currentUser.avatar ? (
                 <img
                   src={currentUser.avatar}
                   alt={currentUser.name}
-                  className="h-20 w-20 rounded-3xl object-cover border-2 border-[#0E6B38] shadow-sm"
+                  className="h-14 w-14 sm:h-20 sm:w-20 rounded-2xl object-cover border-2 border-[#0E6B38] shadow-sm"
                 />
               ) : (
-                <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-[#0E6B38] text-2xl font-black text-white shadow-sm">
+                <div className="cnc-account-avatar grid h-14 w-14 place-items-center rounded-2xl text-2xl font-black sm:h-20 sm:w-20">
                   {initials || 'CN'}
                 </div>
               )}
@@ -169,9 +169,9 @@ export default function ProfilePage({ onNavigate, initialAddressSetup = false }:
               )}
             </div>
 
-            <div className="space-y-1.5">
+            <div className="min-w-0 space-y-1.5">
               <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-xl font-black text-slate-900 sm:text-2xl">{currentUser.name}</h1>
+                <h1 className="break-words text-xl font-black text-white sm:text-3xl">{currentUser.name}</h1>
                 <span className="inline-flex items-center gap-1 rounded-full bg-[#EAF7EF] px-2.5 py-0.5 text-xs font-bold text-[#0E6B38]">
                   <CheckCircle2 size={12} /> {currentUser.authenticated ? 'Signed In' : 'Guest Visitor'}
                 </span>
@@ -193,26 +193,26 @@ export default function ProfilePage({ onNavigate, initialAddressSetup = false }:
                 )}
               </div>
 
-              <p className="text-xs text-slate-600 max-w-xl">
+              <p className="text-xs text-emerald-50 max-w-xl">
                 {currentUser.bio ||
                   (currentUser.authenticated
                     ? 'Manage your account and orders.'
                     : 'Sign in to save your cart, track deliveries, or apply to sell.')}
               </p>
 
-              <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500">
+              <div className="flex flex-wrap items-center gap-3 text-xs text-emerald-100">
                 {currentUser.email && (
                   <span className="inline-flex items-center gap-1">
-                    <Mail size={13} /> {currentUser.email}
+                    <Mail size={13} className="shrink-0" /> <span className="break-all">{currentUser.email}</span>
                   </span>
                 )}
-                <span className="inline-flex items-center gap-1 font-bold text-[#0E6B38]">
+                <span className="inline-flex items-center gap-1 font-bold text-emerald-100">
                   <MapPin size={13} /> Delivery State: {currentUser.selectedState || 'Lagos'}
                 </span>
               </div>
 
               {currentUser.storeName && (
-                <div className="text-xs font-bold text-[#FF6B00] flex items-center gap-1">
+                <div className="text-xs font-bold text-orange-200 flex items-center gap-1">
                   <Store size={13} />
                   <span>Store: {currentUser.storeName}</span>
                 </div>
@@ -220,7 +220,8 @@ export default function ProfilePage({ onNavigate, initialAddressSetup = false }:
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto">
+          <img src={accountArtwork} alt="" width={520} height={450} decoding="async" className="cnc-seller-hero-art hidden h-28 w-32 object-contain md:block" />
+          <div className="flex flex-wrap items-center gap-2 md:flex-col md:items-stretch">
             {currentUser.authenticated ? (
               <>
                 <button
@@ -240,7 +241,7 @@ export default function ProfilePage({ onNavigate, initialAddressSetup = false }:
                 <button
                   type="button"
                   onClick={() => void logout()}
-                  className="inline-flex min-h-[44px] items-center gap-1.5 rounded-2xl border border-rose-200 bg-rose-50 px-4 text-xs font-black text-rose-700 hover:bg-rose-100 transition"
+                  className="inline-flex min-h-[44px] items-center gap-1.5 rounded-2xl border border-rose-200 bg-orange-200 px-4 text-xs font-black text-orange-950 hover:bg-orange-300 transition"
                 >
                   <LogOut size={14} />
                   <span>Sign Out</span>
@@ -331,13 +332,13 @@ export default function ProfilePage({ onNavigate, initialAddressSetup = false }:
       </div>
 
       {/* Stats Counter Bar */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="cnc-account-stats grid grid-cols-2 gap-3 sm:grid-cols-4">
         <button
           onClick={() => navigateTo('orders')}
           className="rounded-2xl border border-slate-200 bg-white p-4 text-center hover:border-[#0E6B38] transition shadow-sm"
         >
           <div className="text-xl font-black text-slate-900">{orders.length}</div>
-          <div className="mt-0.5 flex items-center justify-center gap-1 text-[11px] font-bold text-slate-500">
+          <div className="mt-0.5 flex items-center justify-center gap-1 text-xs font-bold text-slate-600">
             <Package size={13} className="text-[#0E6B38]" />
             <span>Orders</span>
           </div>
@@ -347,7 +348,7 @@ export default function ProfilePage({ onNavigate, initialAddressSetup = false }:
           className="rounded-2xl border border-slate-200 bg-white p-4 text-center hover:border-[#0E6B38] transition shadow-sm"
         >
           <div className="text-xl font-black text-slate-900">{wishlist.length}</div>
-          <div className="mt-0.5 flex items-center justify-center gap-1 text-[11px] font-bold text-slate-500">
+          <div className="mt-0.5 flex items-center justify-center gap-1 text-xs font-bold text-slate-600">
             <Heart size={13} className="text-rose-500" />
             <span>Wishlist</span>
           </div>
@@ -357,7 +358,7 @@ export default function ProfilePage({ onNavigate, initialAddressSetup = false }:
           className="rounded-2xl border border-slate-200 bg-white p-4 text-center hover:border-[#0E6B38] transition shadow-sm"
         >
           <div className="text-xl font-black text-slate-900">{follows.length}</div>
-          <div className="mt-0.5 flex items-center justify-center gap-1 text-[11px] font-bold text-slate-500">
+          <div className="mt-0.5 flex items-center justify-center gap-1 text-xs font-bold text-slate-600">
             <Users size={13} className="text-blue-500" />
             <span>Following</span>
           </div>
@@ -376,7 +377,7 @@ export default function ProfilePage({ onNavigate, initialAddressSetup = false }:
 
       {/* Role-Aware Seller / Onboarding Card */}
       {isApprovedSeller ? (
-        <div className="rounded-3xl border border-emerald-200 bg-emerald-50/50 p-6 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="cnc-workspace-panel cnc-workspace-mint rounded-3xl border border-emerald-200 bg-emerald-50/50 p-6 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#0E6B38] text-white shadow">
               <Store size={20} />
@@ -474,7 +475,7 @@ export default function ProfilePage({ onNavigate, initialAddressSetup = false }:
       )}
 
       {/* Saved Nigerian Delivery Addresses */}
-      <div id="delivery-addresses" className="scroll-mt-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
+      <div id="delivery-addresses" className="cnc-workspace-panel scroll-mt-20 space-y-4 rounded-3xl border p-4 sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2 text-sm font-black text-slate-900">
             <MapPin size={18} className="text-[#0E6B38]" />
@@ -589,15 +590,15 @@ export default function ProfilePage({ onNavigate, initialAddressSetup = false }:
             {addresses.map((addr) => (
               <div
                 key={addr.id}
-                className="rounded-2xl border border-slate-200 bg-white p-4 space-y-2 relative"
+                className="cnc-workspace-panel rounded-2xl border border-slate-200 bg-white p-4 space-y-2"
               >
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-black text-slate-900">{addr.recipient}</span>
                   <button
                     type="button"
                     onClick={() => void removeAddress(addr.id)}
-                    className="text-slate-400 hover:text-rose-600 transition p-1"
-                    title="Delete address"
+                    className="grid min-h-11 min-w-11 place-items-center rounded-lg text-slate-500 hover:bg-rose-50 hover:text-rose-700"
+                    aria-label="Delete address"
                   >
                     <Trash2 size={14} />
                   </button>
@@ -614,7 +615,7 @@ export default function ProfilePage({ onNavigate, initialAddressSetup = false }:
       </div>
 
       {/* Account Security Card */}
-      <div className="rounded-3xl border border-emerald-200 bg-[#EAF7EF]/60 p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="cnc-workspace-panel cnc-workspace-mint rounded-3xl border border-emerald-200 bg-[#EAF7EF]/60 p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3 text-xs">
           <ShieldCheck size={22} className="text-[#0E6B38] shrink-0" />
           <div>

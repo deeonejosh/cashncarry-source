@@ -1,4 +1,4 @@
-import DepthArtwork from '../../ui/DepthArtwork';
+import storefrontArtwork from '../../../assets/home-seller-storefront.webp';
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../../../context/StoreContext';
 import { categories } from '../../../lib/data';
@@ -83,23 +83,23 @@ export default function SellerDashboardPage({ onNavigate, onOpenCreate }: Seller
   };
 
   return (
-    <div className="space-y-6 pb-12">
-      <div className="cnc-depth-banner flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 text-slate-900">
-        <DepthArtwork icon={Store} />
+    <div className="cnc-seller-overview space-y-4 pb-12">
+      <div className="cnc-workspace-hero cnc-seller-hero grid items-center gap-3 rounded-3xl px-5 py-4 sm:px-6 md:grid-cols-[minmax(0,1fr)_auto_auto]">
         <div className="space-y-2">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="rounded-full bg-emerald-50 px-3 py-1 text-[10px] font-bold uppercase text-emerald-900">
               SELLER CENTRE
             </span>
-            <span className="flex items-center gap-1 text-xs font-semibold text-emerald-700">
+            <span className="flex items-center gap-1 text-xs font-semibold text-emerald-100">
               <CheckCircle2 size={13} /> Approved Seller
             </span>
           </div>
-          <h1 className="text-xl font-bold sm:text-2xl">
+          <h1 className="break-words text-2xl font-black sm:text-4xl">
             {sellerStore?.name || currentUser.storeName || currentUser.name}
           </h1>
         </div>
 
+        <img src={storefrontArtwork} alt="" width={620} height={490} decoding="async" className="cnc-seller-hero-art block h-28 w-36 object-contain md:h-32 md:w-44" />
         <div className="flex flex-wrap gap-2">
           <button
             onClick={() => onNavigate('seller-products')}
@@ -117,7 +117,7 @@ export default function SellerDashboardPage({ onNavigate, onOpenCreate }: Seller
       </div>
 
       {/* Storefront Profile Card */}
-      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
+      <div className="cnc-workspace-panel rounded-3xl border p-4 sm:p-6 space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2 text-sm font-black text-slate-900">
             <Store size={18} className="text-[#0c5c36]" />
@@ -223,26 +223,30 @@ export default function SellerDashboardPage({ onNavigate, onOpenCreate }: Seller
       </div>
 
       {/* Real Analytics Metrics */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm space-y-1">
-          <div className="text-xs font-bold text-slate-400">Paid & Shipped Orders Total</div>
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="cnc-seller-metric cnc-workspace-panel cnc-workspace-mint rounded-2xl border p-3 sm:p-4 space-y-1">
+          <div className="text-xs font-bold text-slate-700">Paid & Shipped Orders Total</div>
           <div className="text-2xl font-black text-[#0c5c36]">₦{totalRevenue.toLocaleString('en-NG')}</div>
           <div className="text-[11px] text-slate-500">From real store orders</div>
+          <Truck className="cnc-seller-metric-art" size={26} aria-hidden="true" />
         </div>
-        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm space-y-1">
-          <div className="text-xs font-bold text-slate-400">Pending Fulfillment</div>
-          <div className="text-2xl font-black text-orange-600">{pendingFulfillments}</div>
+        <div className="cnc-seller-metric cnc-workspace-panel cnc-workspace-mint rounded-2xl border p-3 sm:p-4 space-y-1">
+          <div className="text-xs font-bold text-slate-700">Pending Fulfillment</div>
+          <div className="text-2xl font-black text-orange-800">{pendingFulfillments}</div>
           <div className="text-[11px] text-slate-500">Orders ready to dispatch</div>
+          <Package className="cnc-seller-metric-art" size={26} aria-hidden="true" />
         </div>
-        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm space-y-1">
-          <div className="text-xs font-bold text-slate-400">Published Products</div>
+        <div className="cnc-seller-metric cnc-workspace-panel cnc-workspace-mint rounded-2xl border p-3 sm:p-4 space-y-1">
+          <div className="text-xs font-bold text-slate-700">Published Products</div>
           <div className="text-2xl font-black text-slate-900">{publishedCount}</div>
           <div className="text-[11px] text-slate-500">Live in catalog</div>
+          <Store className="cnc-seller-metric-art" size={26} aria-hidden="true" />
         </div>
-        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm space-y-1">
-          <div className="text-xs font-bold text-slate-400">Moderation Queue</div>
-          <div className="text-2xl font-black text-amber-600">{pendingReviewCount}</div>
+        <div className="cnc-seller-metric cnc-workspace-panel cnc-workspace-mint rounded-2xl border p-3 sm:p-4 space-y-1">
+          <div className="text-xs font-bold text-slate-700">Moderation Queue</div>
+          <div className="text-2xl font-black text-amber-800">{pendingReviewCount}</div>
           <div className="text-[11px] text-slate-500">Awaiting admin review</div>
+          <ShieldCheck className="cnc-seller-metric-art" size={26} aria-hidden="true" />
         </div>
       </div>
 
@@ -250,43 +254,43 @@ export default function SellerDashboardPage({ onNavigate, onOpenCreate }: Seller
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <button
           onClick={() => onNavigate('seller-products')}
-          className="flex flex-col items-start rounded-2xl border border-slate-200 bg-white p-4 text-left hover:border-emerald-500 transition shadow-sm"
+          className="cnc-seller-shortcut cnc-workspace-panel flex flex-col items-start rounded-2xl border p-3 text-left hover:border-emerald-600 sm:p-4"
         >
           <Package className="text-[#0c5c36]" size={22} />
           <span className="mt-2 text-xs font-black text-slate-900">Products & Inventory</span>
-          <span className="text-[11px] text-slate-400">Create & submit listings</span>
+          <span className="text-[11px] text-slate-600">Create & submit listings</span>
         </button>
 
         <button
           onClick={() => onNavigate('seller-orders')}
-          className="flex flex-col items-start rounded-2xl border border-slate-200 bg-white p-4 text-left hover:border-emerald-500 transition shadow-sm"
+          className="cnc-seller-shortcut cnc-workspace-panel flex flex-col items-start rounded-2xl border p-3 text-left hover:border-emerald-600 sm:p-4"
         >
           <Truck className="text-blue-600" size={22} />
           <span className="mt-2 text-xs font-black text-slate-900">Order Dispatch</span>
-          <span className="text-[11px] text-slate-400">Pack & add tracking</span>
+          <span className="text-[11px] text-slate-600">Pack & add tracking</span>
         </button>
 
         <button
           onClick={() => onNavigate('seller-kyc')}
-          className="flex flex-col items-start rounded-2xl border border-slate-200 bg-white p-4 text-left hover:border-emerald-500 transition shadow-sm"
+          className="cnc-seller-shortcut cnc-workspace-panel flex flex-col items-start rounded-2xl border p-3 text-left hover:border-emerald-600 sm:p-4"
         >
           <ShieldCheck className="text-purple-600" size={22} />
           <span className="mt-2 text-xs font-black text-slate-900">Verification Status</span>
-          <span className="text-[11px] text-slate-400">Business & compliance</span>
+          <span className="text-[11px] text-slate-600">Business & compliance</span>
         </button>
 
         <button
           onClick={() => onNavigate('seller-settlements')}
-          className="flex flex-col items-start rounded-2xl border border-slate-200 bg-white p-4 text-left hover:border-emerald-500 transition shadow-sm"
+          className="cnc-seller-shortcut cnc-workspace-panel flex flex-col items-start rounded-2xl border p-3 text-left hover:border-emerald-600 sm:p-4"
         >
-          <DollarSign className="text-amber-600" size={22} />
+          <DollarSign className="text-amber-800" size={22} />
           <span className="mt-2 text-xs font-black text-slate-900">Settlements</span>
-          <span className="text-[11px] text-slate-400">Order ledger & status</span>
+          <span className="text-[11px] text-slate-600">Order ledger & status</span>
         </button>
       </div>
 
       {/* Recent Orders */}
-      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
+      <div className="cnc-workspace-panel rounded-3xl border p-4 sm:p-6 space-y-4">
         <div className="flex items-center justify-between border-b border-slate-100 pb-3">
           <h3 className="text-sm font-black text-slate-900">Recent Store Orders</h3>
           <button
@@ -298,7 +302,8 @@ export default function SellerDashboardPage({ onNavigate, onOpenCreate }: Seller
         </div>
 
         {sellerOrders.length === 0 ? (
-          <div className="p-8 text-center text-xs text-slate-400">
+          <div className="grid justify-items-center gap-2 p-6 text-center text-sm text-slate-600">
+            <Package size={34} className="text-emerald-700" aria-hidden="true" />
             No orders placed yet for your storefront.
           </div>
         ) : (
