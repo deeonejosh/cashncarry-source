@@ -1,0 +1,79 @@
+name: Package latest staging bulk upload frontend (NO DEPLOY)
+on:
+  push:
+    branches: [fix/staging-bulk-upload-visible-20261119]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Install tested project dependencies
+        working-directory: web
+        run: npm ci --no-audit --no-fund
+      - name: Validate current staging UI and Excel importer
+        working-directory: web
+        run: |
+          npm run lint
+          npx tsx scripts/seller-bulk-import-test.ts
+          node scripts/seller-bulk-xlsx-browser-test.mjs
+          npm test
+          npm run build
+          npm run bundle:worker
+      - name: Package ONLY the 3 existing KV-owned private staging static assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p release-cnc-bulk-upload
+          node --input-type=module <<'EOF'
+          import fs from 'node:fs';
+          import path from 'node:path';
+          const html = fs.readFileSync('web/dist/index.html','utf8');
+          const assets = fs.readdirSync('web/dist/assets');
+          const js = assets.find(a=>/^index-[a-zA-Z0-9_-]+\.js$/.test(a));
+          const css = assets.find(a=>/^index-[a-zA-Z0-9_-]+\.css$/.test(a));
+          if (!js || !css) throw new Error('Cannot identify Vite main assets');
+          let fixed=html;
+          fixed=fixed.replaceAll('/assets/'+js,'/assets/index-DjAQX0oY.js?v=bulk-20261119');
+          fixed=fixed.replaceAll('/assets/'+css,'/assets/index-uvdl1fkh.css?v=bulk-20261119');
+          if (!fixed.includes('/assets/index-DjAQX0oY.js?v=bulk-20261119') || !fixed.includes('/assets/index-uvdl1fkh.css?v=bulk-20261119'))
+            throw new Error('Cannot rewrite Vite index to the current staging Worker asset routes');
+          const code = fs.readFileSync('web/dist/assets/'+js, 'utf8');
+          if (!code.includes('Bulk Upload Excel') && !code.includes('Bulk import products'))
+            throw new Error('Missing bulk upload UI in compiled bundle');
+          fs.writeFileSync('release-cnc-bulk-upload/index.html', fixed);
+          fs.copyFileSync('web/dist/assets/'+js,'release-cnc-bulk-upload/index.js');
+          fs.copyFileSync('web/dist/assets/'+css,'release-cnc-bulk-upload/index.css');
+          fs.writeFileSync('release-cnc-bulk-upload/source.txt','source='+process.env.GITHUB_SHA+'\nscope=existing private staging KV UI assets only\n'+
+            'keys=cnc:v58:ui:index.html,cnc:v58:ui:assets:index-DjAQX0oY.js,cnc:v58:ui:assets:index-uvdl1fkh.css\n');
+          for(const name of ['index.html','index.js','index.css']) {
+            const content = fs.readFileSync(path.join('release-cnc-bulk-upload',name));
+            if (!content.length || content.length > 10000000) throw new Error('Invalid asset size: '+name);
+          }
+          EOF
+          sha256sum release-cnc-bulk-upload/index.* > release-cnc-bulk-upload/hashes.txt
+          cat release-cnc-bulk-upload/source.txt
+          cat release-cnc-bulk-upload/hashes.txt
+      - name: Commit immutable staging assets to isolated release branch (NO DEPLOY)
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c artifact/staging-bulk-upload-frontend-20261119
+          git add -f release-cnc-bulk-upload/
+          git commit -m "build: vetted latest staging bulk upload frontend assets; no deployment"
+          git push origin HEAD:refs/heads/artifact/staging-bulk-upload-frontend-20261119
+      - uses: actions/upload-artifact@v4
+        with:
+          name: staging-bulk-upload-frontend
+          path: release-cnc-bulk-upload/
+          retention-days: 7
