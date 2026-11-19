@@ -75,8 +75,9 @@ export default function ReturnsPage({ initialOrder, onBack }: ReturnsPageProps) 
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4 text-xs">
             <div>
-              <label className="font-bold text-slate-700">Select Order</label>
+              <label htmlFor="return-order" className="font-bold text-slate-700">Select Order</label>
               <select
+                id="return-order"
                 value={selectedOrderId}
                 onChange={(e) => setSelectedOrderId(e.target.value)}
                 className="mt-1 h-11 w-full rounded-xl border border-slate-200 px-3 bg-white font-mono font-bold"
@@ -90,8 +91,9 @@ export default function ReturnsPage({ initialOrder, onBack }: ReturnsPageProps) 
             </div>
 
             <div>
-              <label className="font-bold text-slate-700">Reason for Return</label>
+              <label htmlFor="return-reason" className="font-bold text-slate-700">Reason for Return</label>
               <select
+                id="return-reason"
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
                 className="mt-1 h-11 w-full rounded-xl border border-slate-200 px-3 bg-white font-bold"
