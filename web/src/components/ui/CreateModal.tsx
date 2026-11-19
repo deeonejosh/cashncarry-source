@@ -262,7 +262,7 @@ export default function CreateModal({ isOpen, onClose, onNavigate }: CreateModal
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">
-      <div className="cnc-depth-dialog relative w-full max-w-lg rounded-t-3xl sm:rounded-3xl bg-white shadow-2xl max-h-[92vh] flex flex-col overflow-hidden text-slate-900 border border-slate-100">
+      <div className={'cnc-depth-dialog relative w-full max-w-lg rounded-t-3xl sm:rounded-3xl bg-white shadow-2xl max-h-[92vh] flex flex-col overflow-hidden text-slate-900 border border-slate-100 ' + (isApprovedSeller && (activeView === 'go-live' || activeView === 'broadcasting') ? 'cnc-mobile-studio-shell' : '')}>
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
           <div className="flex items-center gap-2">
@@ -619,7 +619,7 @@ export default function CreateModal({ isOpen, onClose, onNavigate }: CreateModal
                 Starting a room opens shopping chat and product pinning. The camera shown here is a local preview only; it does not publish live video. {liveStreamingConfigured ? 'A separate streaming broadcast connection is required for viewers to receive video.' : 'Video relay ingestion is not configured.'}
               </div>
 
-              <div className="relative aspect-[9/10] w-full rounded-3xl bg-slate-900 overflow-hidden flex items-center justify-center">
+              <div className="cnc-mobile-studio-preview relative aspect-[9/10] w-full rounded-3xl bg-slate-900 overflow-hidden flex items-center justify-center">
                 {cameraActive ? (
                   <video ref={videoPreviewRef} autoPlay playsInline muted className="h-full w-full object-cover" />
                 ) : (
@@ -638,7 +638,8 @@ export default function CreateModal({ isOpen, onClose, onNavigate }: CreateModal
                   </div>
                 )}
 
-                <div className="absolute top-3 right-3 flex gap-2 text-white">
+                <div className="cnc-mobile-studio-preview-pill">Camera preview only</div>
+                <div className="cnc-mobile-studio-controls absolute top-3 right-3 flex gap-2 text-white">
                   <button
                     type="button"
                     onClick={() => void toggleCameraFacing()}
@@ -731,7 +732,7 @@ export default function CreateModal({ isOpen, onClose, onNavigate }: CreateModal
           {/* BROADCASTING VIEW */}
           {isApprovedSeller && activeView === 'broadcasting' && (
             <div className="space-y-4">
-              <div className="rounded-2xl bg-slate-950 p-5 text-white space-y-3">
+              <div className="cnc-mobile-studio-broadcasting rounded-2xl bg-slate-950 p-5 text-white space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-600 px-3 py-1 text-xs font-black">
                     <span className="h-2 w-2 rounded-full bg-white animate-pulse" />
