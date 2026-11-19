@@ -1,4 +1,5 @@
 import DepthArtwork from '../ui/DepthArtwork';
+import MobileLiveStage from './MobileLiveStage';
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../../context/StoreContext';
 import { LiveComment, ProductItem } from '../../types';
@@ -21,12 +22,14 @@ interface LiveShoppingPageProps {
   onSelectProduct: (p: ProductItem) => void;
   onProceedToCheckout: () => void;
   onOpenCreate?: () => void;
+  onExit?: () => void;
 }
 
 export default function LiveShoppingPage({
   onSelectProduct,
   onProceedToCheckout,
   onOpenCreate,
+  onExit,
 }: LiveShoppingPageProps) {
   const {
     currentUser,
@@ -101,7 +104,8 @@ export default function LiveShoppingPage({
   const handleHeart = async () => {
     if (!activeRoom) return;
     await likeLiveRoom(activeRoom.id);
-    setHeartsCount((c) => c + 1);
+    // Guest reactions require authentication; do not display an unpersisted like.
+    if (currentUser.authenticated) setHeartsCount((c) => c + 1);
   };
 
   const handleSendGift = async (giftType: 'rose' | 'star' | 'lion') => {
@@ -140,7 +144,16 @@ export default function LiveShoppingPage({
 
   if (!activeRoom) {
     return (
-      <div className="mx-auto max-w-xl rounded-3xl border border-dashed border-slate-200 bg-white p-12 text-center space-y-4 my-8">
+      <>
+      <div className="cnc-mobile-live-empty-room md:hidden" style={{minHeight:'min(82dvh,760px)', padding:'clamp(22px,6vw,46px)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:20,color:'#fff',background:'radial-gradient(circle at 40% 30%,#362281,#0b1231 56%,#050918 90%)',textAlign:'center',position:'relative',overflow:'hidden'}}>
+        <div aria-hidden="true" style={{borderRadius:'50%',width:170,height:170,display:'grid',placeItems:'center',background:'linear-gradient(135deg,#661dd8,#092e56)',boxShadow:'0 0 58px #543fddcc, inset 0 2px 2px #ffffff70',transform:'rotate(-6deg)'}}><Radio size={73} color="#b4ffff"/></div>
+        <h1 style={{fontSize:26,fontWeight:950,letterSpacing:'-0.04em'}}>The live stage is ready</h1>
+        <p style={{fontSize:13,lineHeight:1.5,color:'#d0ddf6',maxWidth:280}}>No shopping rooms are active right now. Real buyer and seller livestream tools appear when a seller starts a room.</p>
+        {isApprovedSeller && onOpenCreate && <button type="button" onClick={onOpenCreate} style={{padding:'14px 30px',background:'linear-gradient(110deg,#fe347e,#8936ec)',color:'white',borderRadius:18,fontWeight:900,boxShadow:'0 8px 32px #b833e68a'}}>Set up live room</button>}
+        <button type="button" onClick={() => onExit?.()} style={{fontSize:12,fontWeight:800,color:'#bbfbff',padding:12,textDecoration:'underline'}}>Return to shop</button>
+        <small style={{color:'#aab4cf',fontSize:11}}>Video broadcasting requires a connected streaming service.</small>
+      </div>
+      <div className="hidden md:block mx-auto max-w-xl rounded-3xl border border-dashed border-slate-200 bg-white p-12 text-center space-y-4 my-8">
         <DepthArtwork icon={Radio} />
         <h1 className="text-xl font-black text-slate-900">No live streams</h1>
         <p className="text-xs text-slate-500 max-w-sm mx-auto">
@@ -156,13 +169,47 @@ export default function LiveShoppingPage({
           </button>
         )}
       </div>
+      </>
     );
   }
 
   const pinnedProduct = activeRoom.pinnedProduct || (activeRoom.pinnedProductId ? products.find((p) => p.id === activeRoom.pinnedProductId) || null : null);
 
+  const sellerPublished = products.filter(product =>
+    product.sellerId === activeRoom.sellerId && product.publication === 'published' && !product.archived
+  );
+  const addMobileCart = async (product: ProductItem) => { await addToCart(product, 1); };
+  const endMobileRoom = async () => {
+    const result = await endLiveRoom(activeRoom.id);
+    if (!result.ok) showToast(result.error || 'Could not end the room.', 'error');
+  };
+
   return (
-    <div className="space-y-6 pb-16">
+    <>
+    <MobileLiveStage
+      room={activeRoom}
+      rooms={activeRooms}
+      sellerProducts={sellerPublished}
+      comments={comments}
+      commentValue={newComment}
+      heartsCount={Math.max(heartsCount, activeRoom.heartsCount)}
+      coinBalance={currentUser.coins ?? 0}
+      isHost={isHost}
+      videoConfigured={liveStreamingConfigured}
+      onCommentChange={setNewComment}
+      onSendComment={handleSendComment}
+      onHeart={() => void handleHeart()}
+      onOpenGift={() => setGiftingModalOpen(true)}
+      onPin={() => setPinModalOpen(true)}
+      onEndRoom={() => void endMobileRoom()}
+      onExit={() => onExit?.()}
+      onChangeRoom={setSelectedRoomId}
+      onAddToCart={(product) => void addMobileCart(product)}
+      onBuy={(product) => void handleBuyPinned(product)}
+      onSelectProduct={onSelectProduct}
+      onShareNotice={(text) => showToast(text, 'info')}
+    />
+    <div className="hidden md:block space-y-6 pb-16">
       {/* Room Selector */}
       {activeRooms.length > 1 && (
         <div className="flex items-center gap-2 overflow-x-auto pb-1">
@@ -359,6 +406,8 @@ export default function LiveShoppingPage({
         </div>
       </div>
 
+    </div>
+
       {/* Host Pin Product Modal */}
       {pinModalOpen && isHost && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
@@ -429,6 +478,6 @@ export default function LiveShoppingPage({
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
