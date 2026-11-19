@@ -114,11 +114,11 @@ export default function HomePage({
               <span className="cnc-hero-word">Watch live.</span>{' '}
               <span className="cnc-hero-headline-line">
                 <span className="cnc-hero-word">Discover.</span>{' '}
-                <span className="cnc-hero-word text-orange-300">Shop.</span>
+                <span className="cnc-hero-word cnc-hero-accent text-orange-300">Shop.</span>
               </span>
             </h1>
 
-            <p className="text-sm sm:text-base leading-relaxed text-emerald-50 max-w-sm">
+            <p className="cnc-hero-description text-sm sm:text-base leading-relaxed text-emerald-50 max-w-sm">
               Shop Nigerian products, discover sellers and watch live shopping.
             </p>
 

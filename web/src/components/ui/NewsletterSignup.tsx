@@ -39,15 +39,15 @@ export default function NewsletterSignup({ onPrivacy }: NewsletterSignupProps) {
 
   return (
     <section aria-labelledby="cnc-newsletter-heading" className="cnc-newsletter rounded-2xl border border-emerald-100 bg-white p-4 sm:p-6 lg:p-7 shadow-sm">
-      <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex flex-col gap-4">
         <div className="cnc-newsletter-intro">
           <DepthArtwork icon={Mail} />
           <div>
-            <h2 id="cnc-newsletter-heading" className="text-lg font-extrabold leading-tight tracking-tight text-emerald-950 sm:text-2xl">Deals. Drops. Live shopping.</h2>
-            <p className="mt-1 text-sm leading-5 text-slate-700">Get Cash N Carry updates by email.</p>
+            <h2 id="cnc-newsletter-heading" className="text-xl font-extrabold leading-tight tracking-tight text-emerald-950 sm:text-2xl">The Cash N Carry Edit</h2>
+            <p className="mt-1 text-sm leading-5 text-slate-700">Get deals, new drops and live shopping updates by email.</p>
           </div>
         </div>
-        <form onSubmit={subscribe} className="w-full max-w-xl space-y-3">
+        <form onSubmit={subscribe} className="w-full space-y-3">
           <div className="flex flex-col gap-2 sm:flex-row">
             <label htmlFor="cnc-newsletter-email" className="sr-only">Email address</label>
             <input id="cnc-newsletter-email" type="email" autoComplete="email" inputMode="email" required maxLength={254}
@@ -59,11 +59,14 @@ export default function NewsletterSignup({ onPrivacy }: NewsletterSignupProps) {
               {state === 'sending' ? 'Sending…' : 'Subscribe'}
             </button>
           </div>
-          <label className="flex cursor-pointer items-start gap-2 text-xs leading-5 text-slate-600">
-            <input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)}
-              className="mt-1 h-4 w-4 shrink-0 accent-emerald-800" required />
-            <span>I agree to receive Cash N Carry marketing emails. I can unsubscribe at any time. <button type="button" onClick={onPrivacy} className="font-semibold text-emerald-900 underline underline-offset-2">Privacy policy</button></span>
-          </label>
+          <div className="flex items-start gap-2 text-xs leading-5 text-slate-700">
+            <input id="cnc-newsletter-consent" type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)}
+              className="mt-0.5 h-4 w-4 shrink-0 accent-emerald-800" required />
+            <div>
+              <label htmlFor="cnc-newsletter-consent" className="cursor-pointer">I agree to receive Cash N Carry marketing emails. I can unsubscribe at any time.</label>{' '}
+              <button type="button" onClick={onPrivacy} className="font-semibold text-emerald-900 underline underline-offset-2">Privacy policy</button>
+            </div>
+          </div>
           <details className="text-xs text-slate-600">
             <summary className="cursor-pointer font-semibold text-emerald-900">Choose topics (optional)</summary>
             <div className="mt-2 flex flex-wrap gap-3">

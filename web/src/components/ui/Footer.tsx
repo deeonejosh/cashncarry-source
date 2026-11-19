@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, FileText, RotateCcw, ShieldCheck } from 'lucide-react';
 import BrandLogo from './BrandLogo';
 import NewsletterSignup from './NewsletterSignup';
 import { useStore } from '../../context/StoreContext';
@@ -46,19 +46,36 @@ export default function Footer({setCurrentTab,onSelectPolicy}:{setCurrentTab:(ta
       </div>
     </section>
   );
-  const quick=(title:string,section:FooterLink['section'])=><button key={title} type="button" onClick={()=>go('policies',section)}
-      className="inline-flex min-h-10 items-center rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-xs font-bold text-emerald-900 hover:border-emerald-500 hover:bg-emerald-100">{title}</button>;
+  const quickPolicies = [
+    { label: 'Terms', section: 'terms', icon: FileText },
+    { label: 'Privacy', section: 'privacy', icon: ShieldCheck },
+    { label: 'Returns', section: 'returns', icon: RotateCcw },
+  ] as const;
   return <footer className="cnc-site-footer border-t border-slate-200 pb-24 pt-6 text-emerald-50 lg:pb-10 lg:pt-10">
     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-      {!isAdmin && !isApprovedSeller && <div className="mb-5 lg:mb-8"><NewsletterSignup onPrivacy={() => go('policies','privacy')} /></div>}
-      <div className="cnc-footer-identity flex flex-wrap items-center justify-between gap-3 py-4">
-        <div className="flex flex-wrap items-center gap-3"><div className="cnc-footer-logo"><BrandLogo className="h-7 w-auto" /></div><p className="text-sm text-emerald-50">Shop and sell across Nigeria.</p></div>
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] lg:items-stretch">
+        {!isAdmin && !isApprovedSeller && <NewsletterSignup onPrivacy={() => go('policies', 'privacy')} />}
+        <nav aria-label="Footer links and policies" className="cnc-footer-policy min-w-0 rounded-2xl border p-4 sm:p-6">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+            <div className="cnc-footer-logo"><BrandLogo className="h-7 w-auto" /></div>
+            <p className="text-sm text-emerald-50">Shop and sell across Nigeria.</p>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {quickPolicies.map(({ label, section, icon: Icon }) => (
+              <button key={section} type="button" onClick={() => go('policies', section)}
+                className="cnc-footer-policy-link inline-flex min-h-11 items-center gap-1.5 rounded-xl border px-3 text-xs font-bold">
+                <Icon size={15} aria-hidden="true" />{label}
+              </button>
+            ))}
+          </div>
+          <details className="cnc-footer-directory mt-3 rounded-xl border">
+            <summary className="cnc-footer-summary flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded-xl px-3 py-2 text-sm font-bold">
+              Browse all links &amp; policies <ChevronDown size={18} className="shrink-0" aria-hidden="true" />
+            </summary>
+            <div className="grid grid-cols-2 gap-x-2 gap-y-4 border-t px-2 py-4">{sections.map(renderGroup)}</div>
+          </details>
+        </nav>
       </div>
-      <div className="cnc-footer-mobile mt-2 space-y-3 lg:hidden">
-        <div className="flex flex-wrap gap-2">{quick('Terms','terms')}{quick('Privacy','privacy')}{quick('Returns','returns')}</div>
-        <details className="rounded-2xl border border-slate-200 bg-white shadow-sm"><summary className="cnc-footer-summary flex cursor-pointer items-center justify-between gap-3 rounded-2xl px-4 py-3 text-sm font-bold">Browse all links & policies <ChevronDown size={18} aria-hidden="true" /></summary><div className="grid grid-cols-2 gap-x-3 gap-y-6 border-t border-slate-100 px-3 py-5">{sections.map(renderGroup)}</div></details>
-      </div>
-      <div className="cnc-footer-desktop mt-8 hidden lg:grid grid-cols-2 gap-6 lg:grid-cols-4 lg:gap-8">{sections.map(renderGroup)}</div>
       <div className="cnc-footer-legal mt-4 flex flex-wrap gap-x-4 gap-y-2 border-t pt-4 text-xs sm:justify-between">
         <span>© 2026 Cash N Carry Nigeria. All rights reserved.</span><span className="font-semibold text-emerald-50">🇳🇬 Nigeria · NGN (₦)</span>
       </div>

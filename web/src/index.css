@@ -485,14 +485,20 @@ button:disabled { cursor: not-allowed; }
 .cnc-newsletter-intro .cnc-depth-satellite { width: .65rem; right: 5%; }
 .cnc-footer-logo { display: inline-flex; padding: .35rem .6rem; border-radius: .7rem; background: #eaf8ef; }
 .cnc-footer-legal { border-color: rgb(213 246 229 / .22); color: #beccca; }
-.cnc-site-footer .cnc-footer-mobile > details { background: #124737; border-color: #316555; box-shadow: 0 3px 0 #06271e; }
-.cnc-site-footer .cnc-footer-mobile > details > div { border-color: #316555; }
+.cnc-footer-policy {
+  background: linear-gradient(150deg, #144f3e, #0c382c);
+  border-color: #39705d;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .12), 0 5px 0 #06291f;
+}
+.cnc-footer-policy-link { background: #215f4b; border-color: #518a73; color: #f1fcf5; }
+.cnc-footer-policy-link:hover { background: #2f745c; }
+.cnc-footer-directory, .cnc-footer-directory > div { border-color: #39705d; }
 .cnc-footer-summary { color: #e4f8ed; list-style: none; }
 .cnc-footer-summary::-webkit-details-marker { display: none; }
-.cnc-footer-mobile details[open] .cnc-footer-summary svg { transform: rotate(180deg); }
+.cnc-footer-directory[open] .cnc-footer-summary svg { transform: rotate(180deg); }
 .cnc-site-footer :is(.cnc-footer-link, h3) { color: #d8efe4; }
 .cnc-site-footer .cnc-footer-link:hover { background: #1a5945; color: #fff; }
-.cnc-site-footer > div > :is(.cnc-footer-mobile, .cnc-footer-desktop) :focus-visible { outline-color: #ffbf75; }
+.cnc-footer-policy :focus-visible { outline: 2px solid #ffbf75; outline-offset: 2px; }
 
 @media (min-width: 1024px) {
   .cnc-home-rail { padding: 1.25rem 1.5rem; }
@@ -500,9 +506,16 @@ button:disabled { cursor: not-allowed; }
   .cnc-home-rail-title, .cnc-home-rail-label { max-width: 65%; }
 }
 @media (prefers-reduced-motion: no-preference) {
-  .cnc-hero-word { animation: cnc-hero-word-rise .64s cubic-bezier(.2,.75,.27,1) both; }
+  .cnc-hero-word { animation: cnc-hero-word-rise .72s cubic-bezier(.2,.75,.27,1) both; }
   .cnc-hero-headline-line .cnc-hero-word:first-child { animation-delay: .14s; }
-  .cnc-hero-headline-line .cnc-hero-word:last-child { animation-delay: .28s; }
+  .cnc-hero-headline-line .cnc-hero-accent {
+    animation: cnc-hero-word-rise .72s cubic-bezier(.2,.75,.27,1) .28s both,
+      cnc-hero-accent-glow .8s ease-out .85s;
+  }
+  .cnc-hero-description { animation: cnc-hero-word-rise .55s ease-out .37s both; }
+  @keyframes cnc-hero-accent-glow {
+    50% { text-shadow: 0 0 20px rgb(255 180 96 / .65); }
+  }
   @keyframes cnc-hero-word-rise {
     from { opacity: .15; transform: perspective(320px) translateY(.65em) rotateX(-28deg); }
     to { opacity: 1; transform: perspective(320px) translateY(0) rotateX(0); }
