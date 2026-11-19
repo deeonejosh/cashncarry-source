@@ -17,6 +17,7 @@ export default function AuthModal() {
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const formTitle = { login: 'Sign in to your account', register: 'Create your account', verify: 'Verify your account', reset: 'Recover your account' }[tab];
 
   if (!authModal.show) return null;
 
@@ -78,47 +79,39 @@ export default function AuthModal() {
 
   return (
     <div role="presentation" className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-slate-950/65 p-0 sm:p-4 backdrop-blur-sm">
-      <div role="dialog" aria-modal="true" aria-label="Cash N Carry account" className="relative flex w-full max-w-md max-h-[95dvh] flex-col overflow-hidden rounded-t-3xl sm:rounded-3xl border border-slate-200 bg-white shadow-2xl">
+      <div role="dialog" aria-modal="true" aria-labelledby="cnc-auth-title" className="cnc-auth-dialog relative flex w-full max-w-md max-h-[95dvh] flex-col overflow-hidden rounded-t-3xl sm:rounded-3xl border border-slate-200 bg-white shadow-2xl">
         <button
           type="button"
           onClick={closeAuthModal}
           aria-label="Close sign in dialog"
-          className="absolute right-4 top-4 rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+          className="absolute right-3 top-3 z-10 grid h-11 w-11 place-items-center rounded-full text-white hover:bg-white/15"
         >
           <X size={18} />
         </button>
 
-        <div className="bg-gradient-to-br from-[#084B26] via-[#0E6B38] to-[#093B22] px-6 py-6 text-white">
-          <div className="flex items-center gap-3">
-            <div className="rounded-2xl bg-white p-1.5 shadow">
-              <BrandLogo className="h-9 w-9" />
-            </div>
-            <div>
-              <h2 className="text-lg font-black tracking-tight">Cash N Carry Nigeria</h2>
-              <p className="text-xs text-emerald-100/90">
-                Sign in to your Cash N Carry account
-              </p>
-            </div>
+        <div className="cnc-auth-header px-4 py-4 text-white sm:px-6">
+          <div className="cnc-auth-logo mr-11 inline-flex max-w-[calc(100%-3rem)]">
+            <BrandLogo className="h-12 max-w-full w-auto sm:h-14" />
           </div>
           <div className="mt-4 grid grid-cols-3 gap-1 rounded-2xl bg-black/25 p-1 text-xs font-bold">
             <button
               type="button"
               onClick={() => { setTab('login'); setErrorMsg(null); }}
-              className={`rounded-xl py-2 transition ${tab === 'login' ? 'bg-white text-[#0E6B38] shadow' : 'text-emerald-100'}`}
+              className={`min-h-11 rounded-xl px-1 py-2 transition-colors ${tab === 'login' ? 'cnc-auth-tab-active' : 'text-emerald-100'}`}
             >
               Sign In
             </button>
             <button
               type="button"
               onClick={() => { setTab('register'); setErrorMsg(null); }}
-              className={`rounded-xl py-2 transition ${tab === 'register' || tab === 'verify' ? 'bg-white text-[#0E6B38] shadow' : 'text-emerald-100'}`}
+              className={`min-h-11 rounded-xl px-1 py-2 transition-colors ${tab === 'register' || tab === 'verify' ? 'cnc-auth-tab-active' : 'text-emerald-100'}`}
             >
               Create Account
             </button>
             <button
               type="button"
               onClick={() => { setTab('reset'); setErrorMsg(null); }}
-              className={`rounded-xl py-2 transition ${tab === 'reset' ? 'bg-white text-[#0E6B38] shadow' : 'text-emerald-100'}`}
+              className={`min-h-11 rounded-xl px-1 py-2 transition-colors ${tab === 'reset' ? 'cnc-auth-tab-active' : 'text-emerald-100'}`}
             >
               Recovery
             </button>
@@ -126,6 +119,7 @@ export default function AuthModal() {
         </div>
 
         <form onSubmit={handleSubmit} className="min-h-0 flex-1 overflow-y-auto space-y-4 p-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:p-6">
+          <h2 id="cnc-auth-title" className="cnc-auth-title rounded-xl px-3 py-2.5 text-lg font-extrabold text-emerald-950">{formTitle}</h2>
           {authModal.reason && !feedback && !errorMsg && (
             <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-xs font-semibold text-emerald-900">
               {authModal.reason}
@@ -133,29 +127,35 @@ export default function AuthModal() {
           )}
 
           {feedback && (
-            <div className="flex items-start gap-2 rounded-2xl border border-emerald-200 bg-[#EAF7EF] p-3 text-xs font-semibold text-[#084B26] break-all">
+            <div role="status" className="flex items-start gap-2 rounded-2xl border border-emerald-200 bg-[#EAF7EF] p-3 text-xs font-semibold text-[#084B26] break-all">
               <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-[#0E6B38]" />
               <span>{feedback}</span>
             </div>
           )}
           {errorMsg && (
-            <div className="rounded-2xl border border-rose-200 bg-rose-50 p-3 text-xs font-semibold text-rose-700">
+            <div role="alert" className="rounded-2xl border border-rose-200 bg-rose-50 p-3 text-xs font-semibold text-rose-700">
               {errorMsg}
             </div>
           )}
 
           {tab !== 'verify' && (
             <div>
-              <label className="text-xs font-bold text-slate-700">Email address</label>
+              <label htmlFor="cnc-auth-email" className="text-sm font-bold text-slate-800">Email address</label>
               <div className="relative mt-1">
                 <Mail size={15} className="absolute left-3.5 top-3.5 text-slate-400" />
                 <input
+                  id="cnc-auth-email"
                   type="email"
+                  autoComplete="email"
                   required
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setShowMfaInput(false);
+                    setTotpCode('');
+                  }}
                   placeholder="you@example.com"
-                  className="h-11 w-full rounded-xl border border-slate-200 pl-10 pr-3 text-sm outline-none focus:border-[#0E6B38]"
+                  className="cnc-auth-input h-11 w-full rounded-xl border pl-10 pr-3 text-base"
                 />
               </div>
             </div>
@@ -164,16 +164,17 @@ export default function AuthModal() {
           {tab === 'verify' && (
             <>
               <div>
-                <label className="text-xs font-bold text-slate-700">Verification Token</label>
+                <label htmlFor="cnc-auth-token" className="text-sm font-bold text-slate-800">Verification Token</label>
                 <div className="relative mt-1">
                   <KeyRound size={15} className="absolute left-3.5 top-3.5 text-slate-400" />
                   <input
+                    id="cnc-auth-token"
                     type="text"
                     required
                     value={token}
                     onChange={(e) => setToken(e.target.value)}
                     placeholder="Paste verification token"
-                    className="h-11 w-full rounded-xl border border-slate-200 pl-10 pr-3 text-xs font-mono outline-none focus:border-[#0E6B38]"
+                    className="cnc-auth-input h-11 w-full rounded-xl border pl-10 pr-3 text-base font-mono"
                   />
                 </div>
               </div>
@@ -185,54 +186,48 @@ export default function AuthModal() {
 
           {(tab === 'login' || tab === 'verify') && (
             <div>
-              <label className="text-xs font-bold text-slate-700">Password (min 12 characters)</label>
+              <label htmlFor="cnc-auth-password" className="text-sm font-bold text-slate-800">Password</label>
               <div className="relative mt-1">
                 <Lock size={15} className="absolute left-3.5 top-3.5 text-slate-400" />
                 <input
+                  id="cnc-auth-password"
                   type="password"
+                  autoComplete={tab === 'verify' ? 'new-password' : 'current-password'}
+                  aria-describedby="cnc-auth-password-length"
                   required
                   minLength={12}
                   maxLength={128}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Minimum 12 characters"
-                  className="h-11 w-full rounded-xl border border-slate-200 pl-10 pr-3 text-sm outline-none focus:border-[#0E6B38]"
+                  placeholder="Enter your password"
+                  className="cnc-auth-input h-11 w-full rounded-xl border pl-10 pr-3 text-base"
                 />
               </div>
+              <p id="cnc-auth-password-length" className="mt-1 text-xs text-slate-600">Minimum 12 characters</p>
             </div>
           )}
 
-          {tab === 'login' && (
+          {tab === 'login' && showMfaInput && (
             <div>
-              {!showMfaInput ? (
-                <button
-                  type="button"
-                  onClick={() => setShowMfaInput(true)}
-                  className="text-[11px] font-bold text-[#0E6B38] hover:underline"
-                >
-                  Admin sign-in? Enter 6-digit authenticator code
-                </button>
-              ) : (
-                <div>
-                  <label className="text-xs font-bold text-slate-700">6-digit Authenticator Code (Admins)</label>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    maxLength={6}
-                    value={totpCode}
-                    onChange={(e) => setTotpCode(e.target.value)}
-                    placeholder="000000"
-                    className="mt-1 h-11 w-full rounded-xl border border-slate-200 px-3 text-sm font-mono tracking-widest outline-none focus:border-[#0E6B38]"
-                  />
-                </div>
-              )}
+              <label htmlFor="cnc-auth-code" className="text-sm font-bold text-slate-800">Authenticator code</label>
+              <input
+                id="cnc-auth-code"
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                maxLength={6}
+                value={totpCode}
+                onChange={(e) => setTotpCode(e.target.value)}
+                placeholder="000000"
+                className="cnc-auth-input mt-1 h-11 w-full rounded-xl border px-3 text-base font-mono tracking-widest"
+              />
             </div>
           )}
 
           <button
             type="submit"
             disabled={loading}
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#0E6B38] text-sm font-black text-white shadow-md transition hover:bg-[#084B26] disabled:opacity-50"
+            className="cnc-auth-cta flex h-12 w-full items-center justify-center gap-2 rounded-xl px-4 text-sm font-black text-white disabled:opacity-50"
           >
             <span>
               {loading

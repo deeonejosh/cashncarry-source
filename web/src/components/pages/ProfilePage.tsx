@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useStore } from '../../context/StoreContext';
+import accountArtwork from '../../assets/account-welcome.webp';
 import { NIGERIAN_STATES } from '../../lib/design-tokens';
 import {
+  ArrowRight,
   MapPin,
   ShieldCheck,
   Mail,
@@ -124,19 +126,20 @@ export default function ProfilePage({ onNavigate, initialAddressSetup = false }:
 
   if (!currentUser.authenticated) {
     return (
-      <section className="mx-auto max-w-lg rounded-3xl border border-slate-200 bg-white px-6 py-12 text-center shadow-sm sm:px-10">
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 text-[#0E6B38]">
-          <LogIn size={24} aria-hidden="true" />
+      <section className="cnc-account-welcome mx-auto grid max-w-4xl items-center gap-4 rounded-3xl border p-5 sm:p-8 md:grid-cols-2">
+        <div className="min-w-0">
+          <h1 className="text-[clamp(1.85rem,5vw,3.25rem)] font-black leading-tight tracking-tight text-emerald-950">Your Account</h1>
+          <p className="mt-2 text-sm leading-relaxed text-slate-700 sm:text-base">Sign in to see orders, addresses and saved items.</p>
+          <button
+            type="button"
+            onClick={() => openAuthModal()}
+            className="cnc-auth-cta mt-5 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold text-white"
+          >
+            Sign In / Create Account <ArrowRight size={16} aria-hidden="true" />
+          </button>
         </div>
-        <h1 className="mt-5 text-2xl font-bold text-slate-900">Your Account</h1>
-        <p className="mt-2 text-sm text-slate-600">Sign in to see orders, addresses and saved items.</p>
-        <button
-          type="button"
-          onClick={() => openAuthModal('Sign in or create an account to continue.')}
-          className="mt-6 inline-flex min-h-[44px] items-center justify-center rounded-xl bg-[#0E6B38] px-6 py-3 text-sm font-semibold text-white hover:bg-[#084B26] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700"
-        >
-          Sign In / Create Account
-        </button>
+        <img src={accountArtwork} width={520} height={450} decoding="async" alt=""
+          className="cnc-account-art mx-auto h-auto w-full max-w-64 md:max-w-sm" />
       </section>
     );
   }
