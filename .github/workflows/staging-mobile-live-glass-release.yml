@@ -1,0 +1,90 @@
+name: Mobile glass livestream staging release (NO AUTO DEPLOY)
+on:
+  push:
+    branches: [feature/staging-mobile-livestream-glass-20261119]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  verify-and-package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Install dependencies
+        working-directory: web
+        run: npm ci --no-audit --no-fund
+      - name: Type-check, browser interaction QA, previous feature QA, app test and bundle
+        working-directory: web
+        run: |
+          npm run lint
+          node scripts/mobile-live-browser-test.mjs
+          node scripts/seller-bulk-xlsx-browser-test.mjs
+          npm test
+          npm run build
+          npm run bundle:worker
+      - name: Package compiled frontend for EXISTING KV mapped assets (staging only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p release-cnc-mobile-live
+          node --input-type=module <<'EOF'
+          import fs from 'node:fs';
+          const html = fs.readFileSync('web/dist/index.html','utf8');
+          const assets = fs.readdirSync('web/dist/assets');
+          const js = assets.find(name => /^index-[a-zA-Z0-9_-]+\.js$/.test(name));
+          const css = assets.find(name => /^index-[a-zA-Z0-9_-]+\.css$/.test(name));
+          if (!js || !css) throw new Error('Vite did not build the expected JS and CSS');
+          const code=fs.readFileSync('web/dist/assets/'+js,'utf8');
+          const style=fs.readFileSync('web/dist/assets/'+css,'utf8');
+          if (!code.includes('Mobile livestream shopping room') || !code.includes('Video broadcasting is not configured'))
+            throw new Error('Buyer/seller mobile livestream code missing from compiled app');
+          if (!code.includes('Bulk Upload Excel') || code.includes('Download 10 test gaming products'))
+            throw new Error('Existing seller Excel upload regression');
+          if (!style.includes('cnc-mobile-live-shell') || !style.includes('cnc-mobile-studio-preview'))
+            throw new Error('Mobile glass livestream and seller studio CSS missing');
+          let fixed = html.replaceAll('/assets/'+js,'/assets/index-OV904MHY.js?v=mobile-live-glass-v1-20261119')
+            .replaceAll('/assets/'+css,'/assets/index-DvqBtUTy.css?v=mobile-live-glass-v1-20261119');
+          fixed=fixed.replace('<meta name="viewport"', '<meta name="cnc-staging-release" content="mobile-live-glass-v1-20261119" />\n    <meta name="viewport"');
+          if (!fixed.includes('index-OV904MHY.js?v=mobile-live-glass-v1-20261119') ||
+              !fixed.includes('index-DvqBtUTy.css?v=mobile-live-glass-v1-20261119'))
+            throw new Error('Staging asset manifest mismatch');
+          fs.writeFileSync('release-cnc-mobile-live/index.html',fixed);
+          fs.copyFileSync('web/dist/assets/'+js,'release-cnc-mobile-live/index.js');
+          fs.copyFileSync('web/dist/assets/'+css,'release-cnc-mobile-live/index.css');
+          fs.writeFileSync('release-cnc-mobile-live/manifest.txt',
+            'source='+process.env.GITHUB_SHA+'\n'+
+            'private_staging_only=true\n'+
+            'worker=cashncarry-d1-staging-worker\n'+
+            'kv_html=cnc:marketplace-3d:7c1a29f:ui:index.html\n'+
+            'kv_js=cnc:marketplace-3d:7c1a29f:ui:assets:index-OV904MHY.js\n'+
+            'kv_css=cnc:marketplace-3d:7c1a29f:ui:assets:index-DvqBtUTy.css\n'+
+            'backend_worker_untouched=true\n'+
+            'database_untouched=true\n');
+          EOF
+          sha256sum release-cnc-mobile-live/index.* > release-cnc-mobile-live/hashes.txt
+          cat release-cnc-mobile-live/manifest.txt
+          cat release-cnc-mobile-live/hashes.txt
+      - name: Commit built release into isolated immutable artifact branch (NO DEPLOY)
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c artifact/staging-mobile-live-glass-v1-20261119
+          git add -f release-cnc-mobile-live/
+          git commit -m "build: verified mobile glass live UI for Cloudflare KV staging"
+          git push origin HEAD:refs/heads/artifact/staging-mobile-live-glass-v1-20261119
+      - name: Attach mobile QA screenshots and staged release assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: staging-mobile-glass-livestream
+          path: |
+            web/mobile-live-qa-artifacts/
+            release-cnc-mobile-live/
+          retention-days: 14
