@@ -471,6 +471,7 @@ function MainApp() {
             onProceedToCheckout={handleProceedToCheckout}
             onOpenCreate={() => setIsCreateModalOpen(true)}
             onExit={() => navigateTab(isApprovedSeller ? 'seller-dashboard' : 'shop')}
+            onSellerCentre={() => navigateTab('seller-dashboard')}
           />
         );
       case 'auctions':
