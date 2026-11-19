@@ -1,3 +1,4 @@
+import DepthArtwork from '../../ui/DepthArtwork';
 import React, { useState, useEffect, useCallback } from 'react';
 import { useStore } from '../../../context/StoreContext';
 import { api, ApiSellerApplication } from '../../../lib/api';
@@ -129,7 +130,8 @@ export default function AdminDashboardPage({ onNavigate }: AdminDashboardPagePro
 
   return (
     <div className="space-y-6 pb-12">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 text-slate-900">
+      <div className="cnc-depth-banner flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 text-slate-900">
+        <DepthArtwork icon={ShieldCheck} />
         <h1 className="text-xl font-bold sm:text-2xl">Admin Console</h1>
 
         <div className="flex flex-wrap items-center gap-2">

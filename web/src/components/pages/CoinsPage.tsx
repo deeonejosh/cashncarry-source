@@ -1,3 +1,4 @@
+import DepthArtwork from '../ui/DepthArtwork';
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../../context/StoreContext';
 import { Coins, Gift, History, ArrowUpRight, ArrowDownLeft, Lock } from 'lucide-react';
@@ -47,7 +48,8 @@ export default function CoinsPage() {
       )}
 
       {/* Wallet Banner */}
-      <div className="rounded-3xl bg-gradient-to-r from-amber-600 via-yellow-600 to-amber-700 p-8 text-white shadow-lg">
+      <div className="cnc-depth-banner rounded-3xl bg-gradient-to-r from-amber-600 via-yellow-600 to-amber-700 p-8 text-white shadow-lg">
+        <DepthArtwork icon={Coins} />
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-2">
             <span className="rounded-full bg-white/20 px-3 py-1 text-[10px] font-black uppercase text-amber-100">

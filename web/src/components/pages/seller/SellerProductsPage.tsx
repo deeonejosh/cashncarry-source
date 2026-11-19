@@ -1,9 +1,10 @@
+import DepthArtwork from '../../ui/DepthArtwork';
 import React, { useState } from 'react';
 import { useStore } from '../../../context/StoreContext';
 import { SellerProductItem } from '../../../types';
 import { categories } from '../../../lib/data';
 import ProductPhotoField from './ProductPhotoField';
-import { Plus, Edit, Archive, CheckCircle2, Clock, Send, EyeOff, X } from 'lucide-react';
+import { Package, Plus, Edit, Archive, CheckCircle2, Clock, Send, EyeOff, X } from 'lucide-react';
 
 export default function SellerProductsPage() {
   const {
@@ -120,7 +121,8 @@ export default function SellerProductsPage() {
 
   return (
     <div className="space-y-6 pb-16">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
+      <div className="cnc-depth-banner cnc-depth-light-banner flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
+        <DepthArtwork icon={Package} />
         <div>
           <h1 className="text-2xl font-black text-slate-900 sm:text-3xl">Products</h1>
           <p className="mt-1 text-xs text-slate-500">

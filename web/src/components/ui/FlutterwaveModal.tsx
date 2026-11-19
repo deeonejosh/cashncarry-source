@@ -39,7 +39,7 @@ export default function FlutterwaveModal({ order, isOpen, onClose }: Flutterwave
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
       <div
-        className="w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl border border-slate-100"
+        className="cnc-depth-dialog w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl border border-slate-100"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="bg-[#0c5c36] p-5 text-white flex items-center justify-between">

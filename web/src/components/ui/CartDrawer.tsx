@@ -1,3 +1,4 @@
+import DepthArtwork from './DepthArtwork';
 import React, { useEffect, useRef } from 'react';
 import { useStore } from '../../context/StoreContext';
 import { X, Trash2, Plus, Minus, ShoppingBag, ArrowRight, Package } from 'lucide-react';
@@ -36,7 +37,7 @@ export default function CartDrawer({ isOpen, onClose, onProceedToCheckout }: Car
         event.preventDefault();
         closeDrawer();
       }}
-      className="fixed inset-y-0 right-0 left-auto m-0 h-dvh max-h-none w-full max-w-md bg-white p-0 shadow-2xl backdrop:bg-slate-900/60 backdrop:backdrop-blur-sm"
+      className="cnc-depth-drawer fixed inset-y-0 right-0 left-auto m-0 h-dvh max-h-none w-full max-w-md bg-white p-0 shadow-2xl backdrop:bg-slate-900/60 backdrop:backdrop-blur-sm"
     >
       <div className="flex h-full w-full flex-col">
         <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
@@ -57,9 +58,7 @@ export default function CartDrawer({ isOpen, onClose, onProceedToCheckout }: Car
         <div className="flex-1 overflow-y-auto px-6 py-4 divide-y divide-slate-100">
           {cart.length === 0 ? (
             <div className="flex h-full flex-col items-center justify-center text-center">
-              <div className="flex h-20 w-20 items-center justify-center rounded-full bg-slate-100 text-slate-400">
-                <ShoppingBag size={36} />
-              </div>
+              <DepthArtwork icon={ShoppingBag} />
               <h3 className="mt-4 text-base font-black text-slate-800">Your cart is empty</h3>
               <p className="mt-1 max-w-xs text-xs text-slate-500">
                 Browse verified products and add items to your cart.

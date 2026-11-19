@@ -1,3 +1,4 @@
+import DepthArtwork from '../ui/DepthArtwork';
 import React from 'react';
 import { useStore } from '../../context/StoreContext';
 import { ProductItem } from '../../types';
@@ -15,7 +16,8 @@ export default function FlashDealsPage({ onSelectProduct, onProceedToCheckout }:
 
   return (
     <div className="space-y-8 pb-16">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-3xl bg-gradient-to-r from-orange-600 via-rose-600 to-amber-600 p-8 text-white shadow-xl">
+      <div className="cnc-depth-banner flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-3xl bg-gradient-to-r from-orange-600 via-rose-600 to-amber-600 p-8 text-white shadow-xl">
+        <DepthArtwork icon={Flame} />
         <div className="space-y-2">
           <div className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1 text-xs font-black backdrop-blur-md">
             <Flame size={14} className="text-yellow-300" />

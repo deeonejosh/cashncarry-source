@@ -1,5 +1,6 @@
+import DepthArtwork from '../ui/DepthArtwork';
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, CheckCircle2, MapPin, Play, Radio, ShieldCheck, Users } from 'lucide-react';
+import { Store, ArrowLeft, CheckCircle2, MapPin, Play, Radio, ShieldCheck, Users } from 'lucide-react';
 import { useStore } from '../../context/StoreContext';
 import { api } from '../../lib/api';
 import type { ProductItem, StorefrontSummary } from '../../types';
@@ -98,7 +99,8 @@ export default function StorefrontPage({
       </button>
 
       <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-        <div className="bg-gradient-to-r from-[#093B22] via-[#0E6B38] to-[#084B26] p-6 sm:p-8 text-white">
+        <div className="cnc-depth-banner bg-gradient-to-r from-[#093B22] via-[#0E6B38] to-[#084B26] p-6 sm:p-8 text-white">
+        <DepthArtwork icon={Store} />
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="space-y-2">
               <div className="flex flex-wrap items-center gap-2">

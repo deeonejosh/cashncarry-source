@@ -1,3 +1,4 @@
+import DepthArtwork from '../ui/DepthArtwork';
 import React from 'react';
 import { useStore } from '../../context/StoreContext';
 import { Bell, CheckCheck, Package, Radio, Coins, Store } from 'lucide-react';
@@ -22,7 +23,8 @@ export default function NotificationsPage() {
 
   return (
     <div className="space-y-6 pb-16">
-      <div className="flex items-center justify-between border-b border-slate-200 pb-4">
+      <div className="cnc-depth-banner cnc-depth-light-banner flex items-center justify-between border-b border-slate-200 pb-4">
+        <DepthArtwork icon={Bell} />
         <div>
           <h1 className="text-2xl font-black text-slate-900 sm:text-3xl">Notifications</h1>
           <p className="mt-1 text-xs text-slate-500">

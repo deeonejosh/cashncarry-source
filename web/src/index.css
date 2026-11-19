@@ -225,3 +225,211 @@ button:disabled { cursor: not-allowed; }
     transform: scale(1.04);
   }
 }
+
+/* Dimensional surfaces shared by the storefront and the back office. */
+.cnc-depth-theme {
+  --cnc-surface-shadow: inset 0 1px 0 #fff, 0 3px 0 #dce9e2, 0 8px 20px rgb(8 55 36 / .08);
+  --cnc-surface-highlight: linear-gradient(155deg, #fff 52%, #f0f7f3);
+  --cnc-emerald-material: radial-gradient(ellipse at 75% 0%, #18745b, transparent 67%), #082f24;
+  background-image: radial-gradient(ellipse at top, #e8f5ed, transparent 38rem);
+}
+
+.cnc-depth-nav {
+  background-image: linear-gradient(170deg, #fff, rgb(234 248 240 / .96));
+  box-shadow: inset 0 -2px 0 rgb(29 99 67 / .09), 0 6px 18px rgb(8 58 38 / .12);
+}
+
+.cnc-depth-nav-mobile {
+  box-shadow: inset 0 2px 0 #fff, 0 -5px 20px rgb(8 58 38 / .12);
+}
+
+.cnc-depth-brand img {
+  filter: drop-shadow(0 2px 0 rgb(6 56 33 / .17)) drop-shadow(0 5px 5px rgb(6 56 33 / .17));
+}
+
+.cnc-site-footer {
+  background-image: radial-gradient(ellipse at top right, #e1f3e9, transparent 72%);
+  box-shadow: inset 0 3px 0 #fff, inset 0 6px 0 rgb(26 88 63 / .06);
+}
+
+.cnc-depth-theme :where(.cnc-page, .cnc-site-footer)
+  :where(article, section, aside, details, div).bg-white.border.border-slate-200,
+.cnc-depth-theme .cnc-depth-card {
+  background-image: var(--cnc-surface-highlight);
+  box-shadow: var(--cnc-surface-shadow);
+}
+
+.cnc-depth-theme :where(.cnc-page, .cnc-depth-nav)
+  :where(button).border.bg-white[aria-expanded="true"] {
+  box-shadow: inset 0 2px 4px rgb(8 55 36 / .15);
+}
+
+.cnc-depth-theme :where(.cnc-page, .cnc-depth-nav, .cnc-site-footer, [role="dialog"], dialog)
+  :where(button):where(.bg-emerald-700, .bg-orange-600, .bg-\[\#0c5c36\], .bg-\[\#0E6B38\]) {
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .3), inset 0 -3px 0 rgb(0 0 0 / .2), 0 4px 7px rgb(4 37 23 / .16);
+}
+
+.cnc-depth-theme :where(.cnc-page, .cnc-depth-nav, .cnc-site-footer, [role="dialog"], dialog)
+  :where(button):where(.bg-emerald-700, .bg-orange-600, .bg-\[\#0c5c36\], .bg-\[\#0E6B38\]):active:enabled {
+  box-shadow: inset 0 2px 4px rgb(0 0 0 / .27);
+}
+
+.cnc-depth-theme :where(dialog, [role="dialog"], .cnc-depth-dialog) {
+  box-shadow: inset 0 2px 0 #fff, 0 28px 85px rgb(3 28 21 / .36);
+}
+
+.cnc-depth-drawer > div > div:first-child {
+  background-image: linear-gradient(125deg, #fff, #e8f6ee);
+}
+
+.cnc-depth-media {
+  box-shadow: 0 4px 0 #dfece4, 0 14px 28px rgb(8 55 36 / .15);
+}
+
+.cnc-video-stage {
+  background-image: radial-gradient(ellipse at center, #14392d, transparent 75%);
+}
+
+.cnc-depth-banner {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .31), 0 6px 0 rgb(8 55 36 / .12), 0 14px 26px rgb(8 55 36 / .17);
+}
+
+.cnc-depth-theme .cnc-dashboard .cnc-depth-banner {
+  background-image: linear-gradient(115deg, #fff 30%, #d8f0e4);
+}
+
+.cnc-depth-banner > :not(.cnc-depth-artwork) {
+  position: relative;
+  z-index: 1;
+}
+
+.cnc-depth-artwork {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  place-items: center;
+  width: 8rem;
+  height: 6rem;
+  margin-inline: auto;
+  perspective: 450px;
+  pointer-events: none;
+}
+
+.cnc-depth-banner > .cnc-depth-artwork {
+  position: absolute;
+  inset: 50% 6% auto auto;
+  width: clamp(7rem, 19vw, 15rem);
+  height: 105%;
+  transform: translateY(-50%);
+  opacity: .56;
+}
+
+.cnc-depth-banner.cnc-shop-header > .cnc-depth-artwork { right: 5%; }
+.cnc-depth-banner .cnc-depth-orbit { border-color: rgb(255 255 255 / .5); }
+.cnc-dashboard .cnc-depth-banner .cnc-depth-orbit { border-color: rgb(18 108 74 / .38); }
+
+.cnc-depth-orbit {
+  position: absolute;
+  inset: 12% 2%;
+  border: 1px solid rgb(31 149 104 / .35);
+  border-radius: 50%;
+  transform: rotate(-24deg);
+  box-shadow: 0 0 0 .45rem rgb(69 172 129 / .12), 0 0 0 .9rem rgb(69 172 129 / .08);
+}
+
+.cnc-depth-jewel {
+  position: relative;
+  display: block;
+  width: clamp(2.9rem, 8vw, 4.6rem);
+  aspect-ratio: 1;
+  transform: rotateX(23deg) rotateY(-31deg) rotateZ(-14deg);
+  transform-style: preserve-3d;
+}
+
+.cnc-depth-jewel-face,
+.cnc-depth-jewel-edge,
+.cnc-depth-jewel-base {
+  position: absolute;
+  inset: 0;
+  border: 1px solid rgb(255 255 255 / .46);
+  border-radius: .65rem;
+}
+
+.cnc-depth-jewel-face {
+  display: grid;
+  place-items: center;
+  background: linear-gradient(143deg, #9ff1cc, #0d8964 74%);
+  color: #052f22;
+  box-shadow: inset 0 2px 0 rgb(255 255 255 / .48), 0 14px 20px rgb(3 32 23 / .38);
+  transform: translateZ(.65rem);
+}
+
+.cnc-depth-jewel-face svg { width: 62%; height: 62%; filter: drop-shadow(0 1px 1px rgb(255 255 255 / .33)); }
+
+.cnc-depth-jewel-edge {
+  inset-inline-start: auto;
+  width: 1rem;
+  background: linear-gradient(90deg, #277b5d, #12543e);
+  transform: rotateY(90deg) translateX(-.15rem);
+  transform-origin: right;
+}
+
+.cnc-depth-jewel-base {
+  inset-block-start: auto;
+  height: 1rem;
+  background: linear-gradient(#155b46, #083b2c);
+  transform: rotateX(-90deg) translateY(.15rem);
+  transform-origin: bottom;
+}
+
+.cnc-depth-satellite {
+  position: absolute;
+  right: 12%;
+  bottom: 16%;
+  width: 1.55rem;
+  aspect-ratio: 1;
+  border-radius: 36%;
+  background: linear-gradient(140deg, #ffe3a0, #e88829);
+  box-shadow: inset 0 2px 0 #fff5c6, 0 3px 0 #99531b, 0 6px 10px rgb(51 25 6 / .33);
+  transform: rotate(19deg);
+}
+
+[data-cnc-route="coins"] .cnc-depth-jewel-face,
+[data-cnc-route="auctions"] .cnc-depth-jewel-face,
+[data-cnc-route="flash-deals"] .cnc-depth-jewel-face {
+  background: linear-gradient(143deg, #fff4b4, #eaa446 74%);
+  color: #572e0a;
+}
+
+@media (min-width: 640px) {
+  .cnc-depth-banner > .cnc-depth-artwork { right: 19%; opacity: .84; }
+  .cnc-depth-banner.cnc-shop-header > .cnc-depth-artwork { right: 8%; }
+  .cnc-depth-banner.cnc-shop-header form { max-width: min(38rem, 78%); }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .cnc-depth-jewel { animation: cnc-depth-settle .76s cubic-bezier(.16, 1, .3, 1) both; }
+
+  @keyframes cnc-depth-settle {
+    from { opacity: .15; transform: translateY(1rem) rotateX(45deg) rotateY(-60deg) rotateZ(-22deg) scale(.82); }
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) and (hover: hover) and (pointer: fine) {
+  .cnc-depth-card:hover { transform: perspective(800px) translateY(-3px) rotateX(2deg); }
+}
+
+.cnc-depth-light-banner {
+  padding: 1.25rem;
+  border-radius: 1.25rem;
+  background-image: linear-gradient(115deg, #fff 48%, #e2f4e9);
+}
+
+.cnc-depth-light-banner .cnc-depth-orbit { border-color: rgb(18 108 74 / .28); }
+
+.cnc-video-stage :where(button).border.rounded-full {
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .28), 0 4px 9px rgb(0 0 0 / .31);
+}

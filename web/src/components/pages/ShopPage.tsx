@@ -1,8 +1,9 @@
+import DepthArtwork from '../ui/DepthArtwork';
 import React, { useState, useMemo, useEffect } from 'react';
 import { useStore } from '../../context/StoreContext';
 import ProductCard from '../ui/ProductCard';
 import { ProductItem } from '../../types';
-import { Search, SlidersHorizontal, AlertCircle, RefreshCw } from 'lucide-react';
+import { ShoppingBag, Search, SlidersHorizontal, AlertCircle, RefreshCw } from 'lucide-react';
 import { categories } from '../../lib/data';
 
 interface ShopPageProps {
@@ -89,7 +90,8 @@ export default function ShopPage({
 
   return (
     <div className="space-y-5 pb-10">
-      <div className="cnc-shop-header relative isolate overflow-hidden rounded-3xl p-5 text-white sm:p-7">
+      <div className="cnc-depth-banner cnc-shop-header relative isolate overflow-hidden rounded-3xl p-5 text-white sm:p-7">
+        <DepthArtwork icon={ShoppingBag} />
         <h1 className="text-xl font-bold sm:text-2xl">Shop</h1>
 
         <div className="relative mt-4 max-w-2xl">

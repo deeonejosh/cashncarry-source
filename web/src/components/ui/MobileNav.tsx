@@ -12,7 +12,7 @@ export default function MobileNav({ currentTab, setCurrentTab, onOpenCreate }: M
   const { unreadMessagesCount } = useStore();
 
   return (
-    <nav aria-label="Primary mobile navigation" className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200/90 bg-white/95 backdrop-blur-xl pb-[max(0.65rem,env(safe-area-inset-bottom))] pt-2 lg:hidden shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
+    <nav aria-label="Primary mobile navigation" className="cnc-depth-nav cnc-depth-nav-mobile fixed inset-x-0 bottom-0 z-40 border-t border-slate-200/90 bg-white/95 backdrop-blur-xl pb-[max(0.65rem,env(safe-area-inset-bottom))] pt-2 lg:hidden shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
       <div className="mx-auto grid max-w-md grid-cols-5 items-center gap-1 px-2 text-[10px] font-bold text-slate-500">
         
         {/* TAB 1: For You (Video Shopping Feed) */}

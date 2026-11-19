@@ -3,7 +3,7 @@ import logo from '../../assets/cash-n-carry-logo.webp?inline';
 
 export default function BrandLogo({ className = 'h-8 sm:h-9 w-auto' }: { className?: string }) {
   return (
-    <div className="flex items-center gap-2">
+    <div className="cnc-depth-brand flex items-center gap-2">
       <img
         src={logo}
         alt="Cash N Carry Nigeria"

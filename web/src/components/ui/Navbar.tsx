@@ -79,7 +79,7 @@ export default function Navbar({
   const initials = (currentUser.name || 'G').trim().charAt(0).toUpperCase();
 
   return (
-    <header className={`sticky top-0 z-40 w-full border-b border-slate-200 bg-white/95 backdrop-blur-md ${currentTab === 'for-you' ? 'hidden' : ''}`}>
+    <header className={`cnc-depth-nav sticky top-0 z-40 w-full border-b border-slate-200 bg-white/95 backdrop-blur-md ${currentTab === 'for-you' ? 'hidden' : ''}`}>
       {/* Main Header */}
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 md:px-8">
         <button

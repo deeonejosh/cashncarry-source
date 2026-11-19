@@ -1,3 +1,4 @@
+import DepthArtwork from '../ui/DepthArtwork';
 import React, { useState, useRef, useEffect } from 'react';
 import { useStore } from '../../context/StoreContext';
 import { ShortVideo, ProductItem } from '../../types';
@@ -207,9 +208,7 @@ export default function ForYouVideoFeedPage({
             <ArrowLeft size={16} /> Back to Shop
           </button>
         )}
-        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/10 text-emerald-400">
-          <Video size={32} />
-        </div>
+        <DepthArtwork icon={Video} />
         <h2 className="text-xl font-black text-white">
           {feedMode === 'following'
             ? 'No videos yet.'

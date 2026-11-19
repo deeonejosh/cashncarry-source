@@ -1,3 +1,4 @@
+import DepthArtwork from '../ui/DepthArtwork';
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../../context/StoreContext';
 import { LiveComment, ProductItem } from '../../types';
@@ -140,9 +141,7 @@ export default function LiveShoppingPage({
   if (!activeRoom) {
     return (
       <div className="mx-auto max-w-xl rounded-3xl border border-dashed border-slate-200 bg-white p-12 text-center space-y-4 my-8">
-        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-rose-50 text-rose-600">
-          <Radio size={32} />
-        </div>
+        <DepthArtwork icon={Radio} />
         <h1 className="text-xl font-black text-slate-900">No live streams</h1>
         <p className="text-xs text-slate-500 max-w-sm mx-auto">
           Live seller streams will appear here.

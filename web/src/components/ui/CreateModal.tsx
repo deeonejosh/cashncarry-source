@@ -263,7 +263,7 @@ export default function CreateModal({ isOpen, onClose, onNavigate }: CreateModal
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">
-      <div className="relative w-full max-w-lg rounded-t-3xl sm:rounded-3xl bg-white shadow-2xl max-h-[92vh] flex flex-col overflow-hidden text-slate-900 border border-slate-100">
+      <div className="cnc-depth-dialog relative w-full max-w-lg rounded-t-3xl sm:rounded-3xl bg-white shadow-2xl max-h-[92vh] flex flex-col overflow-hidden text-slate-900 border border-slate-100">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
           <div className="flex items-center gap-2">

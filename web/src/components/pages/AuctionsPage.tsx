@@ -1,3 +1,4 @@
+import DepthArtwork from '../ui/DepthArtwork';
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../../context/StoreContext';
 import { AuctionItem } from '../../types';
@@ -89,7 +90,8 @@ export default function AuctionsPage({ onOpenStorefront, onOpenDeliverySettings 
       )}
 
       {/* Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-3xl bg-gradient-to-r from-amber-950 via-[#451a03] to-[#78350f] p-8 text-white shadow-lg">
+      <div className="cnc-depth-banner flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-3xl bg-gradient-to-r from-amber-950 via-[#451a03] to-[#78350f] p-8 text-white shadow-lg">
+        <DepthArtwork icon={Gavel} />
         <div className="space-y-2">
           <div className="inline-flex items-center gap-1.5 rounded-full bg-amber-400/20 px-3 py-1 text-xs font-black text-amber-300 border border-amber-400/30">
             <Gavel size={14} />

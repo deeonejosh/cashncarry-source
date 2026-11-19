@@ -34,7 +34,7 @@ export default function LiveAuctionCard({
   const isOwn = auction.sellerId === currentUserId;
 
   return (
-    <article className="group flex flex-col overflow-hidden rounded-[22px] border border-slate-200 bg-white shadow-sm transition hover:border-emerald-300 hover:shadow-lg">
+    <article className="cnc-depth-card group flex flex-col overflow-hidden rounded-[22px] border border-slate-200 bg-white shadow-sm transition hover:border-emerald-300 hover:shadow-lg">
       {/* Top Hero Image & Real-time Timer Pill */}
       <div className="relative h-44 w-full overflow-hidden bg-slate-100">
         <img

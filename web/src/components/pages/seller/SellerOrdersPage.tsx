@@ -1,6 +1,7 @@
+import DepthArtwork from '../../ui/DepthArtwork';
 import React, { useState } from 'react';
 import { useStore } from '../../../context/StoreContext';
-import { Truck, CheckCircle2 } from 'lucide-react';
+import { ShoppingBag, Truck, CheckCircle2 } from 'lucide-react';
 
 export default function SellerOrdersPage() {
   const { sellerOrders, updateSellerOrderStatus, showToast } = useStore();
@@ -31,7 +32,8 @@ export default function SellerOrdersPage() {
 
   return (
     <div className="space-y-6 pb-16">
-      <div className="border-b border-slate-200 pb-4">
+      <div className="cnc-depth-banner cnc-depth-light-banner border-b border-slate-200 pb-4">
+        <DepthArtwork icon={ShoppingBag} />
         <h1 className="text-2xl font-black text-slate-900 sm:text-3xl">Orders</h1>
         <p className="mt-1 text-xs text-slate-500">
           Manage fulfilment and tracking.

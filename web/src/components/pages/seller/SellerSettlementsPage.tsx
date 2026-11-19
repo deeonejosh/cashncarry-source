@@ -1,6 +1,7 @@
+import DepthArtwork from '../../ui/DepthArtwork';
 import React from 'react';
 import { useStore } from '../../../context/StoreContext';
-import { Building2, AlertTriangle, Lock } from 'lucide-react';
+import { Wallet, Building2, AlertTriangle, Lock } from 'lucide-react';
 
 export default function SellerSettlementsPage() {
   const { sellerOrders, platformConfig } = useStore();
@@ -28,7 +29,8 @@ export default function SellerSettlementsPage() {
         </div>
       )}
 
-      <div className="border-b border-slate-200 pb-4">
+      <div className="cnc-depth-banner cnc-depth-light-banner border-b border-slate-200 pb-4">
+        <DepthArtwork icon={Wallet} />
         <h1 className="text-2xl font-black text-slate-900 sm:text-3xl">Settlements</h1>
         <p className="mt-1 text-xs text-slate-500">
           View earnings and payout status.

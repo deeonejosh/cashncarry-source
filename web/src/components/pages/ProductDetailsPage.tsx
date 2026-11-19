@@ -153,7 +153,7 @@ export default function ProductDetailsPage({
 
       <div className="grid grid-cols-1 gap-10 lg:grid-cols-2">
         <div className="space-y-4">
-          <div className="relative aspect-square w-full overflow-hidden rounded-3xl bg-slate-100 border border-slate-200 shadow-md">
+          <div className="cnc-depth-media relative aspect-square w-full overflow-hidden rounded-3xl bg-slate-100 border border-slate-200 shadow-md">
             {product.image ? (
               <img src={product.image} alt={product.title} className="h-full w-full object-cover" />
             ) : (
