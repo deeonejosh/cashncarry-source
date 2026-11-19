@@ -1,0 +1,3 @@
+source=bb993a25744ffd207c93096ea6bba01f13e25edd
+scope=existing private staging KV UI assets only
+keys=cnc:v58:ui:index.html,cnc:v58:ui:assets:index-DjAQX0oY.js,cnc:v58:ui:assets:index-uvdl1fkh.css
