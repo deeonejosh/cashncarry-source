@@ -107,6 +107,10 @@ export default function SellerDashboardPage({ onNavigate, onOpenCreate }: Seller
           >
             <Plus size={15} /> Products
           </button>
+          <a href="/?tab=seller-products&amp;bulkImport=1"
+            className="flex min-h-10 items-center gap-1.5 rounded-xl border border-emerald-800 bg-emerald-50 px-4 py-2.5 text-xs font-bold text-emerald-950 hover:bg-emerald-100 transition">
+            <Package size={15} /> Bulk Upload Excel
+          </a>
           <button
             onClick={() => (onOpenCreate ? onOpenCreate() : onNavigate('live'))}
             className="flex min-h-10 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition"
