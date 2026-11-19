@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import '../pages/desktop-live-glass.css';
 import { useStore } from '../../context/StoreContext';
 import {publishCloudflareStream,stopCloudflareStream} from '../../lib/cloudflare-stream-webrtc';
 import {
@@ -299,7 +300,7 @@ export default function CreateModal({ isOpen, onClose, onNavigate }: CreateModal
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">
-      <div className={'cnc-depth-dialog relative w-full max-w-lg rounded-t-3xl sm:rounded-3xl bg-white shadow-2xl max-h-[92vh] flex flex-col overflow-hidden text-slate-900 border border-slate-100 ' + (isApprovedSeller && (activeView === 'go-live' || activeView === 'broadcasting') ? 'cnc-mobile-studio-shell' : '')}>
+      <div className={'cnc-depth-dialog relative w-full max-w-lg rounded-t-3xl sm:rounded-3xl bg-white shadow-2xl max-h-[92vh] flex flex-col overflow-hidden text-slate-900 border border-slate-100 ' + (isApprovedSeller && (activeView === 'go-live' || activeView === 'broadcasting') ? 'cnc-mobile-studio-shell cnc-desktop-studio-modal' : '')}>
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
           <div className="flex items-center gap-2">
@@ -344,7 +345,7 @@ export default function CreateModal({ isOpen, onClose, onNavigate }: CreateModal
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-5">
+        <div className="cnc-desktop-studio-body flex-1 overflow-y-auto p-6 space-y-5">
           {/* STATE 1: GUEST */}
           {isGuest && (
             <div className="space-y-5 py-2 text-center">
