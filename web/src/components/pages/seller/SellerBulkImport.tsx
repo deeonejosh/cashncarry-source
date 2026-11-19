@@ -117,7 +117,7 @@ export default function SellerBulkImport({ sellerName, existingProducts, onClose
           <div className="grid gap-3 sm:grid-cols-2">
             <button type="button" onClick={downloadTemplate}
               className="flex items-center justify-center gap-2 rounded-xl border border-emerald-700 px-4 py-3 text-sm font-bold text-emerald-800 hover:bg-emerald-50">
-              <Download size={17} /> Download Excel-compatible template
+              <Download size={17} /> Download CSV template (opens in Excel)
             </button>
             <label className={'flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-[#0c5c36] px-4 py-3 text-sm font-bold text-white hover:bg-emerald-900 ' +
               (importing || reading ? 'pointer-events-none opacity-50' : '')}>
@@ -162,7 +162,7 @@ export default function SellerBulkImport({ sellerName, existingProducts, onClose
                     {rows.map(row => (
                       <tr key={row.id}>
                         <td className="p-3 font-mono">{row.line}</td>
-                        <td className="max-w-52 truncate p-3 font-semibold">{row.product?.name || 'Invalid row'}</td>
+                        <td className="max-w-52 truncate p-3 font-semibold">{row.titlePreview}</td>
                         <td className="p-3">{row.product ? '₦' + row.product.priceNaira.toLocaleString('en-NG') : '—'}</td>
                         <td className="p-3">{row.product?.stock ?? '—'}</td>
                         <td className="p-3 capitalize">{row.product?.category || '—'}</td>
@@ -184,7 +184,7 @@ export default function SellerBulkImport({ sellerName, existingProducts, onClose
           <p className="text-xs text-slate-500">Only approved sellers can import. Invalid rows are never saved.</p>
           <button type="button" onClick={() => void importDrafts()} disabled={importing || reading || good.length === 0}
             className="rounded-xl bg-[#0c5c36] px-5 py-3 text-xs font-black text-white hover:bg-emerald-900 disabled:cursor-not-allowed disabled:opacity-50">
-            {importing ? 'Importing drafts...' : 'Import ' + good.length + ' valid products as drafts'}
+            {importing ? 'Importing drafts... ' + completed + ' completed' : 'Import ' + good.length + ' valid products as drafts'}
           </button>
         </footer>
       </div>
