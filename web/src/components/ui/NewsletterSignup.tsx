@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { ArrowRight, CheckCircle2, Mail, Loader2 } from 'lucide-react';
-import DepthArtwork from './DepthArtwork';
+import { ArrowRight, CheckCircle2, Loader2 } from 'lucide-react';
+import newsletterEnvelope from '../../assets/newsletter-envelope.webp';
 
 type NewsletterSignupProps = { onPrivacy: () => void };
 
@@ -38,44 +38,42 @@ export default function NewsletterSignup({ onPrivacy }: NewsletterSignupProps) {
   };
 
   return (
-    <section aria-labelledby="cnc-newsletter-heading" className="cnc-newsletter rounded-2xl border border-emerald-100 bg-white p-4 sm:p-6 lg:p-7 shadow-sm">
-      <div className="flex flex-col gap-4">
-        <div className="cnc-newsletter-intro">
-          <DepthArtwork icon={Mail} />
-          <div>
-            <h2 id="cnc-newsletter-heading" className="text-xl font-extrabold leading-tight tracking-tight text-emerald-950 sm:text-2xl">The Cash N Carry Edit</h2>
-            <p className="mt-1 text-sm leading-5 text-slate-700">Get deals, new drops and live shopping updates by email.</p>
-          </div>
+    <section aria-labelledby="cnc-newsletter-heading" className="cnc-newsletter min-w-0 rounded-2xl border">
+      <div className="cnc-newsletter-layout">
+        <div className="cnc-newsletter-intro min-w-0">
+          <h2 id="cnc-newsletter-heading" className="text-xl font-extrabold leading-tight tracking-tight sm:text-2xl">Subscribe to our newsletter</h2>
+          <p className="mt-1 text-sm leading-5 text-emerald-50">Get deals, new drops and live shopping updates by email.</p>
         </div>
-        <form onSubmit={subscribe} className="w-full space-y-3">
-          <div className="flex flex-col gap-2 sm:flex-row">
+        <img className="cnc-newsletter-art" src={newsletterEnvelope} width={448} height={448} loading="lazy" decoding="async" alt="" />
+        <form onSubmit={subscribe} className="cnc-newsletter-form min-w-0 space-y-3">
+          <div className="cnc-newsletter-fields">
             <label htmlFor="cnc-newsletter-email" className="sr-only">Email address</label>
             <input id="cnc-newsletter-email" type="email" autoComplete="email" inputMode="email" required maxLength={254}
               value={email} onChange={e => setEmail(e.target.value)} placeholder="Email address"
-              className="min-h-12 min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-4 text-sm text-slate-900 placeholder:text-slate-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-700" />
+              className="cnc-newsletter-email min-h-12 min-w-0 rounded-xl border border-emerald-100 bg-white px-4 text-sm text-slate-900 placeholder:text-slate-500" />
             <button type="submit" disabled={state === 'sending'}
-              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#075a37] px-6 text-sm font-bold text-white hover:bg-[#06492e] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 disabled:opacity-60">
-              {state === 'sending' ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : <ArrowRight size={16} aria-hidden="true" />}
+              className="cnc-newsletter-submit inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-4 text-sm font-extrabold disabled:opacity-60">
               {state === 'sending' ? 'Sending…' : 'Subscribe'}
+              {state === 'sending' ? <Loader2 size={16} className="motion-safe:animate-spin" aria-hidden="true" /> : <ArrowRight size={16} aria-hidden="true" />}
             </button>
           </div>
-          <div className="flex items-start gap-2 text-xs leading-5 text-slate-700">
+          <div className="flex items-start gap-2 text-xs leading-5 text-emerald-50">
             <input id="cnc-newsletter-consent" type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)}
-              className="mt-0.5 h-4 w-4 shrink-0 accent-emerald-800" required />
+              className="mt-0.5 h-4 w-4 shrink-0 accent-orange-300" required />
             <div>
               <label htmlFor="cnc-newsletter-consent" className="cursor-pointer">I agree to receive Cash N Carry marketing emails. I can unsubscribe at any time.</label>{' '}
-              <button type="button" onClick={onPrivacy} className="font-semibold text-emerald-900 underline underline-offset-2">Privacy policy</button>
+              <button type="button" onClick={onPrivacy} className="font-bold text-white underline underline-offset-2">Privacy policy</button>
             </div>
           </div>
-          <details className="text-xs text-slate-600">
-            <summary className="cursor-pointer font-semibold text-emerald-900">Choose topics (optional)</summary>
+          <details className="text-xs text-emerald-50">
+            <summary className="cursor-pointer py-1 font-bold text-white">Choose topics (optional)</summary>
             <div className="mt-2 flex flex-wrap gap-3">
               {[['deals','Offers'],['livestreams','Live shopping'],['news','Marketplace news']].map(([id,label])=>
-                <label key={id} className="inline-flex items-center gap-1.5"><input type="checkbox" checked={topics.includes(id)} onChange={() => toggleTopic(id)} className="accent-emerald-800" />{label}</label>)}
+                <label key={id} className="inline-flex items-center gap-1.5"><input type="checkbox" checked={topics.includes(id)} onChange={() => toggleTopic(id)} className="accent-orange-300" />{label}</label>)}
             </div>
           </details>
           {message && <p role={state === 'error' ? 'alert' : 'status'} aria-live="polite"
-            className={state === 'error' ? 'flex items-center gap-2 text-xs text-rose-700' : 'flex items-center gap-2 text-xs text-emerald-800'}>
+            className={state === 'error' ? 'flex items-center gap-2 text-xs text-rose-200' : 'flex items-center gap-2 text-xs text-emerald-100'}>
             {state === 'success' && <CheckCircle2 size={15} aria-hidden="true" />}{message}</p>}
         </form>
       </div>
