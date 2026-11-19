@@ -3,12 +3,14 @@ import { useStore } from '../../../context/StoreContext';
 import { SellerProductItem } from '../../../types';
 import { categories } from '../../../lib/data';
 import ProductPhotoField from './ProductPhotoField';
-import { Plus, Edit, Archive, CheckCircle2, Clock, Send, EyeOff, X } from 'lucide-react';
+import SellerBulkImport from './SellerBulkImport';
+import { Plus, Edit, Archive, CheckCircle2, Clock, Send, EyeOff, X, FileSpreadsheet } from 'lucide-react';
 
 export default function SellerProductsPage() {
   const {
     sellerStore,
     sellerProducts,
+    refreshSellerData,
     createSellerProduct,
     updateSellerProduct,
     submitSellerProductForReview,
@@ -18,6 +20,7 @@ export default function SellerProductsPage() {
   } = useStore();
 
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showBulkImport, setShowBulkImport] = useState(false);
   const [editingProduct, setEditingProduct] = useState<SellerProductItem | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -128,13 +131,23 @@ export default function SellerProductsPage() {
           </p>
         </div>
 
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="flex items-center gap-1.5 rounded-2xl bg-[#0c5c36] px-5 py-2.5 text-xs font-black text-white hover:bg-emerald-900 shadow transition"
-        >
-          <Plus size={16} />
-          <span>Add New Product</span>
-        </button>
+<div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowBulkImport(true)}
+            className="flex items-center gap-1.5 rounded-2xl border border-[#0c5c36] bg-white px-5 py-2.5 text-xs font-black text-[#0c5c36] hover:bg-emerald-50 shadow-sm transition"
+          >
+            <FileSpreadsheet size={16} />
+            <span>Import Excel / CSV</span>
+          </button>
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="flex items-center gap-1.5 rounded-2xl bg-[#0c5c36] px-5 py-2.5 text-xs font-black text-white hover:bg-emerald-900 shadow transition"
+          >
+            <Plus size={16} />
+            <span>Add New Product</span>
+          </button>
+        </div>
       </div>
 
       <div className="overflow-x-auto rounded-3xl border border-slate-200 bg-white shadow-sm">
@@ -249,6 +262,16 @@ export default function SellerProductsPage() {
           </tbody>
         </table>
       </div>
+
+      {showBulkImport && (
+        <SellerBulkImport
+          sellerName={sellerStore?.name || 'Verified Seller'}
+          existingProducts={sellerProducts}
+          onClose={() => setShowBulkImport(false)}
+          onImported={refreshSellerData}
+          showToast={showToast}
+        />
+      )}
 
       {/* Add Product Modal */}
       {showAddModal && (
