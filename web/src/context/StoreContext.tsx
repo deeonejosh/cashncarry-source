@@ -1406,7 +1406,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   // Live Rooms
-  const createLiveRoom = async (input: { title: string; category: string; pinnedProductId?: string }) => {
+  const createLiveRoom = async (input: { title: string; category: string; pinnedProductId?: string; broadcastConnected?: boolean }) => {
     if (!isApprovedSeller) {
       return { ok: false, error: 'Only approved sellers can start a livestream.' };
     }
