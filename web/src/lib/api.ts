@@ -767,7 +767,7 @@ class ApiClient {
     );
   }
 
-  async createLiveRoom(input: { title: string; category: string; pinnedProductId?: string }) {
+  async createLiveRoom(input: { title: string; category: string; pinnedProductId?: string; broadcastConnected?: boolean }) {
     return this.requestJson<{ success?: boolean; roomId?: string }>('/api/v1/live', {
       method: 'POST',
       body: JSON.stringify(input),
