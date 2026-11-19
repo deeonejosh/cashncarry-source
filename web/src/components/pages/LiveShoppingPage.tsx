@@ -52,7 +52,7 @@ export default function LiveShoppingPage({
   } = useStore();
 
   const activeRooms = liveRooms.filter((r) => r.status === 'live');
-  const [selectedRoomId, setSelectedRoomId] = useState<string>('');
+  const [selectedRoomId, setSelectedRoomId] = useState<string>(() => new URLSearchParams(window.location.search).get('room') || '');
   const activeRoom = activeRooms.find((r) => r.id === selectedRoomId) || activeRooms[0] || null;
 
   const [comments, setComments] = useState<LiveComment[]>([]);
