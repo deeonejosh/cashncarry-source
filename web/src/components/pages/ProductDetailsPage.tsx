@@ -404,8 +404,9 @@ export default function ProductDetailsPage({
               <form onSubmit={handleSubmitReview} className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-3">
                 <div className="text-xs font-black text-slate-900">Write a Review</div>
                 <div className="flex items-center gap-2">
-                  <label className="text-xs font-semibold text-slate-600">Rating:</label>
+                  <label htmlFor="product-review-rating" className="text-xs font-semibold text-slate-600">Rating:</label>
                   <select
+                    id="product-review-rating"
                     value={reviewRating}
                     onChange={(e) => setReviewRating(Number(e.target.value))}
                     className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-bold"
