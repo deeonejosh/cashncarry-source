@@ -1,0 +1,34 @@
+name: Staging seller bulk Excel import QA
+on:
+  push:
+    branches: [feature/staging-seller-excel-bulk-20261119]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Install locked dependencies
+        run: cd web && npm ci --no-audit --no-fund
+      - name: Validate TypeScript, CSV parser, existing tests, and frontend build
+        run: |
+          cd web
+          npm run lint
+          npx tsx scripts/seller-bulk-import-test.ts
+          npm test
+          npm run build
+          npm run bundle:worker
+      - name: Verify staging-only scope
+        run: |
+          test -f web/dist/index.html
+          grep -q 'cashncarry-d1-staging-worker' web/wrangler.jsonc
+          ! grep -q '"PAYMENTS_ENABLED": "true"' web/wrangler.jsonc
+          echo "No deployment, migrations, DNS or live-payment changes performed."
