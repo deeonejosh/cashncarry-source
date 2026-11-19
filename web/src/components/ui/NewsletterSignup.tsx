@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ArrowRight, CheckCircle2, Mail, Loader2 } from 'lucide-react';
+import DepthArtwork from './DepthArtwork';
 
 type NewsletterSignupProps = { onPrivacy: () => void };
 
@@ -39,10 +40,12 @@ export default function NewsletterSignup({ onPrivacy }: NewsletterSignupProps) {
   return (
     <section aria-labelledby="cnc-newsletter-heading" className="cnc-newsletter rounded-2xl border border-emerald-100 bg-white p-4 sm:p-6 lg:p-7 shadow-sm">
       <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-        <div className="max-w-md">
-          <span className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-emerald-800"><Mail size={16} aria-hidden="true" /> The Cash N Carry edit</span>
-          <h2 id="cnc-newsletter-heading" className="mt-1 text-xl font-extrabold tracking-tight text-slate-900 sm:text-2xl">Deals. Drops. Live shopping.</h2>
-          <p className="mt-1 text-sm leading-6 text-slate-600">The latest from Cash N Carry, straight to your inbox.</p>
+        <div className="cnc-newsletter-intro">
+          <DepthArtwork icon={Mail} />
+          <div>
+            <h2 id="cnc-newsletter-heading" className="text-lg font-extrabold leading-tight tracking-tight text-emerald-950 sm:text-2xl">Deals. Drops. Live shopping.</h2>
+            <p className="mt-1 text-sm leading-5 text-slate-700">Get Cash N Carry updates by email.</p>
+          </div>
         </div>
         <form onSubmit={subscribe} className="w-full max-w-xl space-y-3">
           <div className="flex flex-col gap-2 sm:flex-row">

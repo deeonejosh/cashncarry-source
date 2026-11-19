@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useStore } from '../../context/StoreContext';
 import ProductCard from '../ui/ProductCard';
+import DepthArtwork from '../ui/DepthArtwork';
 import LiveAuctionCard from '../ui/LiveAuctionCard';
 import { ProductItem } from '../../types';
 import { categories } from '../../lib/data';
@@ -84,13 +85,11 @@ export default function HomePage({
     { id: 'beauty', label: 'Beauty' },
   ];
 
-  const showMarketplaceLinks = publishedProducts.length > 0 || activeLiveRooms.length > 0;
-
   return (
     <div className="space-y-7 pb-10">
       {/* HERO SECTION */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 items-stretch">
-        <section className={`cnc-marketplace-hero relative isolate overflow-hidden rounded-3xl p-5 text-white sm:p-8 ${showMarketplaceLinks ? 'lg:col-span-8' : 'lg:col-span-12'}`}>
+        <section className="cnc-marketplace-hero relative isolate overflow-hidden rounded-3xl p-5 text-white sm:p-8 lg:col-span-8">
           <div className="cnc-hero-scene" aria-hidden="true">
             <div className="cnc-hero-halo" />
             <div className="cnc-hero-block cnc-hero-block--parcel">
@@ -111,10 +110,12 @@ export default function HomePage({
           </div>
           <div className="cnc-hero-copy relative z-10 space-y-4">
 
-            <h1 className="text-3xl font-black tracking-tight sm:text-5xl sm:leading-[1.12]">
-              Watch live. <br />
-              <span className="text-white">Discover. </span>
-              <span className="text-orange-400">Shop.</span>
+            <h1 className="cnc-hero-headline text-[clamp(2rem,6vw,3.25rem)] font-black leading-[1.08] tracking-tight">
+              <span className="cnc-hero-word">Watch live.</span>{' '}
+              <span className="cnc-hero-headline-line">
+                <span className="cnc-hero-word">Discover.</span>{' '}
+                <span className="cnc-hero-word text-orange-300">Shop.</span>
+              </span>
             </h1>
 
             <p className="text-sm sm:text-base leading-relaxed text-emerald-50 max-w-sm">
@@ -159,46 +160,20 @@ export default function HomePage({
           </div>
         </section>
 
-        {showMarketplaceLinks && <div className="lg:col-span-4 flex flex-col gap-4">
-          <button
-            type="button"
-            onClick={() => setCurrentTab('flash-deals')}
-            className="flex-1 cursor-pointer rounded-3xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 p-6 text-white shadow-lg transition hover:scale-[1.01] flex flex-col justify-between relative overflow-hidden group"
-          >
-            <div className="space-y-1 relative z-10 max-w-[75%]">
-              <h3 className="text-xl font-black tracking-tight">Marketplace Deals</h3>
-              <p className="text-xs text-amber-100">Discounted items from verified Nigerian sellers</p>
-              <div className="pt-2 flex items-center gap-1.5 text-xs font-black text-white group-hover:underline">
-                <span>Browse Deals</span>
-                <ArrowRight size={14} />
-              </div>
-            </div>
-            <div className="absolute right-3 bottom-2 text-white/30">
-              <Zap size={72} className="fill-white/30 stroke-none" />
-            </div>
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:col-span-4 lg:grid-cols-1 lg:grid-rows-2">
+          <button type="button" onClick={() => setCurrentTab('flash-deals')}
+            className="cnc-home-rail cnc-home-rail-deals group">
+            <DepthArtwork icon={Zap} />
+            <span className="cnc-home-rail-title">Flash Deals</span>
+            <span className="cnc-home-rail-label">Browse deals <ArrowRight size={15} aria-hidden="true" /></span>
           </button>
-
-          <button
-            type="button"
-            onClick={() => setCurrentTab('for-you')}
-            className="flex-1 cursor-pointer rounded-3xl border border-slate-200 bg-white p-6 shadow-md transition hover:border-[#0c5c36] flex flex-col justify-between relative overflow-hidden group"
-          >
-            <div className="space-y-1 relative z-10">
-              <span className="text-[10px] font-black uppercase tracking-wider text-emerald-800">Short Video Feed</span>
-              <h3 className="text-lg font-black text-slate-900 tracking-tight leading-snug">
-                For You Video Feed
-              </h3>
-              <p className="text-xs text-slate-500">Watch real product clips from verified merchants.</p>
-              <div className="pt-2 flex items-center gap-1.5 text-xs font-black text-[#0c5c36] group-hover:underline">
-                <span>Watch Clips</span>
-                <ArrowRight size={14} />
-              </div>
-            </div>
-            <div className="absolute right-5 bottom-5 text-emerald-100">
-              <Video size={48} />
-            </div>
+          <button type="button" onClick={() => setCurrentTab('for-you')}
+            className="cnc-home-rail cnc-home-rail-videos group">
+            <DepthArtwork icon={Video} />
+            <span className="cnc-home-rail-title">For You</span>
+            <span className="cnc-home-rail-label">Watch clips <ArrowRight size={15} aria-hidden="true" /></span>
           </button>
-        </div>}
+        </div>
       </div>
 
       {/* SHOP BY CATEGORY */}

@@ -1,4 +1,5 @@
 import React from 'react';
+import { ChevronDown } from 'lucide-react';
 import BrandLogo from './BrandLogo';
 import NewsletterSignup from './NewsletterSignup';
 import { useStore } from '../../context/StoreContext';
@@ -47,19 +48,19 @@ export default function Footer({setCurrentTab,onSelectPolicy}:{setCurrentTab:(ta
   );
   const quick=(title:string,section:FooterLink['section'])=><button key={title} type="button" onClick={()=>go('policies',section)}
       className="inline-flex min-h-10 items-center rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-xs font-bold text-emerald-900 hover:border-emerald-500 hover:bg-emerald-100">{title}</button>;
-  return <footer className="cnc-site-footer border-t border-slate-200 bg-[#f8faf9] pb-28 pt-8 text-slate-700 lg:pb-12 lg:pt-12">
+  return <footer className="cnc-site-footer border-t border-slate-200 pb-24 pt-6 text-emerald-50 lg:pb-10 lg:pt-10">
     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-      {!isAdmin && !isApprovedSeller && <div className="mb-8"><NewsletterSignup onPrivacy={() => go('policies','privacy')} /></div>}
-      <div className="flex flex-col gap-5 border-b border-slate-200 pb-6 lg:flex-row lg:items-center lg:justify-between">
-        <div className="max-w-md space-y-2"><BrandLogo/><p className="text-sm leading-6 text-slate-500">Shop and sell across Nigeria.</p></div>
+      {!isAdmin && !isApprovedSeller && <div className="mb-5 lg:mb-8"><NewsletterSignup onPrivacy={() => go('policies','privacy')} /></div>}
+      <div className="cnc-footer-identity flex flex-wrap items-center justify-between gap-3 py-4">
+        <div className="flex flex-wrap items-center gap-3"><div className="cnc-footer-logo"><BrandLogo className="h-7 w-auto" /></div><p className="text-sm text-emerald-50">Shop and sell across Nigeria.</p></div>
       </div>
-      <div className="cnc-footer-mobile mt-6 space-y-4 lg:hidden">
+      <div className="cnc-footer-mobile mt-2 space-y-3 lg:hidden">
         <div className="flex flex-wrap gap-2">{quick('Terms','terms')}{quick('Privacy','privacy')}{quick('Returns','returns')}</div>
-        <details className="rounded-2xl border border-slate-200 bg-white shadow-sm"><summary className="cursor-pointer select-none rounded-2xl px-5 py-4 text-sm font-extrabold text-emerald-900">Browse all links & policies</summary><div className="grid grid-cols-2 gap-x-3 gap-y-6 border-t border-slate-100 px-3 py-5">{sections.map(renderGroup)}</div></details>
+        <details className="rounded-2xl border border-slate-200 bg-white shadow-sm"><summary className="cnc-footer-summary flex cursor-pointer items-center justify-between gap-3 rounded-2xl px-4 py-3 text-sm font-bold">Browse all links & policies <ChevronDown size={18} aria-hidden="true" /></summary><div className="grid grid-cols-2 gap-x-3 gap-y-6 border-t border-slate-100 px-3 py-5">{sections.map(renderGroup)}</div></details>
       </div>
       <div className="cnc-footer-desktop mt-8 hidden lg:grid grid-cols-2 gap-6 lg:grid-cols-4 lg:gap-8">{sections.map(renderGroup)}</div>
-      <div className="mt-8 flex flex-col gap-2 border-t border-slate-200 pt-5 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between">
-        <span>© 2026 Cash N Carry Nigeria. All rights reserved.</span><span className="font-semibold text-slate-700">🇳🇬 Nigeria · NGN (₦)</span>
+      <div className="cnc-footer-legal mt-4 flex flex-wrap gap-x-4 gap-y-2 border-t pt-4 text-xs sm:justify-between">
+        <span>© 2026 Cash N Carry Nigeria. All rights reserved.</span><span className="font-semibold text-emerald-50">🇳🇬 Nigeria · NGN (₦)</span>
       </div>
     </div>
   </footer>;

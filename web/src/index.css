@@ -433,3 +433,82 @@ button:disabled { cursor: not-allowed; }
 .cnc-video-stage :where(button).border.rounded-full {
   box-shadow: inset 0 1px 0 rgb(255 255 255 / .28), 0 4px 9px rgb(0 0 0 / .31);
 }
+
+.cnc-hero-headline { text-shadow: 0 3px 0 rgb(0 20 12 / .28), 0 8px 20px rgb(0 20 12 / .2); }
+.cnc-hero-headline-line { display: block; }
+.cnc-hero-word { display: inline-block; }
+
+.cnc-home-rail {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  align-content: end;
+  min-height: 8.75rem;
+  overflow: hidden;
+  padding: 1rem;
+  border: 1px solid rgb(255 255 255 / .18);
+  border-radius: 1.25rem;
+  color: white;
+  text-align: left;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .3), 0 4px 0 rgb(8 55 36 / .17), 0 8px 18px rgb(8 55 36 / .14);
+}
+
+.cnc-home-rail-deals { background: radial-gradient(ellipse at top right, #ac4b0e, #542708 76%); }
+.cnc-home-rail-videos { background: radial-gradient(ellipse at top right, #257459, #092d24 76%); }
+.cnc-home-rail-title { font-size: clamp(1rem, 3vw, 1.4rem); font-weight: 800; }
+.cnc-home-rail-label { display: inline-flex; align-items: center; gap: .4rem; margin-top: .25rem; font-size: .8125rem; }
+.cnc-home-rail:focus-visible { outline-color: #ad4508; }
+.cnc-home-rail .cnc-depth-artwork {
+  position: absolute;
+  z-index: -1;
+  inset: -.9rem -.8rem auto auto;
+  width: 6.75rem;
+  height: 6.25rem;
+  opacity: .78;
+  transform: scale(.85);
+}
+.cnc-home-rail-deals .cnc-depth-jewel-face { background: linear-gradient(142deg, #ffe8ae, #ec8b3c); color: #542708; }
+
+.cnc-depth-theme .cnc-site-footer {
+  background: radial-gradient(ellipse at 80% 0, #115741, transparent 72%), #082c23;
+  border-color: #27604e;
+  box-shadow: inset 0 2px 0 rgb(255 255 255 / .12);
+}
+.cnc-site-footer .cnc-newsletter {
+  background: linear-gradient(145deg, #fff, #e0f4e8);
+  box-shadow: inset 0 1px 0 white, 0 5px 0 #0a392b, 0 12px 24px rgb(0 25 16 / .34);
+}
+.cnc-newsletter-intro { display: flex; align-items: center; gap: .55rem; }
+.cnc-newsletter-intro .cnc-depth-artwork { flex: 0 0 3.5rem; width: 3.5rem; height: 3.5rem; margin: 0; }
+.cnc-newsletter-intro .cnc-depth-jewel { width: 2rem; }
+.cnc-newsletter-intro .cnc-depth-orbit { inset: 16% 8%; }
+.cnc-newsletter-intro .cnc-depth-satellite { width: .65rem; right: 5%; }
+.cnc-footer-logo { display: inline-flex; padding: .35rem .6rem; border-radius: .7rem; background: #eaf8ef; }
+.cnc-footer-legal { border-color: rgb(213 246 229 / .22); color: #beccca; }
+.cnc-site-footer .cnc-footer-mobile > details { background: #124737; border-color: #316555; box-shadow: 0 3px 0 #06271e; }
+.cnc-site-footer .cnc-footer-mobile > details > div { border-color: #316555; }
+.cnc-footer-summary { color: #e4f8ed; list-style: none; }
+.cnc-footer-summary::-webkit-details-marker { display: none; }
+.cnc-footer-mobile details[open] .cnc-footer-summary svg { transform: rotate(180deg); }
+.cnc-site-footer :is(.cnc-footer-link, h3) { color: #d8efe4; }
+.cnc-site-footer .cnc-footer-link:hover { background: #1a5945; color: #fff; }
+.cnc-site-footer > div > :is(.cnc-footer-mobile, .cnc-footer-desktop) :focus-visible { outline-color: #ffbf75; }
+
+@media (min-width: 1024px) {
+  .cnc-home-rail { padding: 1.25rem 1.5rem; }
+  .cnc-home-rail .cnc-depth-artwork { inset: 50% 1rem auto auto; transform: translateY(-50%); width: 8.75rem; height: 7rem; }
+  .cnc-home-rail-title, .cnc-home-rail-label { max-width: 65%; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .cnc-hero-word { animation: cnc-hero-word-rise .64s cubic-bezier(.2,.75,.27,1) both; }
+  .cnc-hero-headline-line .cnc-hero-word:first-child { animation-delay: .14s; }
+  .cnc-hero-headline-line .cnc-hero-word:last-child { animation-delay: .28s; }
+  @keyframes cnc-hero-word-rise {
+    from { opacity: .15; transform: perspective(320px) translateY(.65em) rotateX(-28deg); }
+    to { opacity: 1; transform: perspective(320px) translateY(0) rotateX(0); }
+  }
+}
+@media (prefers-reduced-motion: no-preference) and (hover: hover) and (pointer: fine) {
+  .cnc-home-rail { transition: transform .2s ease; }
+  .cnc-home-rail:hover { transform: perspective(650px) translateY(-3px) rotateX(3deg); }
+}
