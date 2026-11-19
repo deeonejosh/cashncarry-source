@@ -3,12 +3,15 @@ import { useStore } from '../../../context/StoreContext';
 import { SellerProductItem } from '../../../types';
 import { categories } from '../../../lib/data';
 import ProductPhotoField from './ProductPhotoField';
-import { Plus, Edit, Archive, CheckCircle2, Clock, Send, EyeOff, X } from 'lucide-react';
+import SellerBulkImport from './SellerBulkImport';
+import { buildSellerWorkbook, downloadExcel, sellerWorkbookFromListings } from '../../../lib/seller-spreadsheet-export';
+import { Plus, Edit, Archive, CheckCircle2, Clock, Send, EyeOff, X, FileSpreadsheet, Download, Upload } from 'lucide-react';
 
 export default function SellerProductsPage() {
   const {
     sellerStore,
     sellerProducts,
+    refreshSellerData,
     createSellerProduct,
     updateSellerProduct,
     submitSellerProductForReview,
@@ -18,10 +21,26 @@ export default function SellerProductsPage() {
   } = useStore();
 
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showBulkImport, setShowBulkImport] = useState(false);
   const [editingProduct, setEditingProduct] = useState<SellerProductItem | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [actionProductId, setActionProductId] = useState<string | null>(null);
+
+  const downloadTemplate = () => downloadExcel(buildSellerWorkbook([]), 'cashncarry-seller-template.xlsx');
+
+  const exportProducts = () => {
+    if (sellerProducts.length === 0) {
+      showToast('No products to export. Download the Excel template to get started.', 'info');
+      return;
+    }
+    try {
+      const date = new Date().toISOString().slice(0, 10);
+      downloadExcel(sellerWorkbookFromListings(sellerProducts), 'cashncarry-my-products-' + date + '.xlsx');
+    } catch {
+      showToast('Could not generate the Excel export. Please try again.', 'error');
+    }
+  };
 
   // Create form states
   const [name, setName] = useState('');
@@ -124,17 +143,37 @@ export default function SellerProductsPage() {
         <div>
           <h1 className="text-2xl font-black text-slate-900 sm:text-3xl">Products</h1>
           <p className="mt-1 text-xs text-slate-500">
-            Save a draft, then submit it for admin review. Approved listings appear in the shop.
+            Add products one at a time or upload Excel. Download your catalogue, edit it offline, and create new product drafts. Approval is still required.
           </p>
         </div>
 
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="flex items-center gap-1.5 rounded-2xl bg-[#0c5c36] px-5 py-2.5 text-xs font-black text-white hover:bg-emerald-900 shadow transition"
-        >
-          <Plus size={16} />
-          <span>Add New Product</span>
-        </button>
+<div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowBulkImport(true)}
+            className="flex items-center gap-1.5 rounded-2xl border border-[#0c5c36] bg-white px-5 py-2.5 text-xs font-black text-[#0c5c36] hover:bg-emerald-50 shadow-sm transition"
+          >
+            <Upload size={16} />
+            <span>Upload Excel</span>
+          </button>
+          <button type="button" onClick={downloadTemplate}
+            className="flex items-center gap-1.5 rounded-2xl border border-slate-300 bg-white px-4 py-2.5 text-xs font-black text-slate-700 hover:bg-slate-50 transition">
+            <FileSpreadsheet size={16} />
+            <span>Download Template</span>
+          </button>
+          <button type="button" onClick={exportProducts}
+            className="flex items-center gap-1.5 rounded-2xl border border-slate-300 bg-white px-4 py-2.5 text-xs font-black text-slate-700 hover:bg-slate-50 transition">
+            <Download size={16} />
+            <span>Download My Products</span>
+          </button>
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="flex items-center gap-1.5 rounded-2xl bg-[#0c5c36] px-5 py-2.5 text-xs font-black text-white hover:bg-emerald-900 shadow transition"
+          >
+            <Plus size={16} />
+            <span>Add New Product</span>
+          </button>
+        </div>
       </div>
 
       <div className="overflow-x-auto rounded-3xl border border-slate-200 bg-white shadow-sm">
@@ -249,6 +288,16 @@ export default function SellerProductsPage() {
           </tbody>
         </table>
       </div>
+
+      {showBulkImport && (
+        <SellerBulkImport
+          sellerName={sellerStore?.name || 'Verified Seller'}
+          existingProducts={sellerProducts}
+          onClose={() => setShowBulkImport(false)}
+          onImported={refreshSellerData}
+          showToast={showToast}
+        />
+      )}
 
       {/* Add Product Modal */}
       {showAddModal && (
