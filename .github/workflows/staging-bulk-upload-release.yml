@@ -42,18 +42,20 @@ jobs:
           const css = assets.find(a=>/^index-[a-zA-Z0-9_-]+\.css$/.test(a));
           if (!js || !css) throw new Error('Cannot identify Vite main assets');
           let fixed=html;
-          fixed=fixed.replaceAll('/assets/'+js,'/assets/index-DjAQX0oY.js?v=bulk-20261119-v4');
-          fixed=fixed.replaceAll('/assets/'+css,'/assets/index-uvdl1fkh.css?v=bulk-20261119-v4');
-          if (!fixed.includes('/assets/index-DjAQX0oY.js?v=bulk-20261119-v4') || !fixed.includes('/assets/index-uvdl1fkh.css?v=bulk-20261119-v4'))
+          fixed=fixed.replaceAll('/assets/'+js,'/assets/index-OV904MHY.js?v=bulk-no-sample-v6-20261119');
+          fixed=fixed.replaceAll('/assets/'+css,'/assets/index-DvqBtUTy.css?v=bulk-no-sample-v6-20261119');
+          if (!fixed.includes('/assets/index-OV904MHY.js?v=bulk-no-sample-v6-20261119') || !fixed.includes('/assets/index-DvqBtUTy.css?v=bulk-no-sample-v6-20261119'))
             throw new Error('Cannot rewrite Vite index to the current staging Worker asset routes');
           const code = fs.readFileSync('web/dist/assets/'+js, 'utf8');
-          if (!code.includes('Bulk Upload Excel') && !code.includes('Bulk import products'))
-            throw new Error('Missing bulk upload UI in compiled bundle');
+          if (!code.includes('Bulk Upload Excel') || !code.includes('Download blank Excel template'))
+            throw new Error('Missing Excel import/template UI in compiled bundle');
+          if (code.includes('Download 10 test gaming products') || code.includes('cashncarry-10-gaming-accessories-TEST.xlsx'))
+            throw new Error('10 sample product download is still present in seller interface');
           fs.writeFileSync('release-cnc-bulk-upload/index.html', fixed);
           fs.copyFileSync('web/dist/assets/'+js,'release-cnc-bulk-upload/index.js');
           fs.copyFileSync('web/dist/assets/'+css,'release-cnc-bulk-upload/index.css');
           fs.writeFileSync('release-cnc-bulk-upload/source.txt','source='+process.env.GITHUB_SHA+'\nscope=existing private staging KV UI assets only\n'+
-            'keys=cnc:v58:ui:index.html,cnc:v58:ui:assets:index-DjAQX0oY.js,cnc:v58:ui:assets:index-uvdl1fkh.css\n');
+            'keys=cnc:marketplace-3d:7c1a29f:ui:index.html,cnc:marketplace-3d:7c1a29f:ui:assets:index-OV904MHY.js,cnc:marketplace-3d:7c1a29f:ui:assets:index-DvqBtUTy.css\n');
           for(const name of ['index.html','index.js','index.css']) {
             const content = fs.readFileSync(path.join('release-cnc-bulk-upload',name));
             if (!content.length || content.length > 10000000) throw new Error('Invalid asset size: '+name);
@@ -68,10 +70,10 @@ jobs:
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git switch -c artifact/staging-bulk-upload-frontend-v4-20261119
+          git switch -c artifact/staging-bulk-upload-no-sample-v6-20261119
           git add -f release-cnc-bulk-upload/
           git commit -m "build: vetted latest staging bulk upload frontend assets; no deployment"
-          git push origin HEAD:refs/heads/artifact/staging-bulk-upload-frontend-v4-20261119
+          git push origin HEAD:refs/heads/artifact/staging-bulk-upload-no-sample-v6-20261119
       - uses: actions/upload-artifact@v4
         with:
           name: staging-bulk-upload-frontend
