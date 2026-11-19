@@ -25,8 +25,14 @@ export async function streamRoute(request: Request, env: StreamEnvironment): Pro
   if (publish && (!env.AUTH_ORIGIN || request.headers.get('origin') !== env.AUTH_ORIGIN)) return reply({error:'Invalid request origin'},403);
   const account = await currentAccount(request,env);
   if (!account) return reply({error:'Sign-in required'},401);
-  if (publish && (account.role !== 'seller' || !env.STREAM_SELLER_ID || account.id !== env.STREAM_SELLER_ID)) {
-    return reply({error:'Broadcast access denied'},403);
+  if (publish) {
+    if (account.role !== 'seller' || !env.STREAM_SELLER_ID || account.id !== env.STREAM_SELLER_ID) {
+      return reply({error:'Broadcast access denied'},403);
+    }
+    const approved = await env.AUTH_DB?.prepare(
+      "SELECT id FROM cnc_seller_applications WHERE user_id=? AND status='approved'"
+    ).bind(account.id).first();
+    if (!approved) return reply({error:'Approved seller account required'},403);
   }
   const endpoint = publish ? validEndpoint(env.STREAM_WHIP_URL,'publish') : validEndpoint(env.STREAM_WHEP_URL,'play');
   if (!endpoint) return reply({error:'Cloudflare Stream unavailable'},503);
