@@ -65,9 +65,15 @@ export default function ForYouVideoFeedPage({
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [commentInput, setCommentInput] = useState('');
-  const [touchStartY, setTouchStartY] = useState<number | null>(null);
+  const [canUseFullscreen, setCanUseFullscreen] = useState(false);
 
-  const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
+  const stageRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const dialogControl = useRef<HTMLButtonElement>(null);
+  const dialogTrigger = useRef<HTMLButtonElement | null>(null);
+  const pointerStart = useRef<{ id: number; x: number; y: number } | null>(null);
+  const suppressClick = useRef(false);
+  const wheel = useRef({ total: 0, lastEvent: -Infinity, advanced: false });
 
   const filteredVideos = shortVideos.filter((v) =>
     feedMode === 'following' ? Boolean(v.following) : true
@@ -76,62 +82,116 @@ export default function ForYouVideoFeedPage({
   const safeIndex = filteredVideos.length > 0 ? Math.min(activeIndex, filteredVideos.length - 1) : 0;
   const activeVideo = filteredVideos[safeIndex] || null;
 
-  useEffect(() => {
-    videoRefs.current.forEach((vid, idx) => {
-      if (!vid) return;
-      if (idx === safeIndex && isPlaying) {
-        vid.muted = isMuted;
-        vid.play().catch(() => {
-          vid.muted = true;
-          vid.play().catch(() => {});
-        });
-      } else {
-        vid.pause();
-      }
-    });
-  }, [safeIndex, isPlaying, isMuted, filteredVideos.length]);
+  const activeVideoId = activeVideo?.id;
 
   useEffect(() => {
-    if (commentsOpen && activeVideo?.id) {
-      void loadVideoComments(activeVideo.id);
-    }
-  }, [commentsOpen, activeVideo?.id, loadVideoComments]);
-
-  const handleNext = () => {
-    if (filteredVideos.length === 0) return;
-    setActiveIndex((prev) => (prev + 1 < filteredVideos.length ? prev + 1 : 0));
-    setIsPlaying(true);
-  };
-
-  const handlePrev = () => {
-    if (safeIndex > 0) {
-      setActiveIndex(safeIndex - 1);
-      setIsPlaying(true);
-    }
-  };
-
-  const togglePlayPause = () => {
-    const currentVideo = videoRefs.current[safeIndex];
-    if (!currentVideo) return;
+    const video = videoRef.current;
+    if (!video) return;
     if (isPlaying) {
-      currentVideo.pause();
-      setIsPlaying(false);
+      video.play().catch(() => {
+        if (videoRef.current === video && !video.muted) setIsMuted(true);
+      });
     } else {
-      currentVideo.play().catch(() => {});
-      setIsPlaying(true);
+      video.pause();
+    }
+  }, [activeVideoId, isPlaying, isMuted, videosState.status]);
+
+  useEffect(() => {
+    setCanUseFullscreen(document.fullscreenEnabled === true);
+    const updateFullscreen = () => {
+      setIsFullscreen(document.fullscreenElement === stageRef.current && stageRef.current !== null);
+    };
+    document.addEventListener('fullscreenchange', updateFullscreen);
+    return () => document.removeEventListener('fullscreenchange', updateFullscreen);
+  }, []);
+
+  useEffect(() => {
+    if (activeVideoId && document.activeElement === document.body) stageRef.current?.focus({ preventScroll: true });
+  }, [activeVideoId]);
+
+  useEffect(() => {
+    if (commentsOpen || reportOpen) {
+      dialogControl.current?.focus();
+    } else if (dialogTrigger.current) {
+      dialogTrigger.current.focus();
+      dialogTrigger.current = null;
+    }
+  }, [commentsOpen, reportOpen]);
+
+  useEffect(() => {
+    if (commentsOpen && activeVideoId) void loadVideoComments(activeVideoId);
+  }, [commentsOpen, activeVideoId, loadVideoComments]);
+
+  const moveVideo = (direction: -1 | 1) => {
+    const next = safeIndex + direction;
+    if (next < 0 || next >= filteredVideos.length) return;
+    setActiveIndex(next);
+    setIsPlaying(true);
+    setCommentInput('');
+  };
+
+  const handleWheel = (event: React.WheelEvent<HTMLDivElement>) => {
+    if (commentsOpen || reportOpen || event.ctrlKey || Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
+    const state = wheel.current;
+    const now = performance.now();
+    const pixels = event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? event.currentTarget.clientHeight : 1);
+    if (now - state.lastEvent > 160) {
+      state.total = 0;
+      state.advanced = false;
+    }
+    state.lastEvent = now;
+    if (state.advanced) return;
+    if (Math.sign(pixels) !== Math.sign(state.total)) state.total = 0;
+    state.total += pixels;
+    if (Math.abs(state.total) >= 45) {
+      moveVideo(state.total > 0 ? 1 : -1);
+      state.advanced = true;
     }
   };
 
-  const handleTouchStart = (e: React.TouchEvent) => {
-    setTouchStartY(e.touches[0].clientY);
+  const handleKeys = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (commentsOpen || reportOpen) {
+      if (event.key === 'Escape') {
+        setCommentsOpen(false);
+        setReportOpen(false);
+        event.stopPropagation();
+      }
+      return;
+    }
+    if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey ||
+      (event.target instanceof Element && event.target.closest('input, textarea, select, [contenteditable]'))) return;
+    if (['ArrowDown', 'PageDown', 'ArrowUp', 'PageUp'].includes(event.key)) {
+      event.preventDefault();
+      moveVideo(event.key === 'ArrowDown' || event.key === 'PageDown' ? 1 : -1);
+    }
   };
 
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    if (touchStartY === null) return;
-    const diff = touchStartY - e.changedTouches[0].clientY;
-    if (diff > 50) handleNext();
-    else if (diff < -50) handlePrev();
-    setTouchStartY(null);
+  const handlePointerDown = (event: React.PointerEvent<HTMLButtonElement>) => {
+    if (!event.isPrimary || event.button !== 0) return;
+    suppressClick.current = false;
+    pointerStart.current = { id: event.pointerId, x: event.clientX, y: event.clientY };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+
+  const handlePointerUp = (event: React.PointerEvent<HTMLButtonElement>) => {
+    const start = pointerStart.current;
+    if (!start || start.id !== event.pointerId) return;
+    pointerStart.current = null;
+    const vertical = start.y - event.clientY;
+    const horizontal = start.x - event.clientX;
+    suppressClick.current = Math.hypot(vertical, horizontal) > 15;
+    if (Math.abs(vertical) >= 45 && Math.abs(vertical) > Math.abs(horizontal)) {
+      moveVideo(vertical > 0 ? 1 : -1);
+    }
+  };
+
+  const toggleFullscreen = async () => {
+    try {
+      if (document.fullscreenElement === stageRef.current) await document.exitFullscreen();
+      else await stageRef.current?.requestFullscreen();
+    } catch {
+      showToast('Browser full screen is unavailable.', 'info');
+    }
   };
 
   const handleShare = async (video: ShortVideo) => {
@@ -156,8 +216,7 @@ export default function ForYouVideoFeedPage({
   };
 
   const handleBuyNow = async (product: ProductItem) => {
-    await addToCart(product, 1);
-    onProceedToCheckout();
+    if (await addToCart(product, 1)) onProceedToCheckout();
   };
 
   if (videosState.status === 'loading') {
@@ -210,9 +269,7 @@ export default function ForYouVideoFeedPage({
         )}
         <DepthArtwork icon={Video} />
         <h2 className="text-xl font-black text-white">
-          {feedMode === 'following'
-            ? 'No videos yet.'
-            : 'No videos yet.'}
+          No videos yet.
         </h2>
         <p className="text-xs text-slate-400 max-w-xs">
           {feedMode === 'following'
@@ -225,7 +282,7 @@ export default function ForYouVideoFeedPage({
           {feedMode === 'following' && (
             <button
               type="button"
-              onClick={() => setFeedMode('for-you')}
+              onClick={() => { setFeedMode('for-you'); setActiveIndex(0); setIsPlaying(true); }}
               className="rounded-full bg-[#0c5c36] px-6 py-2.5 text-xs font-black text-white"
             >
               View All Videos
@@ -258,29 +315,37 @@ export default function ForYouVideoFeedPage({
 
   return (
     <div
-      className={
-        isFullscreen
-          ? 'fixed inset-0 z-50 h-[100dvh] w-screen bg-black text-white select-none overflow-hidden flex items-center justify-center p-0 m-0'
-          : 'relative w-full h-[100dvh] md:h-[100vh] bg-black text-white select-none overflow-hidden flex items-center justify-center p-0 m-0'
-      }
-      onTouchStart={handleTouchStart}
-      onTouchEnd={handleTouchEnd}
+      ref={stageRef}
+      className="cnc-for-you relative h-full w-full overflow-hidden bg-black text-white"
+      aria-label="For You video feed"
+      tabIndex={0}
+      onWheel={handleWheel}
+      onKeyDown={handleKeys}
     >
-      <div
-        className="relative h-[100dvh] md:h-[100vh] w-full [aspect-ratio:9/16] md:max-w-[calc(100vh*9/16)] mx-auto cursor-pointer overflow-hidden bg-black flex items-center justify-center p-0 m-0"
-        onClick={togglePlayPause}
-      >
+      <div className="absolute inset-0" inert={commentsOpen || reportOpen}>
         <video
           key={activeVideo.id}
-          ref={(el) => {
-            videoRefs.current[safeIndex] = el;
-          }}
+          ref={videoRef}
           src={activeVideo.videoUrl}
           poster={activeVideo.posterUrl || undefined}
           loop
           playsInline
           muted={isMuted}
           className="absolute inset-0 h-full w-full object-cover"
+        />
+        <button type="button"
+          className="cnc-for-you-surface absolute inset-0 h-full w-full"
+          aria-label={isPlaying ? 'Pause video' : 'Play video'}
+          onPointerDown={handlePointerDown}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={() => { pointerStart.current = null; }}
+          onClick={(event) => {
+            if (event.detail > 0 && suppressClick.current) {
+              suppressClick.current = false;
+              return;
+            }
+            setIsPlaying((playing) => !playing);
+          }}
         />
 
         {!isPlaying && (
@@ -293,7 +358,7 @@ export default function ForYouVideoFeedPage({
       </div>
 
       {/* Top Overlay */}
-      <div className="absolute top-0 inset-x-0 z-30 flex items-center justify-between px-4 pt-4 pb-8 bg-gradient-to-b from-black/85 via-black/40 to-transparent">
+      <div inert={commentsOpen || reportOpen} className="cnc-for-you-top pointer-events-none absolute inset-x-0 top-0 z-30 flex items-center justify-between gap-2 bg-gradient-to-b from-black/85 via-black/40 to-transparent px-3 pb-6 sm:px-4">
         <div className="flex items-center gap-2">
           {onBack && (
             <button
@@ -305,7 +370,7 @@ export default function ForYouVideoFeedPage({
               className="flex items-center gap-1.5 rounded-full bg-black/40 backdrop-blur-md px-3 py-1.5 text-xs font-bold text-white border border-white/20 hover:bg-black/60"
             >
               <ArrowLeft size={16} />
-              <span className="hidden sm:inline">Shop</span>
+              <span className="sr-only sm:not-sr-only">Back to Shop</span>
             </button>
           )}
         </div>
@@ -315,9 +380,11 @@ export default function ForYouVideoFeedPage({
             type="button"
             onClick={(e) => {
               e.stopPropagation();
+              setIsPlaying(true);
               setFeedMode('following');
               setActiveIndex(0);
             }}
+            aria-pressed={feedMode === 'following'}
             className={`transition ${
               feedMode === 'following' ? 'font-black text-white border-b-2 border-white pb-0.5' : 'text-white/60 hover:text-white'
             }`}
@@ -329,9 +396,11 @@ export default function ForYouVideoFeedPage({
             type="button"
             onClick={(e) => {
               e.stopPropagation();
+              setIsPlaying(true);
               setFeedMode('for-you');
               setActiveIndex(0);
             }}
+            aria-pressed={feedMode === 'for-you'}
             className={`transition ${
               feedMode === 'for-you' ? 'font-black text-orange-400 border-b-2 border-orange-500 pb-0.5' : 'text-white/60 hover:text-white'
             }`}
@@ -355,17 +424,16 @@ export default function ForYouVideoFeedPage({
               <Trash2 size={15} />
             </button>
           )}
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsFullscreen((prev) => !prev);
-            }}
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-black/40 text-white border border-white/20"
-            aria-label={isFullscreen ? 'Exit full screen' : 'Full screen'}
-          >
-            {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
-          </button>
+          {canUseFullscreen && (
+            <button
+              type="button"
+              onClick={() => void toggleFullscreen()}
+              className="cnc-for-you-control"
+              aria-label={isFullscreen ? 'Exit browser full screen' : 'Enter browser full screen'}
+            >
+              {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+            </button>
+          )}
           <button
             type="button"
             onClick={(e) => {
@@ -380,35 +448,20 @@ export default function ForYouVideoFeedPage({
         </div>
       </div>
 
-      {/* Desktop Navigation Arrows */}
-      {filteredVideos.length > 1 && (
-        <div className="hidden md:flex absolute right-4 top-1/2 -translate-y-1/2 flex-col gap-2 z-20">
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              handlePrev();
-            }}
-            disabled={safeIndex === 0}
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-black/50 text-white disabled:opacity-30"
-          >
-            <ChevronUp size={18} />
-          </button>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleNext();
-            }}
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-black/50 text-white"
-          >
-            <ChevronDown size={18} />
-          </button>
-        </div>
-      )}
+      <div inert={commentsOpen || reportOpen} className="cnc-for-you-actions absolute z-20 flex flex-col items-center">
+        {filteredVideos.length > 1 && (
+          <div className="flex flex-col gap-1" aria-label="Video navigation">
+            <button type="button" onClick={() => moveVideo(-1)} disabled={safeIndex === 0}
+              className="cnc-for-you-control" aria-label="Previous video">
+              <ChevronUp size={19} />
+            </button>
+            <button type="button" onClick={() => moveVideo(1)} disabled={safeIndex === filteredVideos.length - 1}
+              className="cnc-for-you-control" aria-label="Next video">
+              <ChevronDown size={19} />
+            </button>
+          </div>
+        )}
 
-      {/* Right Sidebar Controls */}
-      <div className="absolute right-3 bottom-[calc(9.8rem+env(safe-area-inset-bottom))] md:bottom-32 z-20 flex flex-col items-center gap-3.5">
         <div className="relative mb-2 flex flex-col items-center">
           <div className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-white bg-[#0c5c36] text-xs font-black text-white shadow-lg">
             {activeVideo.sellerName.slice(0, 2).toUpperCase()}
@@ -422,7 +475,8 @@ export default function ForYouVideoFeedPage({
             className={`absolute -bottom-2 flex h-5 w-5 items-center justify-center rounded-full text-white shadow-md ${
               activeVideo.following ? 'bg-emerald-600' : 'bg-orange-500'
             }`}
-            title={activeVideo.following ? 'Unfollow seller' : 'Follow seller'}
+            aria-label={activeVideo.following ? 'Unfollow seller' : 'Follow seller'}
+            aria-pressed={Boolean(activeVideo.following)}
           >
             {activeVideo.following ? <CheckCircle2 size={13} /> : <Plus size={13} />}
           </button>
@@ -436,6 +490,7 @@ export default function ForYouVideoFeedPage({
           }}
           className="flex flex-col items-center gap-1 text-white"
           aria-label="Like video"
+          aria-pressed={Boolean(activeVideo.liked)}
         >
           <div
             className={`flex h-11 w-11 items-center justify-center rounded-full backdrop-blur-md ${
@@ -451,6 +506,7 @@ export default function ForYouVideoFeedPage({
           type="button"
           onClick={(e) => {
             e.stopPropagation();
+            dialogTrigger.current = e.currentTarget;
             setCommentsOpen(true);
           }}
           className="flex flex-col items-center gap-1 text-white"
@@ -480,17 +536,19 @@ export default function ForYouVideoFeedPage({
           type="button"
           onClick={(e) => {
             e.stopPropagation();
+            dialogTrigger.current = e.currentTarget;
             setReportOpen(true);
           }}
           className="flex h-8 w-8 items-center justify-center rounded-full bg-black/30 text-white/70 hover:text-white"
-          title="Report video"
+          aria-label="Report video"
         >
           <Flag size={14} />
         </button>
       </div>
 
       {/* Bottom Product Pill */}
-      <div className="absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-black via-black/85 to-transparent px-4 pt-12 pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-6 space-y-2.5">
+      <div inert={commentsOpen || reportOpen} className="cnc-for-you-caption pointer-events-none absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-black via-black/75 to-transparent px-3 pt-6 sm:px-4">
+        <div className="max-w-lg space-y-2.5">
         <div className="pr-16 space-y-1">
           <div className="flex items-center gap-2">
             <span className="text-xs font-black text-white">{activeVideo.sellerName}</span>
@@ -506,14 +564,14 @@ export default function ForYouVideoFeedPage({
         {activeVideo.taggedProduct && (
           <div className="rounded-2xl border border-white/20 bg-white/15 backdrop-blur-md p-2.5 shadow-xl">
             <div className="flex items-center justify-between gap-3">
-              <div
+              <button type="button"
                 onClick={() => onSelectProduct(activeVideo.taggedProduct!)}
-                className="flex items-center gap-2.5 min-w-0 flex-1 cursor-pointer"
+                className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
               >
                 {activeVideo.taggedProduct.image && (
                   <img
                     src={activeVideo.taggedProduct.image}
-                    alt={activeVideo.taggedProduct.title}
+                    alt=""
                     className="h-12 w-12 rounded-xl object-cover shrink-0 border border-white/20"
                   />
                 )}
@@ -523,7 +581,7 @@ export default function ForYouVideoFeedPage({
                     ₦{activeVideo.taggedProduct.price.toLocaleString('en-NG')}
                   </div>
                 </div>
-              </div>
+              </button>
 
               <div className="flex items-center gap-1.5 shrink-0">
                 <button
@@ -533,7 +591,7 @@ export default function ForYouVideoFeedPage({
                     void addToCart(activeVideo.taggedProduct!, 1);
                   }}
                   className="flex items-center gap-1 rounded-xl bg-white/20 hover:bg-white/30 text-white px-2.5 py-2 text-xs font-black"
-                  title="Add to Cart"
+                  aria-label="Add to Cart"
                 >
                   <ShoppingBag size={14} />
                 </button>
@@ -552,6 +610,7 @@ export default function ForYouVideoFeedPage({
             </div>
           </div>
         )}
+        </div>
       </div>
 
       {/* Comments Drawer */}
@@ -562,18 +621,19 @@ export default function ForYouVideoFeedPage({
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="flex max-h-[70%] flex-col rounded-t-3xl bg-white text-slate-900 shadow-2xl"
+            role="dialog" aria-modal="true" aria-label="Video comments"
+            className="cnc-for-you-sheet flex max-h-[75%] flex-col rounded-t-3xl bg-white text-slate-900 shadow-2xl"
           >
             <div className="flex items-center justify-between border-b border-slate-100 p-4">
               <div className="text-sm font-black text-slate-900">
                 Comments ({activeVideo.comments?.length ?? activeVideo.commentsCount})
               </div>
-              <button type="button" onClick={() => setCommentsOpen(false)} className="rounded-full p-1 text-slate-400">
+              <button type="button" ref={dialogControl} onClick={() => setCommentsOpen(false)} aria-label="Close comments" className="rounded-full p-2 text-slate-700">
                 <X size={18} />
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 space-y-3 divide-y divide-slate-100">
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 space-y-3 divide-y divide-slate-100">
               {!activeVideo.comments || activeVideo.comments.length === 0 ? (
                 <div className="py-8 text-center text-xs text-slate-400">No comments yet.</div>
               ) : (
@@ -599,12 +659,14 @@ export default function ForYouVideoFeedPage({
                 type="text"
                 value={commentInput}
                 onChange={(e) => setCommentInput(e.target.value)}
+                aria-label="Comment"
                 placeholder="Ask a question about this item..."
                 className="flex-1 rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-xs outline-none focus:border-emerald-600"
               />
               <button
                 type="submit"
                 disabled={!commentInput.trim()}
+                aria-label="Send comment"
                 className="flex h-9 w-9 items-center justify-center rounded-full bg-[#0c5c36] text-white disabled:opacity-40"
               >
                 <Send size={15} />
@@ -620,7 +682,7 @@ export default function ForYouVideoFeedPage({
           onClick={() => setReportOpen(false)}
           className="absolute inset-0 z-40 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
         >
-          <div onClick={(e) => e.stopPropagation()} className="w-full max-w-xs rounded-2xl bg-white p-5 text-slate-900 shadow-2xl">
+          <div onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Report video" className="w-full max-w-xs rounded-2xl bg-white p-5 text-slate-900 shadow-2xl">
             <h3 className="text-sm font-black text-slate-900">Report Video</h3>
             <div className="mt-3 space-y-1.5 text-xs font-semibold text-slate-700">
               {['Counterfeit product', 'Misleading price', 'Inappropriate content', 'Spam or scam'].map((reason) => (
@@ -639,6 +701,7 @@ export default function ForYouVideoFeedPage({
             </div>
             <button
               type="button"
+              ref={dialogControl}
               onClick={() => setReportOpen(false)}
               className="mt-4 w-full rounded-xl border border-slate-200 py-2 text-xs font-bold text-slate-500"
             >
