@@ -217,8 +217,9 @@ export default function CheckoutPage({ onSuccessOrder, onBackToCart }: CheckoutP
                     />
                   </div>
                   <div>
-                    <label className="text-[11px] font-bold text-slate-700">State</label>
+                    <label htmlFor="checkout-delivery-state" className="text-[11px] font-bold text-slate-700">State</label>
                     <select
+                      id="checkout-delivery-state"
                       value={newState}
                       onChange={(e) => setNewState(e.target.value)}
                       className="mt-1 h-9 w-full rounded-xl border border-slate-200 px-3 text-xs outline-none focus:border-emerald-600 bg-white"
