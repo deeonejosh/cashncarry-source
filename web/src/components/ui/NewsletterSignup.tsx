@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ArrowRight, CheckCircle2, Loader2 } from 'lucide-react';
 import newsletterEnvelope from '../../assets/newsletter-envelope.webp';
 
@@ -10,6 +10,24 @@ export default function NewsletterSignup({ onPrivacy }: NewsletterSignupProps) {
   const [topics, setTopics] = useState<string[]>(['deals', 'livestreams']);
   const [state, setState] = useState<'idle'|'sending'|'success'|'error'>('idle');
   const [message, setMessage] = useState('');
+  const artRef = useRef<HTMLImageElement>(null);
+  const [artInView, setArtInView] = useState(false);
+
+  useEffect(() => {
+    const artwork = artRef.current;
+    if (!artwork || typeof IntersectionObserver === 'undefined') return;
+
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.intersectionRatio >= 0.5) {
+        setArtInView(true);
+        observer.disconnect();
+      }
+    }, { threshold: 0.5 });
+
+    observer.observe(artwork);
+    return () => observer.disconnect();
+  }, []);
+
 
   const toggleTopic = (topic: string) => {
     setTopics(previous => previous.includes(topic) ? previous.filter(item => item !== topic) : [...previous, topic]);
@@ -44,7 +62,8 @@ export default function NewsletterSignup({ onPrivacy }: NewsletterSignupProps) {
           <h2 id="cnc-newsletter-heading" className="text-xl font-extrabold leading-tight tracking-tight sm:text-2xl">Subscribe to our newsletter</h2>
           <p className="mt-1 text-sm leading-5 text-emerald-50">Get deals, new drops and live shopping updates by email.</p>
         </div>
-        <img className="cnc-newsletter-art" src={newsletterEnvelope} width={448} height={448} loading="lazy" decoding="async" alt="" />
+        <img ref={artRef} className="cnc-newsletter-art" data-in-view={artInView}
+          src={newsletterEnvelope} width={448} height={448} loading="lazy" decoding="async" alt="" />
         <form onSubmit={subscribe} className="cnc-newsletter-form min-w-0 space-y-3">
           <div className="cnc-newsletter-fields">
             <label htmlFor="cnc-newsletter-email" className="sr-only">Email address</label>
