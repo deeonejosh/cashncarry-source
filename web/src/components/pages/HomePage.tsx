@@ -4,22 +4,24 @@ import ProductCard from '../ui/ProductCard';
 import LiveAuctionCard from '../ui/LiveAuctionCard';
 import { ProductItem } from '../../types';
 import { categories } from '../../lib/data';
+import heroArtwork from '../../assets/home-marketplace-hero.webp';
+import sellerArtwork from '../../assets/home-seller-storefront.webp';
 import {
   ArrowRight,
   Radio,
-  ShieldCheck,
   CheckCircle2,
   Play,
-  Truck,
-  RotateCcw,
-  Headphones,
-  Star,
-  Store,
   RefreshCw,
   AlertCircle,
-  ShoppingBag,
-  Package,
 } from 'lucide-react';
+
+const trustFeatures = [
+  { title: 'Nationwide Delivery', description: 'Across Nigeria' },
+  { title: 'Verified Merchants', description: 'Admin-reviewed sellers' },
+  { title: 'Returns Support', description: 'Track requests online' },
+  { title: 'Seller Messaging', description: 'Direct inquiries' },
+  { title: 'Authentic Catalog', description: 'Moderated product listings' },
+];
 
 interface HomePageProps {
   setCurrentTab: (tab: string) => void;
@@ -52,11 +54,11 @@ export default function HomePage({
   } = useStore();
 
   const [activeProductFilter, setActiveProductFilter] = useState<string>('all');
-  const discoveryRef = useRef<HTMLDivElement>(null);
+  const homeRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const discovery = discoveryRef.current;
-    if (!discovery || typeof IntersectionObserver === 'undefined') return;
+    const homepage = homeRef.current;
+    if (!homepage || typeof IntersectionObserver === 'undefined') return;
 
     const observer = new IntersectionObserver((entries) => {
       for (const entry of entries) {
@@ -66,10 +68,9 @@ export default function HomePage({
       }
     }, { threshold: 0.25 });
 
-    discovery.querySelectorAll('[data-art-reveal]').forEach((section) => observer.observe(section));
+    homepage.querySelectorAll('[data-art-reveal]:not([data-art-in-view])').forEach((section) => observer.observe(section));
     return () => observer.disconnect();
-  }, []);
-
+  }, [isApprovedSeller]);
 
   const publishedProducts = useMemo(
     () => products.filter((p) => p.publication === 'published' && !p.archived),
@@ -101,30 +102,11 @@ export default function HomePage({
   ];
 
   return (
-    <div className="space-y-7 pb-10">
+    <div ref={homeRef} className="space-y-7 pb-10">
       {/* HERO SECTION */}
-      <section className="cnc-marketplace-hero relative isolate overflow-hidden rounded-3xl p-5 text-white sm:p-8">
-        <div className="cnc-hero-scene" aria-hidden="true">
-          <div className="cnc-hero-halo" />
-          <div className="cnc-hero-block cnc-hero-block--parcel">
-            <div className="cnc-hero-block-front"><Package /></div>
-            <div className="cnc-hero-block-side" />
-            <div className="cnc-hero-block-top" />
-          </div>
-          <div className="cnc-hero-block cnc-hero-block--shop">
-            <div className="cnc-hero-block-front"><ShoppingBag /></div>
-            <div className="cnc-hero-block-side" />
-            <div className="cnc-hero-block-top" />
-          </div>
-          <div className="cnc-hero-block cnc-hero-block--live">
-            <div className="cnc-hero-block-front"><Play /></div>
-            <div className="cnc-hero-block-side" />
-            <div className="cnc-hero-block-top" />
-          </div>
-        </div>
-        <div className="cnc-hero-copy relative z-10 space-y-4">
-
-          <h1 className="cnc-hero-headline text-[clamp(2rem,6vw,3.25rem)] font-black leading-[1.08] tracking-tight">
+      <section className="cnc-marketplace-hero cnc-home-showcase overflow-hidden rounded-3xl text-white" data-art-reveal>
+        <div className="cnc-hero-copy min-w-0 space-y-4">
+          <h1 className="cnc-hero-headline text-[clamp(2rem,5.2vw,4.25rem)] font-black leading-[1.08] tracking-tight">
             <span className="cnc-hero-word">Watch live.</span>{' '}
             <span className="cnc-hero-headline-line">
               <span className="cnc-hero-word">Discover.</span>{' '}
@@ -172,9 +154,11 @@ export default function HomePage({
             </div>
           </div>}
         </div>
+        <img className="cnc-showcase-art cnc-motion-art" src={heroArtwork} width={620} height={490}
+          fetchPriority="high" decoding="async" alt="" />
       </section>
 
-      <div ref={discoveryRef} className="space-y-7">
+      <div className="space-y-7">
         <div data-art-reveal className="grid gap-3 sm:grid-cols-2 sm:gap-4">
           <button type="button" onClick={() => setCurrentTab('flash-deals')}
             className="cnc-home-rail cnc-home-rail-deals">
@@ -470,89 +454,39 @@ export default function HomePage({
         </section>
       )}
 
-      {/* TRUST STRIP */}
-      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-6 text-center sm:text-left">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-[#0c5c36]">
-              <Truck size={20} />
-            </div>
-            <div>
-              <div className="text-xs font-black text-slate-900">Nationwide Delivery</div>
-              <div className="text-[11px] text-slate-500">Across Nigeria</div>
-            </div>
-          </div>
+      <ul className="cnc-trust-grid grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5" aria-label="Marketplace features" data-art-reveal>
+        {trustFeatures.map(({ title, description }) => (
+          <li key={title} className="cnc-trust-card">
+            <span className="cnc-trust-art cnc-motion-art" aria-hidden="true" />
+            <strong>{title}</strong>
+            <span className="text-xs leading-snug text-slate-600 sm:text-sm">{description}</span>
+          </li>
+        ))}
+      </ul>
 
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-[#0c5c36]">
-              <ShieldCheck size={20} />
-            </div>
-            <div>
-              <div className="text-xs font-black text-slate-900">Verified Merchants</div>
-              <div className="text-[11px] text-slate-500">Admin-reviewed sellers</div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-[#0c5c36]">
-              <RotateCcw size={20} />
-            </div>
-            <div>
-              <div className="text-xs font-black text-slate-900">Returns Support</div>
-              <div className="text-[11px] text-slate-500">Track requests online</div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-[#0c5c36]">
-              <Headphones size={20} />
-            </div>
-            <div>
-              <div className="text-xs font-black text-slate-900">Seller Messaging</div>
-              <div className="text-[11px] text-slate-500">Direct inquiries</div>
-            </div>
-          </div>
-
-          <div className="col-span-2 sm:col-span-1 flex items-center gap-3 justify-center sm:justify-start">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-[#0c5c36]">
-              <Star size={20} />
-            </div>
-            <div>
-              <div className="text-xs font-black text-slate-900">Authentic Catalog</div>
-              <div className="text-[11px] text-slate-500">Moderated product listings</div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* SELLER CALLOUT */}
       {!isApprovedSeller && (
-        <section className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#073c22] via-[#0c5c36] to-[#073c22] p-8 md:p-12 text-white shadow-xl flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="relative z-10 max-w-2xl space-y-2 text-center md:text-left">
-            <span className="text-[10px] font-black uppercase tracking-widest text-emerald-300">
-              SELL ON CASH N CARRY NIGERIA
-            </span>
-            <h2 className="text-2xl sm:text-3xl font-black tracking-tight">
+        <section className="cnc-home-showcase cnc-home-sell overflow-hidden rounded-3xl text-white" data-art-reveal>
+          <div className="min-w-0 space-y-3">
+            <p className="text-xs font-bold uppercase tracking-wider text-emerald-200">
+              Sell on Cash N Carry Nigeria
+            </p>
+            <h2 className="text-[clamp(1.7rem,4vw,3.4rem)] font-black leading-tight tracking-tight">
               Reach shoppers across Nigeria.
             </h2>
-            <p className="text-xs sm:text-sm text-emerald-100/90 leading-relaxed max-w-xl">
+            <p className="max-w-xl text-sm leading-relaxed text-emerald-50 sm:text-base">
               Apply for a verified seller account to list products, post For You videos, and host live shopping sessions.
             </p>
-          </div>
-
-          <div className="relative z-10 flex flex-wrap items-center justify-center gap-3 shrink-0">
             <button
               type="button"
               onClick={() => setCurrentTab('seller-kyc')}
-              className="rounded-full bg-orange-700 px-6 py-3 text-xs font-black text-white hover:bg-orange-800 transition shadow-lg"
+              className="cnc-seller-cta inline-flex min-h-11 items-center gap-2 rounded-full px-5 py-2.5 text-sm font-extrabold"
             >
-              {currentUser.sellerStatus === 'pending' ? 'Application Pending →' : 'Start Selling →'}
+              {currentUser.sellerStatus === 'pending' ? 'Application Pending' : 'Start Selling'}
+              <ArrowRight size={15} aria-hidden="true" />
             </button>
           </div>
-
-          <div className="absolute right-[-20px] bottom-[-20px] opacity-10 pointer-events-none select-none">
-            <Store size={240} />
-          </div>
+          <img className="cnc-showcase-art cnc-motion-art" src={sellerArtwork} width={620} height={490}
+            loading="lazy" decoding="async" alt="" />
         </section>
       )}
     </div>
