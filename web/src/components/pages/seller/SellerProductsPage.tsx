@@ -22,7 +22,10 @@ export default function SellerProductsPage() {
   } = useStore();
 
   const [showAddModal, setShowAddModal] = useState(false);
-  const [showBulkImport, setShowBulkImport] = useState(false);
+  const [showBulkImport, setShowBulkImport] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('bulkImport') === '1';
+  });
   const [editingProduct, setEditingProduct] = useState<SellerProductItem | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -172,6 +175,31 @@ export default function SellerProductsPage() {
           </button>
         </div>
       </div>
+
+      <section aria-label="Bulk product upload and download" className="rounded-2xl border-2 border-emerald-700 bg-white p-4 shadow-sm sm:p-5">
+        <div className="mb-4 flex items-center gap-3">
+          <div className="rounded-xl bg-emerald-100 p-3 text-emerald-800"><FileSpreadsheet size={25} /></div>
+          <div>
+            <h2 className="text-lg font-black text-slate-900">Bulk product upload</h2>
+            <p className="text-sm text-slate-600">Upload up to 100 products in one Excel or CSV file. All new listings remain drafts until approved.</p>
+          </div>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <button type="button" onClick={() => setShowBulkImport(true)}
+            className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#0c5c36] px-4 py-3 text-sm font-black text-white hover:bg-emerald-900">
+            <Upload size={18}/> Bulk Upload Excel
+          </button>
+          <button type="button" onClick={downloadTemplate}
+            className="flex min-h-12 items-center justify-center gap-2 rounded-xl border border-emerald-800 bg-emerald-50 px-4 py-3 text-sm font-black text-emerald-900 hover:bg-emerald-100">
+            <FileSpreadsheet size={18}/> Download Excel Template
+          </button>
+          <button type="button" onClick={exportProducts}
+            className="flex min-h-12 items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-black text-slate-800 hover:bg-slate-50">
+            <Download size={18}/> Export My Products
+          </button>
+        </div>
+        <p className="mt-3 text-xs text-slate-500">You can also download a 10-item gaming-accessories test sheet inside Bulk Upload Excel.</p>
+      </section>
 
       <div className="cnc-workspace-panel cnc-inventory-table overflow-x-auto rounded-2xl border" role="region" aria-label="Product inventory" tabIndex={0}>
         <table className="w-full min-w-[43rem] text-left text-sm">
