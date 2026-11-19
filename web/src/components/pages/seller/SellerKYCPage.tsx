@@ -188,8 +188,9 @@ export default function SellerKYCPage({ onNavigate }: SellerKYCPageProps) {
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               <div>
-                <label className="font-bold text-slate-700">Business Type *</label>
+                <label htmlFor="seller-kyc-business-type" className="font-bold text-slate-700">Business Type *</label>
                 <select
+                  id="seller-kyc-business-type"
                   value={businessType}
                   onChange={(e) => setBusinessType(e.target.value)}
                   disabled={isPending || isApprovedSeller || isSuspended}
@@ -202,8 +203,9 @@ export default function SellerKYCPage({ onNavigate }: SellerKYCPageProps) {
                 </select>
               </div>
               <div>
-                <label className="font-bold text-slate-700">Primary State *</label>
+                <label htmlFor="seller-kyc-state" className="font-bold text-slate-700">Primary State *</label>
                 <select
+                  id="seller-kyc-state"
                   value={stateLocation}
                   onChange={(e) => setStateLocation(e.target.value)}
                   disabled={isPending || isApprovedSeller || isSuspended}
