@@ -175,3 +175,22 @@
     border-radius:15px;background:#292754aa;backdrop-filter:blur(14px);box-shadow:inset 0 1px #fff7,0 5px 12px #0006; }
   @media (prefers-reduced-motion:reduce) {.cnc-mobile-studio-preview::before {animation:none;}}
 }
+
+@media (max-width: 767px) {
+  .cnc-live-backdrop-glass { background:rgba(2,4,19,.79) !important; backdrop-filter:blur(9px); }
+  .cnc-live-dialog-glass {
+    background:linear-gradient(145deg,rgba(47,40,89,.93),rgba(11,17,42,.96) 64%,rgba(45,23,78,.94)) !important;
+    border:1.5px solid rgba(219,208,255,.57); color:white !important; box-shadow:inset 0 2px 1px #ffffff60,0 20px 70px #0d0232c7,0 0 22px #c139ee65 !important;
+    backdrop-filter:blur(25px); -webkit-backdrop-filter:blur(25px); max-height:min(86dvh,850px);overflow-y:auto;
+  }
+  .cnc-live-dialog-glass :where(.text-slate-900,.text-slate-800) { color:#fff !important; }
+  .cnc-live-dialog-glass :where(.text-slate-600,.text-slate-500,.text-slate-400) { color:#e2dff2 !important; }
+  .cnc-live-dialog-glass :where(.bg-slate-50,.bg-amber-50) {background:rgba(255,255,255,.12) !important;}
+  .cnc-live-dialog-glass :where(.border-slate-200,.border-amber-200) {border-color:#ddddff6c !important;}
+  .cnc-live-dialog-glass button {min-height:41px;}
+  .cnc-live-dialog-glass button:hover {box-shadow:0 0 15px #a75de66c;}
+  .cnc-mobile-live-shell .cnc-mobile-live-rail-button:focus-visible,
+  .cnc-mobile-live-shell .cnc-live-icon-glass:focus-visible,
+  .cnc-mobile-live-shell button:focus-visible,
+  .cnc-live-dialog-glass button:focus-visible {outline:3px solid #76ffdd;outline-offset:2px;}
+}
