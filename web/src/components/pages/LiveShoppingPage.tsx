@@ -7,6 +7,8 @@ import { useStore } from '../../context/StoreContext';
 import { LiveComment, ProductItem } from '../../types';
 import {
   Radio,
+  ArrowLeft,
+  ArrowRight,
   Heart,
   MessageCircle,
   ShoppingBag,
@@ -146,14 +148,47 @@ export default function LiveShoppingPage({
   if (!activeRoom) {
     return (
       <>
-      <div className="cnc-mobile-live-empty-room md:hidden" style={{minHeight:'min(82dvh,760px)', padding:'clamp(22px,6vw,46px)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:20,color:'#fff',background:'radial-gradient(circle at 40% 30%,#362281,#0b1231 56%,#050918 90%)',textAlign:'center',position:'relative',overflow:'hidden'}}>
-        <div aria-hidden="true" style={{borderRadius:'50%',width:170,height:170,display:'grid',placeItems:'center',background:'linear-gradient(135deg,#661dd8,#092e56)',boxShadow:'0 0 58px #543fddcc, inset 0 2px 2px #ffffff70',transform:'rotate(-6deg)'}}><Radio size={73} color="#b4ffff"/></div>
-        <h1 style={{fontSize:26,fontWeight:950,letterSpacing:'-0.04em'}}>The live stage is ready</h1>
-        <p style={{fontSize:13,lineHeight:1.5,color:'#d0ddf6',maxWidth:280}}>No shopping rooms are active right now. Real buyer and seller livestream tools appear when a seller starts a room.</p>
-        {isApprovedSeller && onOpenCreate && <button type="button" onClick={onOpenCreate} style={{padding:'14px 30px',background:'linear-gradient(110deg,#fe347e,#8936ec)',color:'white',borderRadius:18,fontWeight:900,boxShadow:'0 8px 32px #b833e68a'}}>Set up live room</button>}
-        <button type="button" onClick={() => onExit?.()} style={{fontSize:12,fontWeight:800,color:'#bbfbff',padding:12,textDecoration:'underline'}}>Return to shop</button>
-        <small style={{color:'#aab4cf',fontSize:11}}>Video broadcasting requires a connected streaming service.</small>
-      </div>
+      <section className="cnc-mobile-live-empty-room md:hidden" aria-label="Livestream studio">
+        <div className="cnc-live-empty-sky" aria-hidden="true">
+          <span className="cnc-live-empty-sky-orb cnc-live-empty-sky-orb--cyan"/>
+          <span className="cnc-live-empty-sky-orb cnc-live-empty-sky-orb--violet"/>
+          <span className="cnc-live-empty-grid"/>
+        </div>
+        <header className="cnc-live-empty-header">
+          <button type="button" className="cnc-live-empty-back" aria-label="Leave livestream studio" onClick={() => onExit?.()}>
+            <ArrowLeft size={21}/>
+          </button>
+          <span className="cnc-live-empty-brand">Cash<span>N</span>Carry</span>
+          <span className="cnc-live-empty-status"><Radio size={14}/> LIVE STUDIO</span>
+        </header>
+        <div className="cnc-live-empty-stage" aria-hidden="true">
+          <div className="cnc-live-empty-aura"/>
+          <div className="cnc-live-empty-hologram"><Radio size={82} strokeWidth={1.8}/></div>
+          <div className="cnc-live-empty-platform cnc-live-empty-platform--base"/>
+          <div className="cnc-live-empty-platform cnc-live-empty-platform--top"/>
+        </div>
+        <div className="cnc-live-empty-panel">
+          <div className="cnc-live-empty-eyebrow"><span/> CASH N CARRY LIVE SHOPPING</div>
+          <h1>The live stage is ready</h1>
+          <p>{isApprovedSeller
+            ? 'Your next live shopping session starts here. Go live, pin products and chat with customers in real time.'
+            : 'There are no active shopping livestreams right now. Come back when a verified seller starts broadcasting.'}</p>
+          {isApprovedSeller && onOpenCreate && (
+            <button className="cnc-live-empty-primary" type="button" onClick={onOpenCreate}>
+              <Radio size={22}/> Set up live room <ArrowRight size={22}/>
+            </button>
+          )}
+          <button type="button" className="cnc-live-empty-secondary" onClick={() => onExit?.()}>
+            {isApprovedSeller ? 'Return to Seller Centre' : 'Return to shop'}
+          </button>
+        </div>
+        <div className="cnc-live-empty-message" role="status">
+          <span className="cnc-live-empty-message-dot"/>
+          {liveStreamingConfigured
+            ? 'Cloudflare Stream is available for authorised sellers.'
+            : 'Live video broadcasting is not configured yet.'}
+        </div>
+      </section>
       <div className="hidden md:block mx-auto max-w-xl rounded-3xl border border-dashed border-slate-200 bg-white p-12 text-center space-y-4 my-8">
         <DepthArtwork icon={Radio} />
         <h1 className="text-xl font-black text-slate-900">No live streams</h1>
