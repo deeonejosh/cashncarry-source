@@ -312,7 +312,7 @@ export default function CreateModal({ isOpen, onClose, onNavigate }: CreateModal
               </h2>
               <p className="text-[10px] text-slate-500">
                 {isApprovedSeller
-                  ? 'Publish videos, broadcast live, or manage your catalog'
+                  ? activeView === 'go-live' ? 'Go live, pin products and sell in real time' : 'Publish videos, broadcast live, or manage your catalog'
                   : 'Cash N Carry Nigeria Marketplace'}
               </p>
             </div>
@@ -639,17 +639,22 @@ export default function CreateModal({ isOpen, onClose, onNavigate }: CreateModal
 
           {/* GO LIVE VIEW */}
           {isApprovedSeller && activeView === 'go-live' && (
-            <form onSubmit={handleCreateLiveRoom} className="space-y-4">
-              <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900" role="note">
-                Starting a room opens shopping chat and product pinning. The camera shown here is a local preview only; it does not publish live video. {liveStreamingConfigured ? 'A separate streaming broadcast connection is required for viewers to receive video.' : 'Video relay ingestion is not configured.'}
+            <form onSubmit={handleCreateLiveRoom} className="cnc-mobile-studio-form space-y-4">
+              <div className="cnc-mobile-studio-connection-note" role="status">
+                <span aria-hidden="true" className={liveStreamingConfigured ? 'cnc-studio-status-dot is-ready' : 'cnc-studio-status-dot'} />
+                {liveStreamingConfigured
+                  ? 'Cloudflare Stream ready. Your camera connects to viewers when you start.'
+                  : 'Live video is unavailable until Cloudflare Stream is configured.'}
               </div>
 
               <div className="cnc-mobile-studio-preview relative aspect-[9/10] w-full rounded-3xl bg-slate-900 overflow-hidden flex items-center justify-center">
                 {cameraActive ? (
                   <video ref={videoPreviewRef} autoPlay playsInline muted className="h-full w-full object-cover" />
                 ) : (
-                  <div className="text-center p-6 space-y-3 text-white">
-                    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 text-orange-400">
+                  <div className="cnc-mobile-studio-placeholder text-center p-6 space-y-3 text-white">
+                    <div className="cnc-studio-platform cnc-studio-platform--rear" aria-hidden="true"/>
+                    <div className="cnc-studio-platform cnc-studio-platform--front" aria-hidden="true"/>
+                    <div className="cnc-mobile-studio-camera-icon mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 text-orange-400">
                       <Camera size={28} />
                     </div>
                     <div className="text-xs font-bold">Camera Preview</div>
@@ -663,13 +668,13 @@ export default function CreateModal({ isOpen, onClose, onNavigate }: CreateModal
                   </div>
                 )}
 
-                <div className="cnc-mobile-studio-preview-pill">Camera preview only</div>
+                <div className="cnc-mobile-studio-preview-pill">{cameraActive ? 'Camera active · preview' : 'Camera preview'}</div>
                 <div className="cnc-mobile-studio-controls absolute top-3 right-3 flex gap-2 text-white">
                   <button
                     type="button"
                     onClick={() => void toggleCameraFacing()}
                     className="rounded-full bg-black/60 p-2"
-                    title="Flip camera"
+                    title="Flip camera" aria-label="Flip camera"
                   >
                     <RotateCcw size={16} />
                   </button>
@@ -677,7 +682,7 @@ export default function CreateModal({ isOpen, onClose, onNavigate }: CreateModal
                     type="button"
                     onClick={toggleMic}
                     className="rounded-full bg-black/60 p-2"
-                    title="Toggle mic"
+                    title="Toggle microphone" aria-label={micMuted ? 'Unmute microphone' : 'Mute microphone'} disabled={!cameraActive}
                   >
                     {micMuted ? <MicOff size={16} className="text-rose-400" /> : <Mic size={16} />}
                   </button>
@@ -731,7 +736,7 @@ export default function CreateModal({ isOpen, onClose, onNavigate }: CreateModal
                 </div>
               </div>
 
-              <div className="flex gap-2 pt-2">
+              <div className="cnc-mobile-studio-actions flex gap-2 pt-2">
                 <button
                   type="button"
                   onClick={() => {
@@ -748,7 +753,7 @@ export default function CreateModal({ isOpen, onClose, onNavigate }: CreateModal
                   className="flex-1 flex items-center justify-center gap-2 rounded-2xl bg-rose-600 py-3 text-xs font-black text-white hover:bg-rose-700 disabled:opacity-50 transition"
                 >
                   <Radio size={16} />
-                  <span>{isCreatingRoom ? 'Starting...' : 'Start Live Room'}</span>
+                  <span>{isCreatingRoom ? 'Connecting to Cloudflare...' : 'Start Live Room'}</span>
                 </button>
               </div>
             </form>
