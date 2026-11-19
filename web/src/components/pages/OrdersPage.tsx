@@ -1,3 +1,4 @@
+import WorkflowBanner from '../ui/WorkflowBanner';
 import React, { useState } from 'react';
 import { useStore } from '../../context/StoreContext';
 import { Order } from '../../types';
@@ -53,13 +54,8 @@ export default function OrdersPage({ onTrackOrder, onOpenReturns }: OrdersPagePr
   };
 
   return (
-    <div className="space-y-8 pb-16">
-      <div>
-        <h1 className="text-2xl font-black text-slate-900 sm:text-3xl">Orders</h1>
-        <p className="mt-1 text-xs text-slate-500 sm:text-sm">
-          Track deliveries and manage returns.
-        </p>
-      </div>
+    <div className="cnc-flow-page cnc-flow-orders space-y-4 pb-16">
+      <WorkflowBanner title="Orders" description="Track deliveries and manage returns." icon={Package} />
 
       {!paymentsEnabled && (
         <div className="flex items-start gap-3 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-xs text-amber-900">
@@ -87,7 +83,7 @@ export default function OrdersPage({ onTrackOrder, onOpenReturns }: OrdersPagePr
       )}
 
       {ordersState.status !== 'error' && (
-      <div className="flex border-b border-slate-200 pb-2 gap-2 overflow-x-auto text-xs font-bold text-slate-600">
+      <div className="cnc-flow-toolbar flex gap-2 overflow-x-auto rounded-2xl border p-2 text-xs font-bold text-slate-600">
         {[
           { id: 'all', label: 'All Orders' },
           { id: 'awaiting_payment', label: 'Awaiting Payment' },
@@ -114,7 +110,7 @@ export default function OrdersPage({ onTrackOrder, onOpenReturns }: OrdersPagePr
       )}
 
       {ordersState.status === 'error' ? null : filteredOrders.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-slate-200 bg-white p-16 text-center">
+        <div className="flex flex-col items-center justify-center cnc-flow-card rounded-3xl border border-dashed p-8 sm:p-12 text-center">
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 text-slate-400">
             <Package size={32} />
           </div>
@@ -128,9 +124,9 @@ export default function OrdersPage({ onTrackOrder, onOpenReturns }: OrdersPagePr
           {filteredOrders.map((order) => (
             <div
               key={order.id}
-              className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm"
+              className="cnc-flow-card overflow-hidden rounded-3xl border"
             >
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-slate-50/70 p-4 text-xs">
+              <div className="flex flex-wrap items-center justify-between gap-3 cnc-flow-order-head border-b border-emerald-100 p-4 text-xs">
                 <div className="flex items-center gap-3">
                   <div>
                     <span className="text-slate-400">Order ID: </span>

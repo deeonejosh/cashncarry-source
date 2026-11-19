@@ -1,3 +1,4 @@
+import WorkflowBanner from '../../ui/WorkflowBanner';
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../../../context/StoreContext';
 import { NIGERIAN_STATES } from '../../../lib/design-tokens';
@@ -62,18 +63,9 @@ export default function SellerKYCPage({ onNavigate }: SellerKYCPageProps) {
   };
 
   return (
-    <div className="space-y-8 pb-16">
-      {/* Header Banner */}
-      <div className="rounded-3xl bg-[#0c5c36] p-8 text-white shadow-lg space-y-2">
-        <div className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1 text-xs font-black uppercase text-emerald-200">
-          <ShieldCheck size={14} />
-          <span>SELLER ONBOARDING & VERIFICATION</span>
-        </div>
-        <h1 className="text-2xl font-black sm:text-3xl">Seller Verification</h1>
-        <p className="max-w-xl text-xs text-emerald-100 sm:text-sm">
-          Submit your Nigerian business details for compliance review. Only administrator-approved sellers can access Seller Centre, publish products, post shoppable videos, or go live.
-        </p>
-      </div>
+    <div className="cnc-flow-page space-y-4 pb-16">
+      <WorkflowBanner title="Seller Verification" icon={ShieldCheck}
+        description="Submit your Nigerian business details for compliance review. Only administrator-approved sellers can access Seller Centre, publish products, post shoppable videos, or go live." />
 
       {!kycStatus.uploadsEnabled && (
         <div className="flex items-start gap-3 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-xs text-amber-900">
@@ -87,9 +79,9 @@ export default function SellerKYCPage({ onNavigate }: SellerKYCPageProps) {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-3">
         {/* Verification Status Card */}
-        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
+        <div className="cnc-flow-card rounded-3xl border p-4 sm:p-6 space-y-4">
           <h3 className="text-sm font-black text-slate-900 border-b border-slate-100 pb-3">
             Application Status
           </h3>
@@ -161,7 +153,7 @@ export default function SellerKYCPage({ onNavigate }: SellerKYCPageProps) {
         </div>
 
         {/* Application Form */}
-        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-4 lg:col-span-2">
+        <div className="cnc-flow-card rounded-3xl border p-4 sm:p-6 space-y-4 lg:col-span-2">
           <h3 className="text-sm font-black text-slate-900 border-b border-slate-100 pb-3">
             {isPending ? 'Submitted Application Details' : 'Business Registration Details'}
           </h3>

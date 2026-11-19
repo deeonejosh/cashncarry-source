@@ -1,3 +1,4 @@
+import WorkflowBanner from '../ui/WorkflowBanner';
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../../context/StoreContext';
 import { NIGERIAN_STATES } from '../../lib/design-tokens';
@@ -101,7 +102,8 @@ export default function CheckoutPage({ onSuccessOrder, onBackToCart }: CheckoutP
   }
 
   return (
-    <div className="space-y-8 pb-16">
+    <div className="cnc-flow-page space-y-5 pb-16">
+      <WorkflowBanner title="Checkout" description="Choose a delivery address and review your order." icon={ShoppingBag} />
       {!paymentsEnabled && (
         <div className="flex items-start gap-3 rounded-2xl bg-amber-50 p-4 border border-amber-200 text-xs text-amber-900">
           <AlertCircle size={18} className="shrink-0 mt-0.5 text-amber-700" />
@@ -116,10 +118,10 @@ export default function CheckoutPage({ onSuccessOrder, onBackToCart }: CheckoutP
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         {/* Left 2 Cols: Delivery Address & Payment Status */}
-        <div className="space-y-6 lg:col-span-2">
-          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
+        <div className="min-w-0 space-y-4">
+          <div className="cnc-flow-card rounded-3xl border p-4 sm:p-6 space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-sm font-black text-slate-900">
                 <MapPin size={18} className="text-[#0c5c36]" />
@@ -248,7 +250,7 @@ export default function CheckoutPage({ onSuccessOrder, onBackToCart }: CheckoutP
             )}
           </div>
 
-          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
+          <div className="cnc-flow-card rounded-3xl border p-4 sm:p-6 space-y-4">
             <div className="flex items-center gap-2 text-sm font-black text-slate-900">
               <CreditCard size={18} className="text-[#0c5c36]" />
               <span>2. Payment Gateway Status</span>
@@ -278,8 +280,8 @@ export default function CheckoutPage({ onSuccessOrder, onBackToCart }: CheckoutP
         </div>
 
         {/* Right Col: Order Summary */}
-        <div className="space-y-4">
-          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
+        <div className="cnc-flow-summary min-w-0 space-y-4">
+          <div className="cnc-flow-card rounded-3xl border p-4 sm:p-6 space-y-4">
             <h3 className="text-sm font-black text-slate-900 border-b border-slate-100 pb-3">
               Order Summary ({cart.length} items)
             </h3>

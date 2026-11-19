@@ -1,3 +1,4 @@
+import WorkflowBanner from '../ui/WorkflowBanner';
 import React, { useState, useMemo } from 'react';
 import { useStore } from '../../context/StoreContext';
 import { Truck, Search, ShieldCheck, Package } from 'lucide-react';
@@ -44,41 +45,32 @@ export default function ShipmentsPage({ initialTracking = '' }: ShipmentsPagePro
   };
 
   return (
-    <div className="space-y-8 pb-16">
-      <div className="rounded-3xl bg-[#0c5c36] p-8 text-white shadow-lg space-y-4">
-        <div>
-          <span className="rounded-full bg-white/10 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-white">
-            ORDER & LOGISTICS TRACKING
-          </span>
-          <h1 className="mt-2 text-2xl font-black sm:text-3xl">Tracking</h1>
-          <p className="mt-1 text-xs text-emerald-100 sm:text-sm">
-            Track dispatched orders.
-          </p>
-        </div>
-
-        <form onSubmit={handleSearch} className="max-w-xl flex gap-2">
-          <div className="relative flex-1">
+    <div className="cnc-flow-page cnc-flow-track space-y-4 pb-16">
+      <WorkflowBanner title="Tracking" description="Track dispatched orders." icon={Truck}>
+        <form onSubmit={handleSearch} className="mt-4 flex max-w-xl gap-2">
+          <div className="relative min-w-0 flex-1">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={17} />
             <input
               type="text"
               value={searchTracking}
               onChange={(e) => setSearchTracking(e.target.value)}
-              placeholder="Enter order ID or tracking number..."
+              aria-label="Order ID or tracking number"
+              placeholder="Order ID or tracking number"
               className="h-11 w-full rounded-2xl bg-white pl-10 pr-4 text-xs font-mono font-bold text-slate-900 outline-none"
             />
           </div>
           <button
             type="submit"
-            className="rounded-2xl bg-orange-700 px-5 text-xs font-black text-white hover:bg-orange-800 shadow"
+            className="rounded-xl bg-orange-200 px-4 text-xs font-black text-orange-950 hover:bg-orange-300 shadow"
           >
             Track
           </button>
         </form>
-      </div>
+      </WorkflowBanner>
 
       {activeOrder ? (
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-5 lg:col-span-2">
+        <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-3">
+          <div className="cnc-flow-card rounded-3xl border p-4 sm:p-6 space-y-5 lg:col-span-2">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
               <div>
                 <div className="text-xs text-slate-400 font-bold uppercase">Order & Tracking</div>
@@ -112,7 +104,7 @@ export default function ShipmentsPage({ initialTracking = '' }: ShipmentsPagePro
             </div>
           </div>
 
-          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
+          <div className="cnc-flow-card rounded-3xl border p-4 sm:p-6 space-y-4">
             <h3 className="text-sm font-black text-slate-900 border-b border-slate-100 pb-3">
               Delivery Protection
             </h3>

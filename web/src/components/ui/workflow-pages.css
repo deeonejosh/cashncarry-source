@@ -1,0 +1,46 @@
+.cnc-flow-page { min-width: 0; }
+.cnc-flow-banner {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: .75rem;
+  border-radius: 1.5rem;
+  padding: clamp(1rem, 3.5vw, 2.3rem);
+  background: radial-gradient(ellipse at 86% 32%, #197856, transparent 64%), #07382a;
+  color: #f4fff8;
+  box-shadow: inset 0 1px 0 rgb(227 255 237 / .25), 0 5px 14px rgb(7 56 42 / .14);
+}
+.cnc-flow-banner-copy { min-width: 0; }
+.cnc-flow-banner h1 { font-size: clamp(1.45rem, 4vw, 2.7rem); font-weight: 850; line-height: 1.13; letter-spacing: -.035em; }
+.cnc-flow-banner p { max-width: 64ch; margin-top: .45rem; color: #dcf8e7; font-size: .875rem; line-height: 1.5; }
+.cnc-flow-banner > .cnc-depth-artwork { width: clamp(4.5rem, 17vw, 10rem); height: clamp(4rem, 13vw, 7rem); }
+.cnc-flow-banner .cnc-depth-orbit { border-color: #8eddb5; }
+.cnc-flow-banner .cnc-depth-jewel { width: min(3.6rem, 65%); }
+.cnc-flow-card, .cnc-flow-toolbar {
+  border-color: #d2e5d8;
+  background: linear-gradient(145deg, #fffefa, #f4f9f2);
+  box-shadow: inset 0 1px 0 #fff, 0 3px 12px rgb(7 63 40 / .09);
+}
+.cnc-flow-page .cnc-flow-toolbar { scrollbar-color: #6ab18b #e4f4ea; }
+.cnc-flow-page .cnc-flow-toolbar button { min-height: 2.75rem; white-space: nowrap; }
+.cnc-flow-page .cnc-flow-banner :focus-visible { outline-color: #ffd29c; }
+.cnc-flow-page :is(button,input,select,textarea):focus-visible { outline: 2px solid #a04a0c; outline-offset: 2px; }
+.cnc-flow-orders .cnc-flow-order-head, .cnc-flow-message-chrome { background: #eef8ef; }
+.cnc-flow-conversations { height: clamp(26rem, 68dvh, 43rem); }
+.cnc-flow-conversations > div { min-width: 0; min-height: 0; }
+.cnc-flow-summary { align-self: start; }
+@media (min-width: 1024px) {
+  .cnc-flow-summary { position: sticky; top: 8rem; }
+}
+@media (max-width: 480px) {
+  .cnc-flow-banner { column-gap: .35rem; }
+  .cnc-flow-banner p { font-size: .8rem; }
+  .cnc-flow-track .cnc-flow-banner { grid-template-columns: minmax(0, 1fr); }
+  .cnc-flow-track .cnc-flow-banner > .cnc-depth-artwork { display: none; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .cnc-flow-banner > .cnc-depth-artwork { animation: cnc-flow-art-appear .7s ease-out both; }
+  @keyframes cnc-flow-art-appear {
+    from { opacity: .35; transform: perspective(360px) translateY(.45rem) rotateY(-15deg); }
+  }
+}

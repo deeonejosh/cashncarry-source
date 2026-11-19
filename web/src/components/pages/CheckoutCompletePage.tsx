@@ -1,3 +1,4 @@
+import WorkflowBanner from '../ui/WorkflowBanner';
 import React from 'react';
 import { Order } from '../../types';
 import { CheckCircle2, Package, Truck, ArrowRight } from 'lucide-react';
@@ -44,22 +45,16 @@ export default function CheckoutCompletePage({
   const isPaid = order.status === 'paid' || order.status === 'shipped' || order.status === 'delivered';
 
   return (
-    <div className="mx-auto max-w-2xl space-y-8 py-8 pb-20">
-      <div className={`rounded-3xl border bg-white p-8 text-center shadow-lg ${isPaid ? 'border-emerald-200' : 'border-amber-200'}`}>
-        <div className={`mx-auto flex h-20 w-20 items-center justify-center rounded-full ${isPaid ? 'bg-emerald-100 text-[#0c5c36]' : 'bg-amber-100 text-amber-800'}`}>
-          <CheckCircle2 size={48} />
-        </div>
-
-        <h1 className="mt-4 text-2xl font-black text-slate-900 sm:text-3xl">
-          {isPaid ? 'Order Confirmed' : 'Order Created & Inventory Reserved'}
-        </h1>
-        <p className="mt-2 text-xs text-slate-600 sm:text-sm">
-          {isPaid
-            ? 'Thank you for shopping with Cash N Carry Nigeria.'
-            : 'Your inventory reservation is saved with status awaiting_payment. Online payment capture is currently offline.'}
-        </p>
-
-        <div className="mt-6 inline-flex flex-col sm:flex-row items-center gap-2 sm:gap-6 rounded-2xl bg-slate-50 px-6 py-3 border border-slate-200 text-xs">
+    <div className="cnc-flow-page mx-auto max-w-3xl space-y-4 pb-16">
+      <WorkflowBanner
+        title={isPaid ? 'Order Confirmed' : 'Order Created & Inventory Reserved'}
+        description={isPaid
+          ? 'Thank you for shopping with Cash N Carry Nigeria.'
+          : 'Your inventory reservation is saved with status awaiting_payment. Online payment capture is currently offline.'}
+        icon={isPaid ? CheckCircle2 : Package}
+      />
+      <div className="cnc-flow-card rounded-2xl border px-4 py-3">
+        <div className="flex flex-wrap gap-x-5 gap-y-2 break-all text-sm">
           <div>
             <span className="text-slate-400">Order ID: </span>
             <span className="font-mono font-black text-slate-900">{order.id}</span>
@@ -77,7 +72,7 @@ export default function CheckoutCompletePage({
         </div>
       </div>
 
-      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
+      <div className="cnc-flow-card rounded-3xl border p-4 sm:p-6 space-y-4">
         <div className="flex items-center gap-2 text-sm font-black text-slate-900">
           <Truck size={18} className="text-[#0c5c36]" />
           <span>Delivery Details</span>
@@ -121,7 +116,7 @@ export default function CheckoutCompletePage({
         )}
       </div>
 
-      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
+      <div className="cnc-flow-card rounded-3xl border p-4 sm:p-6 space-y-4">
         <h3 className="text-sm font-black text-slate-900">Order items</h3>
         <div className="divide-y divide-slate-100">
           {order.items.map((item) => (

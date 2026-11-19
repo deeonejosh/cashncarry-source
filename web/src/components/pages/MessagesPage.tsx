@@ -1,3 +1,4 @@
+import WorkflowBanner from '../ui/WorkflowBanner';
 import React, { useState, useMemo, useEffect } from 'react';
 import { useStore } from '../../context/StoreContext';
 import { ProductItem } from '../../types';
@@ -124,8 +125,9 @@ export default function MessagesPage({ onNavigateOrder }: MessagesPageProps) {
   ];
 
   return (
-    <div className="space-y-4 pb-20">
-      <div role="tablist" aria-label="Messages and support" className="flex flex-wrap gap-2 rounded-xl border border-slate-200 bg-white p-2">
+    <div className="cnc-flow-page space-y-4 pb-20">
+      <WorkflowBanner title="Messages" icon={MessageSquare} />
+      <div role="tablist" aria-label="Messages and support" className="cnc-flow-toolbar flex flex-wrap gap-2 rounded-xl border p-2">
         <button type="button" role="tab" aria-selected={!supportPanelOpen}
           onClick={() => setSupportPanelOpen(false)}
           className={'rounded-lg px-4 py-2 text-xs font-bold ' +
@@ -140,15 +142,8 @@ export default function MessagesPage({ onNavigateOrder }: MessagesPageProps) {
         </button>
       </div>
       {!supportPanelOpen ? (<>
-      <div>
-        <h1 className="text-xl sm:text-2xl font-black text-slate-900">Messages</h1>
-        <p className="text-xs text-slate-500">
-          Messages with sellers.
-        </p>
-      </div>
-
       {conversations.length === 0 ? (
-        <div className="rounded-3xl border border-dashed border-slate-200 bg-white p-14 text-center space-y-2">
+        <div className="cnc-flow-card rounded-3xl border border-dashed p-8 sm:p-12 text-center space-y-2">
           <MessageSquare size={32} className="mx-auto text-slate-300" />
           <p className="text-sm font-black text-slate-800">No conversations yet</p>
           <p className="text-xs text-slate-500">
@@ -156,7 +151,7 @@ export default function MessagesPage({ onNavigateOrder }: MessagesPageProps) {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-3 rounded-3xl border border-slate-200 bg-white shadow-sm overflow-hidden h-[640px]">
+        <div className="cnc-flow-card cnc-flow-conversations grid grid-cols-1 overflow-hidden rounded-3xl border md:grid-cols-[minmax(12rem,1fr)_minmax(0,2fr)]">
           {/* Left Pane */}
           <div
             className={`${
@@ -222,11 +217,11 @@ export default function MessagesPage({ onNavigateOrder }: MessagesPageProps) {
           <div
             className={`${
               !mobileThreadOpen ? 'hidden md:flex' : 'flex'
-            } flex-col md:col-span-2 h-full bg-slate-50/20`}
+            } flex-col h-full bg-slate-50/20`}
           >
             {currentConv && (
               <>
-                <div className="flex items-center justify-between border-b border-slate-100 bg-white px-4 py-3">
+                <div className="flex items-center justify-between cnc-flow-message-chrome border-b border-emerald-100 px-4 py-3">
                   <div className="flex items-center gap-3">
                     <button
                       onClick={() => setMobileThreadOpen(false)}

@@ -1,3 +1,4 @@
+import WorkflowBanner from '../ui/WorkflowBanner';
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../../context/StoreContext';
 import { Order } from '../../types';
@@ -43,27 +44,16 @@ export default function ReturnsPage({ initialOrder, onBack }: ReturnsPageProps) 
   };
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6 pb-16">
+    <div className="cnc-flow-page mx-auto max-w-3xl space-y-4 pb-16">
       <button
         onClick={onBack}
-        className="flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-[#0c5c36]"
+        className="flex items-center gap-1.5 min-h-11 text-sm font-bold text-slate-700 hover:text-[#0c5c36]"
       >
         <ArrowLeft size={16} /> Back
       </button>
 
-      <div className="rounded-3xl border border-slate-200 bg-white p-6 md:p-8 shadow-sm space-y-6">
-        <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-teal-50 text-teal-800">
-            <RotateCcw size={22} />
-          </div>
-          <div>
-            <h1 className="text-xl font-black text-slate-900">Returns & Refunds</h1>
-            <p className="text-xs text-slate-500">
-              Request and track returns.
-            </p>
-          </div>
-        </div>
-
+      <WorkflowBanner title="Returns & Refunds" description="Request and track returns." icon={RotateCcw} />
+      <div className="cnc-flow-card space-y-5 rounded-3xl border p-4 sm:p-6">
         {submitted ? (
           <div className="rounded-2xl bg-emerald-50 p-6 text-center space-y-3 border border-emerald-200">
             <CheckCircle2 size={36} className="mx-auto text-emerald-700" />

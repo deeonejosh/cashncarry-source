@@ -108,7 +108,7 @@ export default function SupportTicketsPanel() {
 
   return (
     <section className="space-y-4" aria-label="Customer support tickets">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="cnc-flow-card flex flex-wrap items-center justify-between gap-3 rounded-2xl border p-4">
         <div>
           <h2 className="flex items-center gap-2 text-lg font-black text-slate-900">
             <Headphones size={20} /> Customer Support
@@ -135,7 +135,7 @@ export default function SupportTicketsPanel() {
       </div>}
 
       {creating && <form onSubmit={(e) => void createTicket(e)}
-        className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 sm:grid-cols-2">
+        className="cnc-flow-card grid gap-3 rounded-2xl border p-4 sm:grid-cols-2">
         <div className="sm:col-span-2">
           <label htmlFor="support-subject" className="block pb-1 text-xs font-bold">Subject</label>
           <input id="support-subject" required minLength={3} maxLength={160}
@@ -172,7 +172,7 @@ export default function SupportTicketsPanel() {
         </div>
       </form>}
 
-      <div className="grid min-h-[340px] overflow-hidden rounded-2xl border border-slate-200 bg-white lg:grid-cols-[minmax(230px,320px)_minmax(0,1fr)]">
+      <div className="cnc-flow-card grid min-h-[340px] overflow-hidden rounded-2xl border lg:grid-cols-[minmax(230px,320px)_minmax(0,1fr)]">
         <div className="border-b border-slate-200 lg:border-b-0 lg:border-r">
           <h3 className="border-b border-slate-100 px-4 py-3 text-xs font-black uppercase text-slate-500">
             Your tickets
