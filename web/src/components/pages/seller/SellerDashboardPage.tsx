@@ -153,8 +153,9 @@ export default function SellerDashboardPage({ onNavigate, onOpenCreate }: Seller
                 />
               </div>
               <div>
-                <label className="font-bold text-slate-700">Primary Category</label>
+                <label htmlFor="seller-store-category" className="font-bold text-slate-700">Primary Category</label>
                 <select
+                  id="seller-store-category"
                   value={storeCategory}
                   onChange={(e) => setStoreCategory(e.target.value)}
                   className="mt-1 h-10 w-full rounded-xl border border-slate-200 px-3 bg-white"
@@ -169,8 +170,9 @@ export default function SellerDashboardPage({ onNavigate, onOpenCreate }: Seller
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="font-bold text-slate-700">Location State</label>
+                <label htmlFor="seller-store-state" className="font-bold text-slate-700">Location State</label>
                 <select
+                  id="seller-store-state"
                   value={storeLocation}
                   onChange={(e) => setStoreLocation(e.target.value)}
                   className="mt-1 h-10 w-full rounded-xl border border-slate-200 px-3 bg-white"
