@@ -1,0 +1,8 @@
+source=423ed4a4ce2064ce157cf0973982db46b09b919e
+private_staging_only=true
+worker=cashncarry-d1-staging-worker
+kv_html=cnc:marketplace-3d:7c1a29f:ui:index.html
+kv_js=cnc:marketplace-3d:7c1a29f:ui:assets:index-OV904MHY.js
+kv_css=cnc:marketplace-3d:7c1a29f:ui:assets:index-DvqBtUTy.css
+backend_worker_untouched=true
+database_untouched=true
