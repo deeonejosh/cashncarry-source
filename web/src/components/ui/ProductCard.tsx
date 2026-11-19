@@ -1,7 +1,7 @@
 import React from 'react';
 import { ProductItem } from '../../types';
 import { useStore } from '../../context/StoreContext';
-import { Heart, Star, ShoppingBag, Package } from 'lucide-react';
+import { Heart, Star, ShoppingBag, Package, BadgeCheck } from 'lucide-react';
 
 interface ProductCardProps {
   product: ProductItem;
@@ -10,8 +10,9 @@ interface ProductCardProps {
 }
 
 export default function ProductCard({ product, onSelectProduct }: ProductCardProps) {
-  const { wishlist, toggleWishlist, addToCart } = useStore();
+  const { wishlist, toggleWishlist, addToCart, storefronts } = useStore();
   const isWishlisted = wishlist.includes(product.id);
+  const isVerifiedSeller = storefronts.some(seller => seller.id === product.sellerId && seller.verified);
 
   const discountPercent =
     product.compareAt > product.price
@@ -19,14 +20,14 @@ export default function ProductCard({ product, onSelectProduct }: ProductCardPro
       : null;
 
   return (
-    <article className="cnc-product-card group relative min-w-0 flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white p-2.5 sm:p-3 transition-colors hover:border-emerald-300">
-      <div>
-        <div className="relative aspect-square w-full overflow-hidden rounded-2xl bg-slate-100">
+    <article className="cnc-product-card group relative min-w-0 flex flex-col overflow-hidden rounded-2xl border p-2 sm:p-3">
+      <div className="flex-1">
+        <div className="cnc-product-stage relative aspect-square w-full overflow-hidden rounded-xl sm:rounded-2xl">
           {product.image ? (
             <img
               src={product.image}
               alt={product.title}
-              className="cnc-product-image h-full w-full object-cover"
+              className="cnc-product-image h-full w-full object-contain"
               loading="lazy"
             />
           ) : (
@@ -35,14 +36,14 @@ export default function ProductCard({ product, onSelectProduct }: ProductCardPro
             </div>
           )}
 
-          <div className="absolute left-2.5 top-2.5 flex flex-col gap-1 z-10">
+          <div className="absolute left-1.5 top-2 flex max-w-[calc(100%-3.25rem)] flex-col items-start gap-1 z-10 sm:left-2.5">
             {discountPercent ? (
               <span className="rounded-md bg-orange-600 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-white shadow-sm">
                 -{discountPercent}%
               </span>
             ) : null}
             {product.stock <= 3 && product.stock > 0 && (
-              <span className="rounded-md bg-rose-600 px-2 py-0.5 text-[9px] font-extrabold text-white">
+              <span className="cnc-product-stock rounded-full px-2 py-1 text-[10px] font-extrabold">
                 Only {product.stock} left
               </span>
             )}
@@ -59,8 +60,9 @@ export default function ProductCard({ product, onSelectProduct }: ProductCardPro
               e.stopPropagation();
               void toggleWishlist(product.id);
             }}
-            className="absolute right-2.5 top-2.5 z-10 rounded-full bg-white/90 p-2 text-slate-700 shadow-sm backdrop-blur-sm transition hover:scale-110 hover:bg-white"
+            className="cnc-product-wishlist absolute right-1.5 top-1.5 z-10 grid h-10 w-10 place-items-center rounded-full sm:right-2 sm:top-2"
             aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+            aria-pressed={isWishlisted}
           >
             <Heart
               size={16}
@@ -71,8 +73,9 @@ export default function ProductCard({ product, onSelectProduct }: ProductCardPro
         </div>
 
         <div className="pt-3">
-          <div className="truncate text-[11px] font-semibold text-slate-500">
-            {product.brand || product.sellerName}
+          <div className="flex min-w-0 items-center gap-1.5 text-[11px] font-bold text-emerald-900">
+            {isVerifiedSeller && <BadgeCheck size={15} className="shrink-0" aria-hidden="true" />}
+            <span className="truncate">{isVerifiedSeller ? 'Verified Seller' : product.brand || product.sellerName}</span>
           </div>
 
           <h3 className="mt-1 line-clamp-2 text-sm font-bold text-slate-900">
@@ -100,8 +103,8 @@ export default function ProductCard({ product, onSelectProduct }: ProductCardPro
       </div>
 
       <div className="mt-3 pt-2 border-t border-slate-100">
-        <div className="flex items-baseline gap-2">
-          <span className="text-base font-black text-slate-900">
+        <div className="flex flex-wrap items-baseline gap-x-2">
+          <span className="text-base font-black text-emerald-950 sm:text-lg">
             ₦{product.price.toLocaleString('en-NG')}
           </span>
           {product.compareAt > product.price && (
@@ -120,7 +123,7 @@ export default function ProductCard({ product, onSelectProduct }: ProductCardPro
               void addToCart(product, 1);
             }}
             disabled={product.stock <= 0}
-            className="flex w-full min-h-10 items-center justify-center gap-1.5 rounded-xl bg-[#0c5c36] px-3 py-2 text-xs font-bold text-white transition-colors hover:bg-emerald-900 disabled:opacity-50"
+            className="cnc-product-cart flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl px-2 py-2 text-xs font-bold text-white disabled:opacity-50"
           >
             <ShoppingBag size={14} />
             <span>{product.stock > 0 ? 'Add to Cart' : 'Unavailable'}</span>
