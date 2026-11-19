@@ -19,6 +19,8 @@ import {
   RefreshCw,
   AlertCircle,
   Video,
+  ShoppingBag,
+  Package,
 } from 'lucide-react';
 
 interface HomePageProps {
@@ -82,12 +84,32 @@ export default function HomePage({
     { id: 'beauty', label: 'Beauty' },
   ];
 
+  const showMarketplaceLinks = publishedProducts.length > 0 || activeLiveRooms.length > 0;
+
   return (
     <div className="space-y-7 pb-10">
       {/* HERO SECTION */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 items-stretch">
-        <section className="lg:col-span-8 relative overflow-hidden rounded-2xl bg-[#084d2c] p-6 sm:p-8 text-white flex flex-col justify-between">
-          <div className="relative z-10 max-w-xl space-y-4">
+        <section className={`cnc-marketplace-hero relative isolate overflow-hidden rounded-3xl p-5 text-white sm:p-8 ${showMarketplaceLinks ? 'lg:col-span-8' : 'lg:col-span-12'}`}>
+          <div className="cnc-hero-scene" aria-hidden="true">
+            <div className="cnc-hero-halo" />
+            <div className="cnc-hero-block cnc-hero-block--parcel">
+              <div className="cnc-hero-block-front"><Package /></div>
+              <div className="cnc-hero-block-side" />
+              <div className="cnc-hero-block-top" />
+            </div>
+            <div className="cnc-hero-block cnc-hero-block--shop">
+              <div className="cnc-hero-block-front"><ShoppingBag /></div>
+              <div className="cnc-hero-block-side" />
+              <div className="cnc-hero-block-top" />
+            </div>
+            <div className="cnc-hero-block cnc-hero-block--live">
+              <div className="cnc-hero-block-front"><Play /></div>
+              <div className="cnc-hero-block-side" />
+              <div className="cnc-hero-block-top" />
+            </div>
+          </div>
+          <div className="cnc-hero-copy relative z-10 space-y-4">
 
             <h1 className="text-3xl font-black tracking-tight sm:text-5xl sm:leading-[1.12]">
               Watch live. <br />
@@ -95,7 +117,7 @@ export default function HomePage({
               <span className="text-orange-400">Shop.</span>
             </h1>
 
-            <p className="text-xs sm:text-sm leading-relaxed text-emerald-100/90 max-w-md">
+            <p className="text-sm sm:text-base leading-relaxed text-emerald-50 max-w-sm">
               Shop Nigerian products, discover sellers and watch live shopping.
             </p>
 
@@ -103,7 +125,7 @@ export default function HomePage({
               <button
                 type="button"
                 onClick={() => setCurrentTab('shop')}
-                className="flex items-center gap-2 rounded-full bg-orange-700 px-6 py-3 text-xs font-black text-white shadow-lg transition hover:bg-orange-800"
+                className="flex items-center gap-2 min-h-11 rounded-full bg-orange-300 px-5 py-2.5 text-sm font-bold text-emerald-950 shadow-lg transition-colors hover:bg-orange-200"
               >
                 <span>Explore Shop</span>
                 <ArrowRight size={15} />
@@ -112,7 +134,7 @@ export default function HomePage({
               {activeLiveRooms.length > 0 && <button
                 type="button"
                 onClick={() => setCurrentTab('live')}
-                className="flex items-center gap-2 rounded-xl bg-white/10 px-5 py-3 text-xs font-semibold text-white border border-white/20 transition hover:bg-white/20"
+                className="flex items-center gap-2 min-h-11 rounded-full bg-white/10 px-5 py-2.5 text-sm font-semibold text-white border border-white/35 transition-colors hover:bg-white/20"
               >
                 <Play size={14} className="fill-white" />
                 <span>Watch Live</span>
@@ -137,7 +159,7 @@ export default function HomePage({
           </div>
         </section>
 
-        {(publishedProducts.length > 0 || activeLiveRooms.length > 0) && <div className="lg:col-span-4 flex flex-col gap-4">
+        {showMarketplaceLinks && <div className="lg:col-span-4 flex flex-col gap-4">
           <button
             type="button"
             onClick={() => setCurrentTab('flash-deals')}
@@ -202,10 +224,10 @@ export default function HomePage({
                 onSelectCategory?.(cat.id);
                 setCurrentTab('shop');
               }}
-              className="group flex min-h-24 flex-col items-center justify-center rounded-xl p-3 text-white transition-colors focus-visible:outline-2 text-center"
+              className="cnc-category-tile group flex min-h-24 flex-col items-center justify-center rounded-xl p-3 text-white focus-visible:outline-2 text-center"
               style={{ backgroundColor: cat.bgHex }}
             >
-              <span className="flex h-10 w-10 items-center justify-center text-2xl">{cat.icon}</span>
+              <span className="cnc-category-icon flex h-10 w-10 items-center justify-center text-2xl" aria-hidden="true">{cat.icon}</span>
               <span className="mt-2 text-xs font-black tracking-tight leading-tight">{cat.name}</span>
             </button>
           ))}

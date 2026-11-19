@@ -89,10 +89,10 @@ export default function ShopPage({
 
   return (
     <div className="space-y-5 pb-10">
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6 text-slate-900">
+      <div className="cnc-shop-header relative isolate overflow-hidden rounded-3xl p-5 text-white sm:p-7">
         <h1 className="text-xl font-bold sm:text-2xl">Shop</h1>
 
-        <div className="mt-4 max-w-2xl">
+        <div className="relative mt-4 max-w-2xl">
           <form onSubmit={(e) => { e.preventDefault(); onSearchCommit?.(searchQuery.trim()); }} className="relative">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
             <input
@@ -101,7 +101,7 @@ export default function ShopPage({
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search products, brands, or categories..."
               aria-label="Search marketplace products"
-              className="h-12 w-full rounded-2xl bg-white pl-11 pr-4 text-xs font-semibold text-slate-800 outline-none shadow-md focus:ring-4 focus:ring-emerald-400/30"
+              className="h-12 w-full rounded-2xl bg-white pl-11 pr-4 text-base font-medium text-slate-800 outline-none shadow-md focus:ring-4 focus:ring-emerald-400/30"
             />
           </form>
         </div>

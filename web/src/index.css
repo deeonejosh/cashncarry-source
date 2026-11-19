@@ -26,3 +26,202 @@ button:disabled { cursor: not-allowed; }
 @media(min-width:1024px) { .cnc-mobile-bottom { display:none!important; } }
 @media(max-width:1023px) { .cnc-mobile-bottom { display:block; } .cnc-dashboard { overflow-x:clip; } .cnc-dashboard :where(.overflow-x-auto) { overscroll-behavior-x:contain; } }
 @media(prefers-reduced-motion:reduce) { html { scroll-behavior:auto; } .cnc-page :where(*) { transition-duration:0.01ms!important; animation-duration:0.01ms!important; animation-iteration-count:1!important; } }
+
+.cnc-marketplace-hero,
+.cnc-shop-header {
+  background: radial-gradient(ellipse at 83% 25%, #167053, transparent 52%), #073526;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .2), 0 8px 24px rgb(7 53 38 / .16);
+}
+
+.cnc-marketplace-hero button:focus-visible,
+.cnc-shop-header input:focus-visible {
+  outline-color: #ffc47b;
+}
+
+.cnc-hero-copy {
+  max-width: 26rem;
+}
+
+.cnc-hero-scene {
+  position: relative;
+  width: min(100%, 24rem);
+  height: 10.5rem;
+  margin: 0 auto .5rem;
+  perspective: 650px;
+  pointer-events: none;
+}
+
+.cnc-hero-halo {
+  position: absolute;
+  inset: 6% 10%;
+  border: 1px solid rgb(167 243 208 / .36);
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgb(52 211 153 / .19), transparent 68%);
+  transform: rotate(-15deg);
+  box-shadow: 0 0 0 12px rgb(167 243 208 / .06), 0 0 0 24px rgb(167 243 208 / .045);
+}
+
+.cnc-hero-block {
+  position: absolute;
+  top: var(--block-top);
+  left: var(--block-left);
+  width: var(--block-size);
+  height: var(--block-size);
+  transform: rotateX(20deg) rotateY(var(--block-turn)) rotateZ(var(--block-angle));
+  transform-style: preserve-3d;
+}
+
+.cnc-hero-block--shop {
+  --block-size: clamp(4.8rem, 24vw, 8rem);
+  --block-depth: 1.1rem;
+  --block-top: 26%;
+  --block-left: 36%;
+  --block-turn: -29deg;
+  --block-angle: -10deg;
+  --block-colour: #08765f;
+  --block-highlight: #24b48b;
+}
+
+.cnc-hero-block--parcel {
+  --block-size: clamp(2.6rem, 13vw, 4.6rem);
+  --block-depth: .65rem;
+  --block-top: 19%;
+  --block-left: 15%;
+  --block-turn: 24deg;
+  --block-angle: -15deg;
+  --block-colour: #f7ab56;
+  --block-highlight: #ffdb9d;
+  color: #44230d;
+}
+
+.cnc-hero-block--live {
+  --block-size: clamp(2.6rem, 13vw, 4.6rem);
+  --block-depth: .65rem;
+  --block-top: 57%;
+  --block-left: 73%;
+  --block-turn: -24deg;
+  --block-angle: 16deg;
+  --block-colour: #304e76;
+  --block-highlight: #537ba5;
+}
+
+.cnc-hero-block-front,
+.cnc-hero-block-side,
+.cnc-hero-block-top {
+  position: absolute;
+  inset: 0;
+  border: 1px solid rgb(255 255 255 / .32);
+}
+
+.cnc-hero-block-front {
+  display: grid;
+  place-items: center;
+  border-radius: 9%;
+  background: linear-gradient(140deg, var(--block-highlight), var(--block-colour) 72%);
+  box-shadow: 0 1rem 1.6rem rgb(0 20 12 / .36), inset 0 2px 0 rgb(255 255 255 / .27);
+}
+
+.cnc-hero-block-front svg {
+  width: 52%;
+  height: 52%;
+  filter: drop-shadow(0 2px 2px rgb(0 0 0 / .24));
+}
+
+.cnc-hero-block-side {
+  inset-inline-start: auto;
+  width: var(--block-depth);
+  border-radius: 3px;
+  background: var(--block-colour);
+  transform: translateX(100%) rotateY(90deg);
+  transform-origin: left;
+}
+
+.cnc-hero-block--parcel .cnc-hero-block-side {
+  inset-inline: 0 auto;
+  transform: translateX(-100%) rotateY(-90deg);
+  transform-origin: right;
+}
+
+.cnc-hero-block-top {
+  bottom: auto;
+  height: var(--block-depth);
+  border-radius: 3px;
+  background: var(--block-highlight);
+  transform: translateY(-100%) rotateX(90deg);
+  transform-origin: bottom;
+}
+
+.cnc-category-tile {
+  background-image: linear-gradient(150deg, rgb(255 255 255 / .11), transparent 48%, rgb(0 0 0 / .26));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .26), inset 0 -3px 0 rgb(0 0 0 / .19), 0 4px 9px rgb(15 23 42 / .13);
+}
+
+.cnc-category-icon {
+  border-radius: .75rem;
+  background: rgb(0 0 0 / .18);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .21), 0 3px 6px rgb(0 0 0 / .15);
+}
+
+.cnc-shop-header::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  right: -3.5rem;
+  top: 50%;
+  width: clamp(11rem, 27vw, 28rem);
+  aspect-ratio: 1;
+  border: 1px solid rgb(167 243 208 / .3);
+  border-radius: 25%;
+  box-shadow: 0 0 0 1rem rgb(167 243 208 / .07), 0 0 0 2rem rgb(167 243 208 / .05);
+  transform: translateY(-50%) rotate(-27deg) skewX(12deg);
+}
+
+@media (min-width: 768px) {
+  .cnc-hero-scene {
+    position: absolute;
+    inset: 8% 2% 8% auto;
+    width: 43%;
+    height: auto;
+    margin: 0;
+  }
+
+  .cnc-hero-copy {
+    width: 57%;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .cnc-hero-block {
+    animation: cnc-hero-arrive 850ms cubic-bezier(.16, 1, .3, 1) both;
+  }
+
+  .cnc-hero-block--shop { animation-delay: 110ms; }
+  .cnc-hero-block--live { animation-delay: 220ms; }
+
+  @keyframes cnc-hero-arrive {
+    from {
+      opacity: 0;
+      transform: translateY(1.35rem) rotateX(34deg) rotateY(var(--block-turn)) rotateZ(var(--block-angle)) scale(.88);
+    }
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) and (hover: hover) and (pointer: fine) {
+  .cnc-category-tile,
+  .cnc-product-card,
+  .cnc-product-image {
+    transition: transform 220ms ease, box-shadow 220ms ease, border-color 220ms ease;
+  }
+
+  .cnc-category-tile:hover {
+    transform: perspective(500px) translateY(-3px) rotateX(6deg);
+  }
+
+  .cnc-product-card:hover {
+    transform: perspective(800px) translateY(-3px) rotateX(2deg);
+  }
+
+  .cnc-product-card:hover .cnc-product-image {
+    transform: scale(1.04);
+  }
+}

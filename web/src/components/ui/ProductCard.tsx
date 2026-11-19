@@ -26,7 +26,7 @@ export default function ProductCard({ product, onSelectProduct }: ProductCardPro
             <img
               src={product.image}
               alt={product.title}
-              className="h-full w-full object-cover"
+              className="cnc-product-image h-full w-full object-cover"
               loading="lazy"
             />
           ) : (
