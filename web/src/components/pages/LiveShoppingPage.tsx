@@ -1,5 +1,7 @@
 import DepthArtwork from '../ui/DepthArtwork';
 import MobileLiveStage from './MobileLiveStage';
+import CloudflareStreamPlayer from './CloudflareStreamPlayer';
+import {stopCloudflareStream,validWhep} from '../../lib/cloudflare-stream-webrtc';
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../../context/StoreContext';
 import { LiveComment, ProductItem } from '../../types';
@@ -179,6 +181,7 @@ export default function LiveShoppingPage({
   );
   const addMobileCart = async (product: ProductItem) => { await addToCart(product, 1); };
   const endMobileRoom = async () => {
+    await stopCloudflareStream();
     const result = await endLiveRoom(activeRoom.id);
     if (!result.ok) showToast(result.error || 'Could not end the room.', 'error');
   };
@@ -266,7 +269,12 @@ export default function LiveShoppingPage({
             </div>
           </div>
 
-          <div className="my-auto text-center space-y-2 py-8">
+          {liveStreamingConfigured && validWhep(activeRoom.streamUrl) && (
+            <div className="absolute inset-0 z-0">
+              <CloudflareStreamPlayer url={activeRoom.streamUrl} className="h-full w-full object-cover" />
+            </div>
+          )}
+          <div className="my-auto text-center space-y-2 py-8 relative z-10">
             <h1 className="text-xl sm:text-2xl font-black">{activeRoom.title}</h1>
             <p className="text-xs text-slate-400">
               {liveStreamingConfigured
@@ -330,6 +338,7 @@ export default function LiveShoppingPage({
                 <button
                   type="button"
                   onClick={async () => {
+                    await stopCloudflareStream();
                     const result = await endLiveRoom(activeRoom.id);
                     if (!result.ok) showToast(result.error || 'Could not end the stream.', 'error');
                   }}
