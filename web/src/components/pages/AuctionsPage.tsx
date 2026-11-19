@@ -240,8 +240,9 @@ export default function AuctionsPage({ onOpenStorefront, onOpenDeliverySettings 
             ) : (
               <form onSubmit={handleCreateAuction} className="space-y-4">
                 <div>
-                  <label className="text-xs font-bold text-slate-700">Select Your Published Product</label>
+                  <label htmlFor="auction-product" className="text-xs font-bold text-slate-700">Select Your Published Product</label>
                   <select
+                    id="auction-product"
                     value={selectedProductId}
                     onChange={(e) => setSelectedProductId(e.target.value)}
                     className="mt-1 h-11 w-full rounded-xl border border-slate-200 px-3 text-xs outline-none focus:border-amber-600 bg-white"
