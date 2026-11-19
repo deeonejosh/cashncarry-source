@@ -167,7 +167,7 @@ export async function marketplaceRoute(request: Request, env: Environment): Prom
   }
   if (path === '/seller/products') {
     const {results:items} = await db.prepare(`SELECT id,owner,name,description,category,brand,price_minor,compare_at_minor,stock,image AS image_url,featured,revision,publication,created FROM cnc_seller_products
-      WHERE owner=? AND archived=0 ORDER BY rowid DESC LIMIT 50`).bind(owner).all<Item>();
+      WHERE owner=? AND archived=0 ORDER BY rowid DESC LIMIT 500`).bind(owner).all<Item>();
     if (api) return result({items});
     const fields = (item?:Item) => `<label>Product name <input name="name" maxlength="160" required value="${escape(item?.name)}"></label>
       <label>Price in kobo <input type="number" name="price_minor" min="1" max="1000000000" required value="${escape(item?.price_minor)}"></label>
