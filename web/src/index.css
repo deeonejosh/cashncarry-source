@@ -787,3 +787,47 @@ button:disabled { cursor: not-allowed; }
 @media (prefers-reduced-motion: no-preference) {
   .cnc-workspace-hero .cnc-seller-hero-art { animation: cnc-discovery-settle .75s ease-out; }
 }
+
+.cnc-for-you { overscroll-behavior: contain; }
+.cnc-for-you-surface { touch-action: none; }
+.cnc-for-you :where(button):focus-visible { outline-color: #fbd18c; outline-offset: -3px; }
+.cnc-for-you-top { padding-top: max(.65rem, env(safe-area-inset-top)); }
+.cnc-for-you-top button, .cnc-for-you-caption button { pointer-events: auto; }
+.cnc-for-you-top button { min-height: 44px; }
+.cnc-for-you-caption {
+  padding-bottom: max(.85rem, env(safe-area-inset-bottom));
+  padding-right: max(4.2rem, env(safe-area-inset-right));
+}
+.cnc-for-you-actions {
+  gap: clamp(.25rem, 1.15dvh, .65rem);
+  right: max(.65rem, env(safe-area-inset-right));
+  bottom: max(.85rem, env(safe-area-inset-bottom));
+}
+.cnc-for-you-control {
+  display: inline-grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid rgb(255 255 255 / .34);
+  border-radius: 50%;
+  color: white;
+  background: rgb(0 0 0 / .48);
+}
+.cnc-for-you-control:enabled:hover { background: rgb(0 0 0 / .72); }
+.cnc-for-you-control:disabled { opacity: .38; }
+.cnc-for-you-sheet {
+  width: min(100%, 36rem);
+  align-self: center;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+@media (max-height: 540px) and (orientation: landscape) {
+  .cnc-for-you-actions { flex-direction: row; flex-wrap: wrap; max-width: 50vw; justify-content: end; }
+  .cnc-for-you-caption > div { max-width: min(42vw, 28rem); }
+}
+
+.cnc-app :where(select) { min-height: 2.75rem; }
+.cnc-app :where(select):focus-visible { outline: 2px solid #167556; outline-offset: 2px; }
+.cnc-app :where(select):disabled { opacity: .65; }
+@media (pointer: coarse) {
+  .cnc-app :where(select) { font-size: 1rem; }
+}
