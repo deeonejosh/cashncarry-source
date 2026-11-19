@@ -1,14 +1,12 @@
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '../../context/StoreContext';
 import ProductCard from '../ui/ProductCard';
-import DepthArtwork from '../ui/DepthArtwork';
 import LiveAuctionCard from '../ui/LiveAuctionCard';
 import { ProductItem } from '../../types';
 import { categories } from '../../lib/data';
 import {
   ArrowRight,
   Radio,
-  Zap,
   ShieldCheck,
   CheckCircle2,
   Play,
@@ -19,7 +17,6 @@ import {
   Store,
   RefreshCw,
   AlertCircle,
-  Video,
   ShoppingBag,
   Package,
 } from 'lucide-react';
@@ -55,6 +52,24 @@ export default function HomePage({
   } = useStore();
 
   const [activeProductFilter, setActiveProductFilter] = useState<string>('all');
+  const discoveryRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const discovery = discoveryRef.current;
+    if (!discovery || typeof IntersectionObserver === 'undefined') return;
+
+    const observer = new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.intersectionRatio < 0.25) continue;
+        entry.target.setAttribute('data-art-in-view', '');
+        observer.unobserve(entry.target);
+      }
+    }, { threshold: 0.25 });
+
+    discovery.querySelectorAll('[data-art-reveal]').forEach((section) => observer.observe(section));
+    return () => observer.disconnect();
+  }, []);
+
 
   const publishedProducts = useMemo(
     () => products.filter((p) => p.publication === 'published' && !p.archived),
@@ -88,213 +103,221 @@ export default function HomePage({
   return (
     <div className="space-y-7 pb-10">
       {/* HERO SECTION */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 items-stretch">
-        <section className="cnc-marketplace-hero relative isolate overflow-hidden rounded-3xl p-5 text-white sm:p-8 lg:col-span-8">
-          <div className="cnc-hero-scene" aria-hidden="true">
-            <div className="cnc-hero-halo" />
-            <div className="cnc-hero-block cnc-hero-block--parcel">
-              <div className="cnc-hero-block-front"><Package /></div>
-              <div className="cnc-hero-block-side" />
-              <div className="cnc-hero-block-top" />
-            </div>
-            <div className="cnc-hero-block cnc-hero-block--shop">
-              <div className="cnc-hero-block-front"><ShoppingBag /></div>
-              <div className="cnc-hero-block-side" />
-              <div className="cnc-hero-block-top" />
-            </div>
-            <div className="cnc-hero-block cnc-hero-block--live">
-              <div className="cnc-hero-block-front"><Play /></div>
-              <div className="cnc-hero-block-side" />
-              <div className="cnc-hero-block-top" />
-            </div>
+      <section className="cnc-marketplace-hero relative isolate overflow-hidden rounded-3xl p-5 text-white sm:p-8">
+        <div className="cnc-hero-scene" aria-hidden="true">
+          <div className="cnc-hero-halo" />
+          <div className="cnc-hero-block cnc-hero-block--parcel">
+            <div className="cnc-hero-block-front"><Package /></div>
+            <div className="cnc-hero-block-side" />
+            <div className="cnc-hero-block-top" />
           </div>
-          <div className="cnc-hero-copy relative z-10 space-y-4">
-
-            <h1 className="cnc-hero-headline text-[clamp(2rem,6vw,3.25rem)] font-black leading-[1.08] tracking-tight">
-              <span className="cnc-hero-word">Watch live.</span>{' '}
-              <span className="cnc-hero-headline-line">
-                <span className="cnc-hero-word">Discover.</span>{' '}
-                <span className="cnc-hero-word cnc-hero-accent text-orange-300">Shop.</span>
-              </span>
-            </h1>
-
-            <p className="cnc-hero-description text-sm sm:text-base leading-relaxed text-emerald-50 max-w-sm">
-              Shop Nigerian products, discover sellers and watch live shopping.
-            </p>
-
-            <div className="flex flex-wrap items-center gap-3 pt-2">
-              <button
-                type="button"
-                onClick={() => setCurrentTab('shop')}
-                className="flex items-center gap-2 min-h-11 rounded-full bg-orange-300 px-5 py-2.5 text-sm font-bold text-emerald-950 shadow-lg transition-colors hover:bg-orange-200"
-              >
-                <span>Explore Shop</span>
-                <ArrowRight size={15} />
-              </button>
-
-              {activeLiveRooms.length > 0 && <button
-                type="button"
-                onClick={() => setCurrentTab('live')}
-                className="flex items-center gap-2 min-h-11 rounded-full bg-white/10 px-5 py-2.5 text-sm font-semibold text-white border border-white/35 transition-colors hover:bg-white/20"
-              >
-                <Play size={14} className="fill-white" />
-                <span>Watch Live</span>
-              </button>}
-            </div>
-
-            {/* Live Database Counts Only (Zero Fabricated Numbers) */}
-            {(storefronts.length > 0 || publishedProducts.length > 0 || activeLiveRooms.length > 0) && <div className="mt-5 grid grid-cols-3 gap-3 border-t border-white/15 pt-4">
-              <div>
-                <div className="text-xl sm:text-2xl font-black text-white">{storefronts.length}</div>
-                <div className="text-[11px] text-emerald-200/80">Verified Sellers</div>
-              </div>
-              <div>
-                <div className="text-xl sm:text-2xl font-black text-white">{publishedProducts.length}</div>
-                <div className="text-[11px] text-emerald-200/80">Products</div>
-              </div>
-              <div>
-                <div className="text-xl sm:text-2xl font-black text-white">{activeLiveRooms.length}</div>
-                <div className="text-[11px] text-emerald-200/80">Live Now</div>
-              </div>
-            </div>}
+          <div className="cnc-hero-block cnc-hero-block--shop">
+            <div className="cnc-hero-block-front"><ShoppingBag /></div>
+            <div className="cnc-hero-block-side" />
+            <div className="cnc-hero-block-top" />
           </div>
-        </section>
+          <div className="cnc-hero-block cnc-hero-block--live">
+            <div className="cnc-hero-block-front"><Play /></div>
+            <div className="cnc-hero-block-side" />
+            <div className="cnc-hero-block-top" />
+          </div>
+        </div>
+        <div className="cnc-hero-copy relative z-10 space-y-4">
 
-        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:col-span-4 lg:grid-cols-1 lg:grid-rows-2">
+          <h1 className="cnc-hero-headline text-[clamp(2rem,6vw,3.25rem)] font-black leading-[1.08] tracking-tight">
+            <span className="cnc-hero-word">Watch live.</span>{' '}
+            <span className="cnc-hero-headline-line">
+              <span className="cnc-hero-word">Discover.</span>{' '}
+              <span className="cnc-hero-word cnc-hero-accent text-orange-300">Shop.</span>
+            </span>
+          </h1>
+
+          <p className="cnc-hero-description text-sm sm:text-base leading-relaxed text-emerald-50 max-w-sm">
+            Shop Nigerian products, discover sellers and watch live shopping.
+          </p>
+
+          <div className="flex flex-wrap items-center gap-3 pt-2">
+            <button
+              type="button"
+              onClick={() => setCurrentTab('shop')}
+              className="flex items-center gap-2 min-h-11 rounded-full bg-orange-300 px-5 py-2.5 text-sm font-bold text-emerald-950 shadow-lg transition-colors hover:bg-orange-200"
+            >
+              <span>Explore Shop</span>
+              <ArrowRight size={15} />
+            </button>
+
+            {activeLiveRooms.length > 0 && <button
+              type="button"
+              onClick={() => setCurrentTab('live')}
+              className="flex items-center gap-2 min-h-11 rounded-full bg-white/10 px-5 py-2.5 text-sm font-semibold text-white border border-white/35 transition-colors hover:bg-white/20"
+            >
+              <Play size={14} className="fill-white" />
+              <span>Watch Live</span>
+            </button>}
+          </div>
+
+          {/* Live Database Counts Only (Zero Fabricated Numbers) */}
+          {(storefronts.length > 0 || publishedProducts.length > 0 || activeLiveRooms.length > 0) && <div className="mt-5 grid grid-cols-3 gap-3 border-t border-white/15 pt-4">
+            <div>
+              <div className="text-xl sm:text-2xl font-black text-white">{storefronts.length}</div>
+              <div className="text-[11px] text-emerald-200/80">Verified Sellers</div>
+            </div>
+            <div>
+              <div className="text-xl sm:text-2xl font-black text-white">{publishedProducts.length}</div>
+              <div className="text-[11px] text-emerald-200/80">Products</div>
+            </div>
+            <div>
+              <div className="text-xl sm:text-2xl font-black text-white">{activeLiveRooms.length}</div>
+              <div className="text-[11px] text-emerald-200/80">Live Now</div>
+            </div>
+          </div>}
+        </div>
+      </section>
+
+      <div ref={discoveryRef} className="space-y-7">
+        <div data-art-reveal className="grid gap-3 sm:grid-cols-2 sm:gap-4">
           <button type="button" onClick={() => setCurrentTab('flash-deals')}
-            className="cnc-home-rail cnc-home-rail-deals group">
-            <DepthArtwork icon={Zap} />
+            className="cnc-home-rail cnc-home-rail-deals">
+            <span className="cnc-discovery-art" data-art="flash" aria-hidden="true" />
             <span className="cnc-home-rail-title">Flash Deals</span>
             <span className="cnc-home-rail-label">Browse deals <ArrowRight size={15} aria-hidden="true" /></span>
           </button>
           <button type="button" onClick={() => setCurrentTab('for-you')}
-            className="cnc-home-rail cnc-home-rail-videos group">
-            <DepthArtwork icon={Video} />
+            className="cnc-home-rail cnc-home-rail-videos">
+            <span className="cnc-discovery-art" data-art="video" aria-hidden="true" />
             <span className="cnc-home-rail-title">For You</span>
             <span className="cnc-home-rail-label">Watch clips <ArrowRight size={15} aria-hidden="true" /></span>
           </button>
         </div>
-      </div>
 
-      {/* SHOP BY CATEGORY */}
-      <section className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg sm:text-xl font-black text-slate-900">Shop by category</h2>
-          <button
-            type="button"
-            onClick={() => setCurrentTab('shop')}
-            className="text-xs font-bold text-[#0c5c36] hover:underline flex items-center gap-1"
-          >
-            <span>View all categories</span>
-            <ArrowRight size={13} />
-          </button>
-        </div>
-
-        <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-8 gap-3">
-          {categories.slice(0, 8).map((cat) => (
+        {/* SHOP BY CATEGORY */}
+        <section className="space-y-4" data-art-reveal>
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg sm:text-xl font-black text-slate-900">Shop by category</h2>
             <button
-              key={cat.id}
               type="button"
-              onClick={() => {
-                onSelectCategory?.(cat.id);
-                setCurrentTab('shop');
-              }}
-              className="cnc-category-tile group flex min-h-24 flex-col items-center justify-center rounded-xl p-3 text-white focus-visible:outline-2 text-center"
-              style={{ backgroundColor: cat.bgHex }}
+              onClick={() => setCurrentTab('shop')}
+              className="text-xs font-bold text-[#0c5c36] hover:underline flex items-center gap-1"
             >
-              <span className="cnc-category-icon flex h-10 w-10 items-center justify-center text-2xl" aria-hidden="true">{cat.icon}</span>
-              <span className="mt-2 text-xs font-black tracking-tight leading-tight">{cat.name}</span>
+              <span>View all categories</span>
+              <ArrowRight size={13} />
             </button>
-          ))}
-        </div>
-      </section>
+          </div>
 
-      {/* VERIFIED SELLERS */}
-      <section className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg sm:text-xl font-black text-slate-900">Sellers</h2>
-          <button
-            type="button"
-            onClick={() => setCurrentTab('shop')}
-            className="text-xs font-bold text-[#0c5c36] hover:underline"
-          >
-            Browse products →
-          </button>
-        </div>
+          <div className="cnc-discovery-categories grid grid-cols-2 gap-3 md:grid-cols-4">
+            {categories.slice(0, 8).map((cat) => (
+              <button
+                key={cat.id}
+                type="button"
+                onClick={() => {
+                  onSelectCategory?.(cat.id);
+                  setCurrentTab('shop');
+                }}
+                className="cnc-discovery-category"
+                data-category={cat.id}
+              >
+                <span className="cnc-discovery-category-label">{cat.name}</span>
+                <span className="cnc-discovery-art" data-art={cat.id} aria-hidden="true" />
+              </button>
+            ))}
+          </div>
+        </section>
 
-        {storefrontsState.status === 'error' ? (
-          <div className="rounded-2xl border border-rose-200 bg-rose-50 p-6 flex items-center justify-between gap-4 text-xs text-rose-800">
-            <div className="flex items-center gap-2">
-              <AlertCircle size={16} />
-              <span>{storefrontsState.error || 'Failed to load sellers.'}</span>
+        {/* VERIFIED SELLERS */}
+        <section className="space-y-4" data-art-reveal>
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg sm:text-xl font-black text-slate-900">Sellers</h2>
+            <button
+              type="button"
+              onClick={() => setCurrentTab('shop')}
+              className="text-xs font-bold text-[#0c5c36] hover:underline"
+            >
+              Browse products →
+            </button>
+          </div>
+
+          {storefrontsState.status === 'error' ? (
+            <div className="rounded-2xl border border-rose-200 bg-rose-50 p-6 flex items-center justify-between gap-4 text-xs text-rose-800">
+              <div className="flex items-center gap-2">
+                <AlertCircle size={16} />
+                <span>{storefrontsState.error || 'Failed to load sellers.'}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => void reloadMarketplace()}
+                className="inline-flex items-center gap-1 rounded-xl bg-rose-700 px-3 py-1.5 font-bold text-white"
+              >
+                <RefreshCw size={12} /> Retry
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={() => void reloadMarketplace()}
-              className="inline-flex items-center gap-1 rounded-xl bg-rose-700 px-3 py-1.5 font-bold text-white"
-            >
-              <RefreshCw size={12} /> Retry
-            </button>
-          </div>
-        ) : storefronts.length === 0 ? (
-          <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 p-10 text-center text-sm font-semibold text-slate-600">
-            No sellers available yet.
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {storefronts.slice(0, 6).map((seller) => {
-              const isFollowing = follows.includes(seller.id);
-              return (
-                <div
-                  key={seller.id}
-                  className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-[#0c5c36] space-y-3"
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <button
-                      type="button"
-                      onClick={() => onOpenStorefront?.(seller.id)}
-                      className="flex items-center gap-3 min-w-0 text-left group/seller"
-                    >
-                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-sm font-black text-[#0c5c36] border border-emerald-200">
-                        {seller.name.slice(0, 2).toUpperCase()}
-                      </div>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <h3 className="text-xs font-black text-slate-900 truncate group-hover/seller:text-[#0c5c36]">
-                            {seller.name}
-                          </h3>
-                          {seller.verified && <CheckCircle2 size={13} className="text-emerald-700 shrink-0" />}
-                        </div>
-                        <div className="text-[11px] text-slate-500 truncate">
-                          {seller.location} · {seller.category}
-                        </div>
-                        <div className="text-[11px] font-bold text-slate-600">
-                          {seller.followersCount} followers
-                        </div>
-                      </div>
-                    </button>
+          ) : storefronts.length === 0 ? (
+            <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 p-10 text-center text-sm font-semibold text-slate-600">
+              No sellers available yet.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              {storefronts.slice(0, 6).map((seller) => {
+                const isFollowing = follows.includes(seller.id);
+                const category = categories.find(({ id, slug }) => id === seller.category || slug === seller.category);
+                const sellerArt = /gaming|gamepad/i.test(seller.description ?? '') ? 'gaming' : category?.id;
+                return (
+                  <div
+                    key={seller.id}
+                    className="cnc-discovery-seller"
+                  >
+                    <div className="cnc-discovery-seller-info">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <button
+                          type="button"
+                          onClick={() => onOpenStorefront?.(seller.id)}
+                          className="flex items-center gap-3 min-w-0 text-left group/seller"
+                        >
+                          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-sm font-black text-[#0c5c36] border border-emerald-200">
+                            {seller.name.slice(0, 2).toUpperCase()}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <h3 className="text-xs font-black text-slate-900 truncate group-hover/seller:text-[#0c5c36]">
+                                {seller.name}
+                              </h3>
+                              {seller.verified && <CheckCircle2 size={13} className="text-emerald-700 shrink-0" />}
+                            </div>
+                            <div className="text-[11px] text-slate-500 truncate">
+                              {seller.location} · {seller.category}
+                            </div>
+                            <div className="text-[11px] font-bold text-slate-600">
+                              {seller.followersCount} followers
+                            </div>
+                          </div>
+                        </button>
 
-                    <button
-                      type="button"
-                      onClick={() => void followSeller(seller.id)}
-                      className={`rounded-full px-4 py-1.5 text-xs font-bold transition shrink-0 ${
-                        isFollowing
-                          ? 'border border-slate-200 bg-slate-100 text-slate-700'
-                          : 'bg-[#0c5c36] text-white hover:bg-emerald-900 shadow-sm'
-                      }`}
-                    >
-                      {isFollowing ? 'Following' : 'Follow'}
-                    </button>
+                        <button
+                          type="button"
+                          onClick={() => void followSeller(seller.id)}
+                          className={`min-h-10 rounded-full px-4 py-1.5 text-xs font-bold transition-colors shrink-0 ${
+                            isFollowing
+                              ? 'border border-slate-200 bg-slate-100 text-slate-700'
+                              : 'bg-[#0c5c36] text-white hover:bg-emerald-900 shadow-sm'
+                          }`}
+                        >
+                          {isFollowing ? 'Following' : 'Follow'}
+                        </button>
+                      </div>
+                      {seller.description && (
+                        <p className="text-xs text-slate-600 line-clamp-2">{seller.description}</p>
+                      )}
+                    </div>
+                    {sellerArt && <div className="cnc-discovery-seller-art" aria-hidden="true">
+                      <span className="cnc-discovery-art" data-art={sellerArt} />
+                    </div>}
                   </div>
-                  {seller.description && (
-                    <p className="text-xs text-slate-500 line-clamp-2">{seller.description}</p>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </section>
+                );
+              })}
+            </div>
+          )}
+        </section>
+
+      </div>
 
       {/* LIVE SHOPPING */}
       <section className="space-y-4">

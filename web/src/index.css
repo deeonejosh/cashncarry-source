@@ -151,17 +151,6 @@ button:disabled { cursor: not-allowed; }
   transform-origin: bottom;
 }
 
-.cnc-category-tile {
-  background-image: linear-gradient(150deg, rgb(255 255 255 / .11), transparent 48%, rgb(0 0 0 / .26));
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / .26), inset 0 -3px 0 rgb(0 0 0 / .19), 0 4px 9px rgb(15 23 42 / .13);
-}
-
-.cnc-category-icon {
-  border-radius: .75rem;
-  background: rgb(0 0 0 / .18);
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / .21), 0 3px 6px rgb(0 0 0 / .15);
-}
-
 .cnc-shop-header::before {
   content: '';
   position: absolute;
@@ -207,14 +196,9 @@ button:disabled { cursor: not-allowed; }
 }
 
 @media (prefers-reduced-motion: no-preference) and (hover: hover) and (pointer: fine) {
-  .cnc-category-tile,
   .cnc-product-card,
   .cnc-product-image {
     transition: transform 220ms ease, box-shadow 220ms ease, border-color 220ms ease;
-  }
-
-  .cnc-category-tile:hover {
-    transform: perspective(500px) translateY(-3px) rotateX(6deg);
   }
 
   .cnc-product-card:hover {
@@ -442,32 +426,86 @@ button:disabled { cursor: not-allowed; }
   position: relative;
   isolation: isolate;
   display: grid;
-  align-content: end;
-  min-height: 8.75rem;
+  align-content: center;
+  justify-items: start;
+  min-height: clamp(8.5rem, 15vw, 13rem);
+  padding: clamp(1rem, 3vw, 2rem);
   overflow: hidden;
-  padding: 1rem;
-  border: 1px solid rgb(255 255 255 / .18);
-  border-radius: 1.25rem;
+  border: 1px solid rgb(255 255 255 / .68);
+  border-radius: 1.35rem;
   color: white;
   text-align: left;
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / .3), 0 4px 0 rgb(8 55 36 / .17), 0 8px 18px rgb(8 55 36 / .14);
+  box-shadow: 0 .25rem .75rem rgb(0 38 25 / .15);
 }
+.cnc-home-rail-deals { background: radial-gradient(ellipse at 78% 85%, #ba560a, #773001 54%, #4d1708); }
+.cnc-home-rail-videos { background: radial-gradient(ellipse at 78% 85%, #137b52, #07533b 54%, #032c22); }
+.cnc-home-rail-title { z-index: 1; max-width: 60%; font-size: clamp(1.25rem, 3.25vw, 2.5rem); font-weight: 850; line-height: 1.1; text-shadow: 0 2px 8px rgb(0 0 0 / .25); }
+.cnc-home-rail-label { z-index: 1; display: inline-flex; align-items: center; gap: .4rem; margin-top: .5rem; font-size: clamp(.8125rem, 1.5vw, 1rem); font-weight: 600; }
+.cnc-home-rail .cnc-discovery-art { position: absolute; right: 2%; bottom: 0; width: clamp(7rem, 42%, 14rem); }
 
-.cnc-home-rail-deals { background: radial-gradient(ellipse at top right, #ac4b0e, #542708 76%); }
-.cnc-home-rail-videos { background: radial-gradient(ellipse at top right, #257459, #092d24 76%); }
-.cnc-home-rail-title { font-size: clamp(1rem, 3vw, 1.4rem); font-weight: 800; }
-.cnc-home-rail-label { display: inline-flex; align-items: center; gap: .4rem; margin-top: .25rem; font-size: .8125rem; }
-.cnc-home-rail:focus-visible { outline-color: #ad4508; }
-.cnc-home-rail .cnc-depth-artwork {
-  position: absolute;
-  z-index: -1;
-  inset: -.9rem -.8rem auto auto;
-  width: 6.75rem;
-  height: 6.25rem;
-  opacity: .78;
-  transform: scale(.85);
+.cnc-discovery-category {
+  position: relative;
+  display: grid;
+  align-items: center;
+  min-height: clamp(6.25rem, 11vw, 10rem);
+  isolation: isolate;
+  overflow: hidden;
+  padding: .85rem;
+  border: 1px solid #fff;
+  border-radius: 1.1rem;
+  background: linear-gradient(135deg, #fffdf7, var(--category-tint, #e1f4ea));
+  color: #14241c;
+  text-align: left;
+  box-shadow: 0 .2rem .65rem rgb(0 38 25 / .12);
 }
-.cnc-home-rail-deals .cnc-depth-jewel-face { background: linear-gradient(142deg, #ffe8ae, #ec8b3c); color: #542708; }
+.cnc-discovery-category[data-category="fashion"] { --category-tint: #ffe7c1; }
+.cnc-discovery-category[data-category="beauty"] { --category-tint: #fbdcdb; }
+.cnc-discovery-category[data-category="phones"] { --category-tint: #d9f1e8; }
+.cnc-discovery-category[data-category="tech"] { --category-tint: #dce9ff; }
+.cnc-discovery-category[data-category="home"] { --category-tint: #f8e6c9; }
+.cnc-discovery-category[data-category="baby"] { --category-tint: #f8e1db; }
+.cnc-discovery-category[data-category="health"] { --category-tint: #d9f3e2; }
+.cnc-discovery-category[data-category="services"] { --category-tint: #eadff8; }
+.cnc-discovery-category-label { z-index: 1; max-width: 54%; font-size: clamp(.9rem, 1.75vw, 1.35rem); font-weight: 800; line-height: 1.15; }
+.cnc-discovery-category .cnc-discovery-art { position: absolute; right: .2rem; bottom: 0; width: min(58%, 9.6rem); }
+
+.cnc-discovery-seller { display: flex; min-width: 0; overflow: hidden; border: 1px solid #dbe9df; border-radius: 1.2rem; background: white; box-shadow: 0 .2rem .65rem rgb(0 38 25 / .1); }
+.cnc-discovery-seller-info { flex: 1; min-width: 0; padding: clamp(.8rem, 2vw, 1.25rem); display: grid; align-content: center; gap: .7rem; }
+.cnc-discovery-seller-art { display: grid; flex: 0 0 clamp(4.5rem, 26%, 10rem); place-items: center; background: radial-gradient(ellipse at bottom, #aaddbf, #e8f6ec 78%); }
+.cnc-discovery-seller-art .cnc-discovery-art { width: 95%; }
+.cnc-home-rail:focus-visible, .cnc-discovery-category:focus-visible, .cnc-discovery-seller button:focus-visible { outline: 2px solid #08774c; outline-offset: 2px; }
+
+.cnc-discovery-art {
+  display: block;
+  aspect-ratio: 1;
+  pointer-events: none;
+  background-image: url('./assets/marketplace-discovery.webp');
+  background-size: 400% 300%;
+  background-position: var(--art-x, 0%) var(--art-y, 0%);
+  background-repeat: no-repeat;
+}
+.cnc-discovery-art[data-art="video"], .cnc-discovery-art[data-art="tech"], .cnc-discovery-art[data-art="services"] { --art-x: 33.3333%; }
+.cnc-discovery-art[data-art="fashion"], .cnc-discovery-art[data-art="home"], .cnc-discovery-art[data-art="gaming"] { --art-x: 66.6667%; }
+.cnc-discovery-art[data-art="beauty"], .cnc-discovery-art[data-art="baby"] { --art-x: 100%; }
+.cnc-discovery-art:is([data-art="phones"], [data-art="tech"], [data-art="home"], [data-art="baby"]) { --art-y: 50%; }
+.cnc-discovery-art:is([data-art="health"], [data-art="services"], [data-art="gaming"]) { --art-y: 100%; }
+
+@media (max-width: 480px) {
+  .cnc-discovery-category { align-content: start; min-height: 7.25rem; }
+  .cnc-discovery-category-label { max-width: 100%; }
+  .cnc-discovery-category .cnc-discovery-art { width: 4.9rem; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  [data-art-in-view] .cnc-discovery-art { animation: cnc-discovery-settle .85s ease-out both; }
+  @keyframes cnc-discovery-settle {
+    from { transform: perspective(420px) translateY(.55rem) rotateY(-19deg) scale(.9); }
+    58% { transform: perspective(420px) translateY(-.35rem) rotateY(10deg) scale(1.04); }
+  }
+}
+@media (prefers-reduced-motion: no-preference) and (hover: hover) and (pointer: fine) {
+  :is(.cnc-home-rail, .cnc-discovery-category, .cnc-discovery-seller) .cnc-discovery-art { transition: translate .24s ease, scale .24s ease, rotate .24s ease; }
+  :is(.cnc-home-rail, .cnc-discovery-category, .cnc-discovery-seller):hover .cnc-discovery-art { translate: 0 -.28rem; scale: 1.06; rotate: y -12deg; }
+}
 
 .cnc-depth-theme .cnc-site-footer {
   background: radial-gradient(ellipse at 80% 0, #115741, transparent 72%), #082c23;
@@ -546,11 +584,6 @@ button:disabled { cursor: not-allowed; }
 .cnc-site-footer .cnc-footer-link:hover { background: #1a5945; color: #fff; }
 .cnc-footer-policy :focus-visible { outline: 2px solid #ffbf75; outline-offset: 2px; }
 
-@media (min-width: 1024px) {
-  .cnc-home-rail { padding: 1.25rem 1.5rem; }
-  .cnc-home-rail .cnc-depth-artwork { inset: 50% 1rem auto auto; transform: translateY(-50%); width: 8.75rem; height: 7rem; }
-  .cnc-home-rail-title, .cnc-home-rail-label { max-width: 65%; }
-}
 @media (prefers-reduced-motion: no-preference) {
   .cnc-hero-word { animation: cnc-hero-word-rise .72s cubic-bezier(.2,.75,.27,1) both; }
   .cnc-hero-headline-line .cnc-hero-word:first-child { animation-delay: .14s; }
@@ -566,8 +599,4 @@ button:disabled { cursor: not-allowed; }
     from { opacity: .15; transform: perspective(320px) translateY(.65em) rotateX(-28deg); }
     to { opacity: 1; transform: perspective(320px) translateY(0) rotateX(0); }
   }
-}
-@media (prefers-reduced-motion: no-preference) and (hover: hover) and (pointer: fine) {
-  .cnc-home-rail { transition: transform .2s ease; }
-  .cnc-home-rail:hover { transform: perspective(650px) translateY(-3px) rotateX(3deg); }
 }
