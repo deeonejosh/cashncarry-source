@@ -1,0 +1,11 @@
+source=aae44df7c8e3e5874790ef0a29724318b05b3601
+environment=private-staging-only
+worker=cashncarry-d1-staging-worker
+scope=desktop-livestream-start-room-ended-frontend-only
+kv_html=cnc:marketplace-3d:7c1a29f:ui:index.html
+kv_js=cnc:marketplace-3d:7c1a29f:ui:assets:index-OV904MHY.js
+kv_css=cnc:marketplace-3d:7c1a29f:ui:assets:index-DvqBtUTy.css
+backend_unchanged=true
+cloudflare_stream_secrets_unchanged=true
+payments_unchanged=true
+production_untouched=true
