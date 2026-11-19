@@ -1,4 +1,3 @@
-import DepthArtwork from '../ui/DepthArtwork';
 import MobileLiveStage from './MobileLiveStage';
 import MobileLiveEmptyStage from './MobileLiveEmptyStage';
 import DesktopLiveEmptyStage from './DesktopLiveEmptyStage';
@@ -14,7 +13,6 @@ import {
   Radio,
   Heart,
   MessageCircle,
-  ShoppingBag,
   Send,
   Users,
   X,
@@ -26,7 +24,6 @@ import {
   Pin,
   Share2,
   BarChart3,
-  Mic,
 } from 'lucide-react';
 
 interface LiveShoppingPageProps {
@@ -333,10 +330,11 @@ export default function LiveShoppingPage({
                 </div>
                 <button
                   type="button"
-                  onClick={() => void handleBuyPinned(pinnedProduct)}
+                  onClick={() => isHost ? onSelectProduct(pinnedProduct) : void handleBuyPinned(pinnedProduct)}
                   className="shrink-0 rounded-xl bg-orange-600 px-3 py-2 text-xs font-black text-white hover:bg-orange-500"
+                  disabled={pinnedProduct.stock < 1}
                 >
-                  Buy Now
+                  {pinnedProduct.stock < 1 ? 'Sold out' : isHost ? 'View product' : 'Buy now'}
                 </button>
               </div>
             ) : (
@@ -374,14 +372,14 @@ export default function LiveShoppingPage({
           </div>
 
           <div className="cnc-desktop-live-chat-actions flex items-center justify-between border-t border-slate-100 bg-slate-50 px-4 py-2">
-            <button
+            {!isHost && (            <button
               type="button"
               onClick={() => setGiftingModalOpen(true)}
               className="flex items-center gap-1.5 rounded-xl bg-amber-100 px-3 py-1.5 text-xs font-extrabold text-amber-900"
             >
               <Coins size={14} className="text-amber-600" />
               <span>Send Gift ({(currentUser.coins ?? 0).toLocaleString()} coins)</span>
-            </button>
+            </button>)}
 
             <button
               type="button"
