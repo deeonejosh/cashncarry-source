@@ -130,8 +130,9 @@ export default function SellerOrdersPage() {
 
             <form onSubmit={handleDispatch} className="space-y-4 text-xs">
               <div>
-                <label className="font-bold text-slate-700">Fulfillment Stage</label>
+                <label htmlFor="seller-order-fulfillment" className="font-bold text-slate-700">Fulfillment Stage</label>
                 <select
+                  id="seller-order-fulfillment"
                   value={nextStatus}
                   onChange={(e) => setNextStatus(e.target.value as 'processing' | 'packed' | 'shipped' | 'delivered')}
                   className="mt-1 h-11 w-full rounded-xl border border-slate-200 px-3 font-bold bg-white"
@@ -144,8 +145,9 @@ export default function SellerOrdersPage() {
               </div>
 
               <div>
-                <label className="font-bold text-slate-700">Courier Partner</label>
+                <label htmlFor="seller-courier" className="font-bold text-slate-700">Courier Partner</label>
                 <select
+                  id="seller-courier"
                   value={carrier}
                   onChange={(e) => setCarrier(e.target.value)}
                   className="mt-1 h-11 w-full rounded-xl border border-slate-200 px-3 font-bold bg-white"
