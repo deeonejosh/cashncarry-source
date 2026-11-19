@@ -85,7 +85,43 @@ try {
   assert.equal(result[0].product.priceNaira, 15000);
   assert.equal(result[0].product.stock, 7);
   assert.equal(result[0].product.category, 'tech');
-  console.log('XLSX browser parsing test PASS');
+  const generated = await page.evaluate(async () => {
+    const importer = await import('/src/lib/seller-spreadsheet.ts');
+    const exporter = await import('/src/lib/seller-spreadsheet-export.ts');
+    const samples = exporter.sampleGamingProducts();
+    const file = new File([exporter.buildSellerWorkbook(samples)], 'gaming-products.xlsx',
+      { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const parsed = await importer.parseSellerSpreadsheet(file, [], 'Test Store');
+    const original = parsed.map(row => ({
+      title: row.product?.name, price: row.product?.priceNaira,
+      stock: row.product?.stock, errors: row.errors,
+    }));
+    const blank = exporter.buildSellerWorkbook([]);
+    const testListing = samples[0];
+    const fromSeller = exporter.sellerWorkbookFromListings([{
+      ...testListing, id: 'test-id', owner: 'seller-id', name: testListing.name,
+      description: testListing.description, brand: testListing.brand,
+      priceMinor: Math.round(testListing.priceNaira * 100),
+      compareAtMinor: Math.round((testListing.compareAtNaira || testListing.priceNaira) * 100),
+      imageUrl: '', publication: 'draft', created: '', featured: false, revision: 1,
+    }]);
+    const exportedParsed = await importer.parseSellerSpreadsheet(
+      new File([fromSeller], 'seller-export.xlsx'), [], 'Test Store');
+    return {
+      rows: parsed.length, invalid: parsed.filter(x => x.errors.length).length,
+      names: original.map(x => x.title), prices: original.map(x => x.price),
+      blankSize: blank.size, exportName: exportedParsed[0].product?.name,
+      exportPrice: exportedParsed[0].product?.priceNaira,
+    };
+  });
+  assert.equal(generated.rows, 10, 'Ten downloadable gaming samples must be importable');
+  assert.equal(generated.invalid, 0, JSON.stringify(generated));
+  assert.equal(generated.names[0], 'TEST - Wireless Gaming Controller');
+  assert.equal(generated.prices[9], 29500);
+  assert(generated.blankSize > 2000, 'Blank Excel template should be a valid OOXML workbook');
+  assert.equal(generated.exportName, 'TEST - Wireless Gaming Controller');
+  assert.equal(generated.exportPrice, 24900);
+  console.log('XLSX browser parsing and template/sample/export roundtrip PASS');
 } finally {
   if (browser) await browser.close();
   child.kill('SIGTERM');
