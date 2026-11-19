@@ -79,7 +79,7 @@ export default function MobileLiveStage({
 
       <header className="cnc-mobile-live-top">
         <div className="cnc-mobile-live-top-row">
-          <button type="button" className="cnc-live-icon-glass" onClick={onExit} aria-label="Leave livestream"><ArrowLeft size={19}/></button>
+          <button type="button" className="cnc-live-icon-glass" onClick={isHost ? () => setConfirmEnd(true) : onExit} aria-label="Leave livestream"><ArrowLeft size={19}/></button>
           <span className="cnc-mobile-live-brand" aria-label="Cash N Carry">Cash<span>N</span>Carry</span>
           <span className="cnc-mobile-live-pill cnc-mobile-live-pill--live"><Radio size={13}/> LIVE ROOM</span>
           <button type="button" className="cnc-live-icon-glass" onClick={() => void shareRoom()} aria-label="Share livestream"><Share2 size={19}/></button>
