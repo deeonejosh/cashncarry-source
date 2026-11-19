@@ -1,14 +1,18 @@
 import DepthArtwork from '../../ui/DepthArtwork';
-import React, { useState } from 'react';
+import React, { lazy, Suspense, useState } from 'react';
 import { useStore } from '../../../context/StoreContext';
 import { SellerProductItem } from '../../../types';
 import { categories } from '../../../lib/data';
 import ProductPhotoField from './ProductPhotoField';
-import { Package, Plus, Edit, Archive, CheckCircle2, Clock, Send, EyeOff, X } from 'lucide-react';
+import { Package, Plus, Edit, Archive, CheckCircle2, Clock, Send, EyeOff, X, FileSpreadsheet } from 'lucide-react';
+
+const ProductWorkbookImport = lazy(() => import('./ProductWorkbookImport'));
 
 export default function SellerProductsPage() {
   const {
+    currentUser,
     sellerStore,
+    refreshSellerData,
     sellerProducts,
     createSellerProduct,
     updateSellerProduct,
@@ -18,6 +22,7 @@ export default function SellerProductsPage() {
     showToast,
   } = useStore();
 
+  const [showImport, setShowImport] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<SellerProductItem | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -130,13 +135,17 @@ export default function SellerProductsPage() {
           </p>
         </div>
 
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl bg-orange-200 px-4 py-2.5 text-xs font-black text-orange-950 hover:bg-orange-300"
-        >
-          <Plus size={16} />
-          <span>Add New Product</span>
-        </button>
+        <div className="flex shrink-0 flex-wrap gap-2">
+          <button type="button" onClick={() => setShowImport(true)} disabled={!sellerStore}
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-xl border border-emerald-200/65 bg-emerald-950/45 px-4 py-2.5 text-xs font-black text-white hover:bg-emerald-950 disabled:opacity-50">
+            <FileSpreadsheet size={16} aria-hidden="true" /> Import from Excel
+          </button>
+          <button type="button" onClick={() => setShowAddModal(true)}
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-orange-200 px-4 py-2.5 text-xs font-black text-orange-950 hover:bg-orange-300">
+            <Plus size={16} aria-hidden="true" /> Add New Product
+          </button>
+          {!sellerStore && <p className="basis-full text-xs text-emerald-100">Create your storefront to import products.</p>}
+        </div>
       </div>
 
       <div className="cnc-workspace-panel cnc-inventory-table overflow-x-auto rounded-2xl border" role="region" aria-label="Product inventory" tabIndex={0}>
@@ -251,6 +260,13 @@ export default function SellerProductsPage() {
           </tbody>
         </table>
       </div>
+
+      {showImport && sellerStore && (
+        <Suspense fallback={<p role="status">Opening Excel import…</p>}>
+          <ProductWorkbookImport key={currentUser.id} sellerId={currentUser.id} storeName={sellerStore.name}
+            onRefresh={refreshSellerData} onClose={() => setShowImport(false)} />
+        </Suspense>
+      )}
 
       {/* Add Product Modal */}
       {showAddModal && (
