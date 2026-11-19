@@ -3,17 +3,26 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useStore } from '../../../context/StoreContext';
 import { api, ApiSellerApplication } from '../../../lib/api';
 import { AdminOverview } from '../../../types';
+import './admin-console.css';
 import AdminSupportInbox from './AdminSupportInbox';
 import {
   ShieldCheck,
   Package,
   CheckCircle2,
   XCircle,
-  Lock,
+  ClipboardList,
+  Coins,
+  CreditCard,
+  FileUp,
+  Film,
+  MessagesSquare,
+  Store,
+  Users,
   Mail,
   RefreshCw,
   AlertTriangle,
   Activity,
+  ArrowLeft,
   Ban,
 } from 'lucide-react';
 
@@ -37,6 +46,7 @@ export default function AdminDashboardPage({ onNavigate }: AdminDashboardPagePro
   const { platformConfig, reloadMarketplace, showToast } = useStore();
 
   const [activeTab, setActiveTab] = useState<'applications' | 'products' | 'audit' | 'support'>('applications');
+  const [selectedApplication, setSelectedApplication] = useState<string | null | undefined>(undefined);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sellerApplicationsAvailable, setSellerApplicationsAvailable] = useState<boolean | null>(null);
@@ -44,7 +54,7 @@ export default function AdminDashboardPage({ onNavigate }: AdminDashboardPagePro
   const [applications, setApplications] = useState<ApiSellerApplication[]>([]);
   const [moderationQueue, setModerationQueue] = useState<ModerationProductRow[]>([]);
   const [notesById, setNotesById] = useState<Record<string, string>>({});
-  const [busyId, setBusyId] = useState<string | null>(null);
+  const [reviewing, setReviewing] = useState(false);
 
   const loadAdminData = useCallback(async () => {
     setLoading(true);
@@ -83,6 +93,8 @@ export default function AdminDashboardPage({ onNavigate }: AdminDashboardPagePro
     setApplications(appRes.ok && Array.isArray(appRes.data?.applications) ? appRes.data.applications : []);
     if (modRes.ok && Array.isArray(modRes.data?.products)) {
       setModerationQueue(modRes.data.products as unknown as ModerationProductRow[]);
+    } else {
+      setModerationQueue([]);
     }
     setLoading(false);
   }, []);
@@ -96,342 +108,246 @@ export default function AdminDashboardPage({ onNavigate }: AdminDashboardPagePro
     userId: string,
     decision: 'approve' | 'reject' | 'suspend'
   ) => {
-    setBusyId(applicationId);
+    setReviewing(true);
     const res = await api.reviewSellerApplication({
       applicationId,
       userId,
       decision,
-      notes: notesById[applicationId] || undefined,
+      notes: notesById[applicationId] ?? undefined,
     });
-    setBusyId(null);
     if (!res.ok) {
+      setReviewing(false);
       showToast(res.error || 'Failed to update seller application.', 'error');
       return;
     }
-    showToast(`Seller application ${decision}d.`, 'success');
+    showToast(`Seller application ${{ approve: 'approved', reject: 'rejected', suspend: 'suspended' }[decision]}.`, 'success');
     await loadAdminData();
+    setReviewing(false);
     await reloadMarketplace();
   };
 
   const handleModerateProduct = async (prod: ModerationProductRow, decision: 'approve' | 'reject') => {
-    setBusyId(prod.id);
+    setReviewing(true);
     const res = await api.moderateProduct(prod.id, Number(prod.revision ?? 1), decision);
-    setBusyId(null);
     if (!res.ok) {
+      setReviewing(false);
       showToast(res.error || 'Failed to moderate product.', 'error');
       return;
     }
-    showToast(`Product ${decision}d.`, 'success');
+    showToast(`Product ${decision === 'approve' ? 'published' : 'rejected'}.`, 'success');
     await loadAdminData();
+    setReviewing(false);
     await reloadMarketplace();
   };
 
-  const pendingApplicationsCount = applications.filter((a) => a.status === 'pending').length;
+  const application = selectedApplication === null ? undefined : applications.find((item) => item.id === selectedApplication) ?? applications[0];
+  const counts = overview?.counts;
+  const navigation = [
+    { id: 'applications', label: 'Seller Reviews', icon: Store },
+    { id: 'products', label: 'Product Moderation', icon: Package },
+    { id: 'support', label: 'Support Inbox', icon: MessagesSquare },
+    { id: 'audit', label: 'Audit & Settings', icon: Activity },
+  ] as const;
+  const metrics = [
+    { label: 'Total Users', value: counts?.totalUsers, detail: counts ? `${counts.approvedSellers} approved sellers` : '', icon: Users },
+    { label: 'Pending Seller Apps', value: sellerApplicationsAvailable ? counts?.pendingApplications : undefined, detail: sellerApplicationsAvailable === false ? 'Review service unavailable' : 'Awaiting a decision', icon: Store },
+    { label: 'Pending Product Reviews', value: counts?.pendingProducts, detail: 'Awaiting moderation', icon: Package },
+    { label: 'Published Products', value: counts?.publishedProducts, detail: counts ? `${counts.totalOrders} orders · ${counts.totalVideos} videos` : '', icon: CheckCircle2 },
+  ];
+  const featureFlags = [
+    { label: 'Online Payments', enabled: platformConfig.paymentsEnabled, icon: CreditCard },
+    { label: 'Coin Purchases', enabled: platformConfig.coinsPurchasesEnabled, icon: Coins },
+    { label: 'KYC Binary Uploads', enabled: platformConfig.kycUploadsEnabled, icon: FileUp },
+    { label: 'Open Video Reports', enabled: null, icon: Film },
+  ];
 
   return (
-    <div className="space-y-6 pb-12">
-      <div className="cnc-depth-banner flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 text-slate-900">
-        <DepthArtwork icon={ShieldCheck} />
-        <h1 className="text-xl font-bold sm:text-2xl">Admin Console</h1>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => void loadAdminData()}
-            className="flex min-h-10 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50"
-          >
-            <RefreshCw size={14} /> Refresh
-          </button>
+    <div className="cnc-admin-console">
+      <aside className="cnc-admin-sidebar">
+        <img src="/brand/logo.png" alt="Cash N Carry" className="cnc-admin-logo" />
+        <nav aria-label="Admin Console sections">
+          {navigation.map(({ id, label, icon: Icon }) => (
+            <button key={id} type="button" aria-current={activeTab === id ? 'true' : undefined}
+              onClick={() => setActiveTab(id)}>
+              <Icon size={19} aria-hidden="true" /> {label}
+            </button>
+          ))}
           {onNavigate && (
-            <button
-              onClick={() => onNavigate('email-marketing')}
-              className="flex min-h-10 items-center gap-1.5 rounded-xl bg-[#0c5c36] px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-900 transition"
-            >
-              <Mail size={14} />
-              <span>Email</span>
+            <button type="button" className="cnc-admin-email" onClick={() => onNavigate('email-marketing')}>
+              <Mail size={19} aria-hidden="true" /> Email Studio
             </button>
           )}
-        </div>
-      </div>
+        </nav>
+        {onNavigate && <button type="button" className="cnc-admin-back" onClick={() => onNavigate('shop')}>
+          <ArrowLeft size={17} aria-hidden="true" /> Back to Marketplace
+        </button>}
+        <div className="cnc-admin-sidebar-art"><DepthArtwork icon={Store} /></div>
+      </aside>
 
-      {error && (
-        <div className="flex items-center justify-between gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-xs text-rose-800">
-          <span className="flex items-center gap-2">
-            <AlertTriangle size={16} />
-            <span>{error}</span>
-          </span>
-          <button
-            type="button"
-            onClick={() => void loadAdminData()}
-            className="rounded-xl bg-rose-700 px-4 py-2 font-bold text-white"
-          >
-            Retry
-          </button>
-        </div>
-      )}
-
-      {/* Real Database Counts */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm space-y-1">
-          <div className="text-xs font-bold text-slate-400">Total Users</div>
-          <div className="text-2xl font-black text-slate-900">{overview ? overview.counts.totalUsers : '—'}</div>
-          <div className="text-[11px] text-slate-500">
-            {overview ? overview.counts.approvedSellers : '—'} approved sellers
+      <div className="cnc-admin-main">
+        <header className="cnc-admin-header">
+          <div className="flex items-center gap-3">
+            <span className="cnc-admin-emblem"><ShieldCheck size={23} aria-hidden="true" /></span>
+            <div><h1>Admin Console</h1><p>Cash N Carry Nigeria</p></div>
           </div>
-        </div>
-        <div className="rounded-3xl border border-purple-200 bg-purple-50/50 p-5 shadow-sm space-y-1">
-          <div className="text-xs font-bold text-purple-800">Pending Seller Apps</div>
-          <div className="text-2xl font-black text-purple-700">{sellerApplicationsAvailable === false ? '—' : overview?.counts.pendingApplications ?? pendingApplicationsCount}</div>
-          <div className="text-[11px] text-purple-800">{sellerApplicationsAvailable === false ? 'Review service not configured' : 'Awaiting admin decision'}</div>
-        </div>
-        <div className="rounded-3xl border border-amber-200 bg-amber-50/50 p-5 shadow-sm space-y-1">
-          <div className="text-xs font-bold text-amber-800">Pending Product Reviews</div>
-          <div className="text-2xl font-black text-amber-700">{overview ? overview.counts.pendingProducts : '—'}</div>
-          <div className="text-[11px] text-amber-800">Awaiting moderation</div>
-        </div>
-        <div className="rounded-3xl border border-emerald-200 bg-emerald-50/50 p-5 shadow-sm space-y-1">
-          <div className="text-xs font-bold text-emerald-800">Published Products</div>
-          <div className="text-2xl font-black text-emerald-700">{overview ? overview.counts.publishedProducts : '—'}</div>
-          <div className="text-[11px] text-emerald-800">
-            {overview ? overview.counts.totalOrders : '—'} orders · {overview ? overview.counts.totalVideos : '—'} videos
-          </div>
-        </div>
-      </div>
-
-      {/* Tabs */}
-      <div className="flex border-b border-slate-200 pb-3 gap-3 overflow-x-auto text-xs font-bold text-slate-600">
-        <button
-          onClick={() => setActiveTab('applications')}
-          className={`flex items-center gap-1.5 rounded-xl px-4 py-2 transition ${
-            activeTab === 'applications' ? 'bg-[#0c5c36] text-white shadow' : 'hover:bg-slate-100'
-          }`}
-        >
-          <ShieldCheck size={15} />
-          <span>Seller Reviews ({applications.length})</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('products')}
-          className={`flex items-center gap-1.5 rounded-xl px-4 py-2 transition ${
-            activeTab === 'products' ? 'bg-[#0c5c36] text-white shadow' : 'hover:bg-slate-100'
-          }`}
-        >
-          <Package size={15} />
-          <span>Products ({moderationQueue.length})</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('support')}
-          className={`flex items-center gap-1.5 rounded-xl px-4 py-2 transition ${
-            activeTab === 'support' ? 'bg-[#0c5c36] text-white shadow' : 'hover:bg-slate-100'
-          }`}
-        >
-          <Mail size={15} />
-          <span>Support Inbox</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('audit')}
-          className={`flex items-center gap-1.5 rounded-xl px-4 py-2 transition ${
-            activeTab === 'audit' ? 'bg-[#0c5c36] text-white shadow' : 'hover:bg-slate-100'
-          }`}
-        >
-          <Activity size={15} />
-          <span>Audit & Settings</span>
-        </button>
-      </div>
-
-      {loading ? (
-        <div className="py-12 text-center text-xs text-slate-500">Loading admin console records...</div>
-      ) : activeTab === 'support' ? (
-        <AdminSupportInbox />
-      ) : activeTab === 'applications' ? (
-        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
-          <div className="border-b border-slate-100 pb-3">
-            <h3 className="text-sm font-black text-slate-900">Seller Applications</h3>
-          </div>
-
-          {applications.length === 0 ? (
-            <div className="p-10 text-center text-xs text-slate-400">
-              {sellerApplicationsAvailable === false ? 'Seller application reviews are not configured in staging.' : 'No seller applications submitted yet.'}
-            </div>
-          ) : (
-            <div className="divide-y divide-slate-100">
-              {applications.map((app) => (
-                <div key={app.id} className="py-4 space-y-3 text-xs">
-                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-                    <div className="space-y-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-black text-slate-900 text-sm">{app.business_name}</span>
-                        {app.cac_number && (
-                          <span className="font-mono text-emerald-800 font-bold">({app.cac_number})</span>
-                        )}
-                        <span
-                          className={`rounded-full px-2.5 py-0.5 text-[10px] font-black uppercase ${
-                            app.status === 'approved'
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : app.status === 'pending'
-                              ? 'bg-amber-100 text-amber-800'
-                              : 'bg-rose-100 text-rose-800'
-                          }`}
-                        >
-                          {app.status}
-                        </span>
-                      </div>
-                      <div className="text-slate-500">
-                        Account: <b>{app.email || app.user_id}</b> · {app.business_type} · {app.state_location} · {app.phone}
-                      </div>
-                      <p className="text-slate-600">{app.description}</p>
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-2 shrink-0">
-                      {app.status !== 'approved' && (
-                        <button
-                          type="button"
-                          disabled={busyId === app.id}
-                          onClick={() => void handleReviewApplication(app.id, app.user_id, 'approve')}
-                          className="inline-flex items-center gap-1 rounded-xl bg-emerald-700 px-3.5 py-2 font-black text-white hover:bg-emerald-800 disabled:opacity-50"
-                        >
-                          <CheckCircle2 size={14} /> Approve
-                        </button>
-                      )}
-                      {app.status === 'pending' && (
-                        <button
-                          type="button"
-                          disabled={busyId === app.id}
-                          onClick={() => void handleReviewApplication(app.id, app.user_id, 'reject')}
-                          className="inline-flex items-center gap-1 rounded-xl border border-slate-200 px-3.5 py-2 font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-                        >
-                          <XCircle size={14} /> Reject
-                        </button>
-                      )}
-                      {app.status !== 'suspended' && (
-                        <button
-                          type="button"
-                          disabled={busyId === app.id}
-                          onClick={() => void handleReviewApplication(app.id, app.user_id, 'suspend')}
-                          className="inline-flex items-center gap-1 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2 font-bold text-rose-700 hover:bg-rose-100 disabled:opacity-50"
-                        >
-                          <Ban size={14} /> Suspend
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  <input
-                    type="text"
-                    value={notesById[app.id] ?? app.reviewer_notes ?? ''}
-                    onChange={(e) => setNotesById((prev) => ({ ...prev, [app.id]: e.target.value }))}
-                    placeholder="Optional compliance review note..."
-                    className="h-9 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs outline-none focus:border-[#0c5c36] focus:bg-white"
-                  />
-                </div>
-              ))}
-            </div>
+          {activeTab !== 'support' && (
+            <button type="button" onClick={() => void loadAdminData()} className="cnc-admin-button" disabled={loading || reviewing}>
+              <RefreshCw size={16} aria-hidden="true" /> Refresh
+            </button>
           )}
-        </div>
-      ) : activeTab === 'products' ? (
-        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
-          <div className="border-b border-slate-100 pb-3">
-            <h3 className="text-sm font-black text-slate-900">Product Moderation Queue</h3>
-            <p className="text-xs text-slate-500">
-              Approve listings submitted by approved sellers to make them live in the catalog.
-            </p>
-          </div>
+        </header>
 
-          {moderationQueue.length === 0 ? (
-            <div className="p-10 text-center text-xs text-slate-400">
-              No products currently awaiting moderation.
-            </div>
-          ) : (
-            <div className="divide-y divide-slate-100">
-              {moderationQueue.map((p) => (
-                <div key={p.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-4 text-xs">
-                  <div>
-                    <h4 className="font-black text-slate-900">{p.name}</h4>
-                    <div className="text-slate-500 mt-0.5">
-                      Seller: <b>{p.store_name || p.seller_email || 'Seller'}</b> · Category:{' '}
-                      <span className="capitalize">{p.category}</span> · Stock: {p.stock} · Rev {p.revision}
+        <div className="cnc-admin-content">
+          {activeTab === 'support' ? <AdminSupportInbox /> : <>
+            {error && <div role="alert" className="cnc-admin-error">
+              <AlertTriangle size={18} /> {error}
+              <button type="button" className="cnc-admin-button" onClick={() => void loadAdminData()}>Retry</button>
+            </div>}
+            {loading ? <p role="status" className="cnc-admin-empty">Loading admin console records…</p>
+              : activeTab === 'audit' ? (
+                <>
+                  <section className="cnc-admin-panel">
+                    <div className="cnc-admin-panel-title">
+                      <div><h2>Server Feature Flags</h2><p>Current status of platform features.</p></div>
+                      <span className="cnc-admin-emblem"><ShieldCheck size={23} /></span>
                     </div>
-                    <div className="font-black text-[#0c5c36] mt-0.5">
-                      ₦{Math.round((p.price_minor || 0) / 100).toLocaleString('en-NG')}
+                    <div className="cnc-admin-metrics">
+                      {featureFlags.map(({ label, enabled, icon: Icon }) => (
+                        <div className="cnc-admin-metric" key={label}>
+                          <span className="cnc-admin-emblem"><Icon size={20} /></span>
+                          <h3>{label}</h3>
+                          <span className="cnc-admin-status" data-status={enabled === null ? 'pending' : enabled ? 'approved' : 'rejected'}>
+                            {enabled === null ? 'Not configured' : enabled ? 'Enabled' : 'Disabled'}
+                          </span>
+                        </div>
+                      ))}
                     </div>
+                  </section>
+                  <section className="cnc-admin-panel">
+                    <div className="cnc-admin-panel-title">
+                      <div><h2>Recent Audit Log</h2><p>Latest recorded administrative actions.</p></div>
+                      <span className="cnc-admin-emblem"><ClipboardList size={23} /></span>
+                    </div>
+                    {!overview?.auditLogs.length ? <p className="cnc-admin-empty">No audit entries recorded yet.</p> :
+                      <ul className="cnc-admin-audit">
+                        {overview.auditLogs.map((log) => (
+                          <li key={log.id}>
+                            <span className="cnc-admin-emblem"><Activity size={18} /></span>
+                            <div className="break-words">
+                              <strong className="capitalize">{log.action.replace(/[_-]/g, ' ')}</strong>
+                              <p>{log.targetType} · {log.targetId}</p>
+                              {log.detail && <p>{log.detail}</p>}
+                            </div>
+                            <span>{log.createdAt ? new Date(log.createdAt).toLocaleString() : ''}</span>
+                          </li>
+                        ))}
+                      </ul>}
+                  </section>
+                </>
+              ) : (
+                <>
+                  <div className="cnc-admin-page-title">
+                    <h2>{activeTab === 'applications' ? 'Seller Reviews' : 'Product Moderation'}</h2>
+                    <p>{activeTab === 'applications' ? 'Review seller applications and manage seller status.' : 'Review submitted listings and decide what appears on the marketplace.'}</p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      disabled={busyId === p.id}
-                      onClick={() => void handleModerateProduct(p, 'approve')}
-                      className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 font-black text-white hover:bg-emerald-500 shadow disabled:opacity-50"
-                    >
-                      <CheckCircle2 size={14} /> Approve & Publish
-                    </button>
-                    <button
-                      type="button"
-                      disabled={busyId === p.id}
-                      onClick={() => void handleModerateProduct(p, 'reject')}
-                      className="flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-2 font-bold text-slate-600 hover:bg-slate-50 hover:text-rose-600 disabled:opacity-50"
-                    >
-                      <XCircle size={14} /> Reject
-                    </button>
+                  <div className="cnc-admin-metrics">
+                    {(activeTab === 'applications' ? metrics : metrics.slice(2)).map(({ label, value, detail, icon: Icon }) => (
+                      <div className="cnc-admin-metric" key={label}>
+                        <span className="cnc-admin-emblem"><Icon size={19} /></span>
+                        <h3>{label}</h3><strong>{value?.toLocaleString('en-NG') ?? '—'}</strong>
+                        {detail && <p>{detail}</p>}
+                      </div>
+                    ))}
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
+                  {activeTab === 'applications' ? (
+                    <section className="cnc-admin-panel" data-admin-view="applications">
+                      <div className="cnc-admin-panel-title">
+                        <div><h2>Seller Applications</h2><p>Review applications and record your decision.</p></div>
+                        <span className="cnc-admin-status">{applications.length}</span>
+                      </div>
+                      <div className="cnc-admin-queue">
+                        {!applications.length && <p className="cnc-admin-empty">
+                          {sellerApplicationsAvailable === false ? 'Seller application reviews are unavailable.' : 'No seller applications submitted yet.'}
+                        </p>}
+                        {applications.map((item) => {
+                          const expanded = application?.id === item.id;
+                          return (
+                            <article className="cnc-admin-seller" key={item.id}>
+                              <button type="button" aria-expanded={expanded} aria-controls={`review-${item.id}`}
+                                onClick={() => setSelectedApplication(expanded ? null : item.id)}>
+                                <Store size={20} aria-hidden="true" />
+                                <span className="cnc-admin-queue-name"><strong>{item.business_name}</strong><small>{item.state_location}</small></span>
+                                <span className="cnc-admin-seller-email">{item.email || item.user_id}</span>
+                                <span className="cnc-admin-status" data-status={item.status}>{item.status}</span>
+                              </button>
+                              <div id={`review-${item.id}`} hidden={!expanded} className="cnc-admin-review">
+                                <dl className="cnc-admin-facts">
+                                  <div><dt>Account</dt><dd>{item.email || item.user_id}</dd></div>
+                                  <div><dt>CAC number</dt><dd>{item.cac_number || '—'}</dd></div>
+                                  <div><dt>Business type</dt><dd>{item.business_type}</dd></div>
+                                  <div><dt>Location</dt><dd>{item.state_location}</dd></div>
+                                  <div><dt>Phone</dt><dd>{item.phone}</dd></div>
+                                </dl>
+                                {item.description && <p className="cnc-admin-description">{item.description}</p>}
+                                <label className="cnc-admin-field">
+                                  Review note
+                                  <textarea rows={3} maxLength={1000} value={notesById[item.id] ?? item.reviewer_notes ?? ''}
+                                    onChange={(e) => {
+                                      const value = e.target.value;
+                                      setNotesById((prev) => ({ ...prev, [item.id]: value }));
+                                    }} placeholder="Optional compliance review note" />
+                                </label>
+                                <div className="cnc-admin-actions">
+                                  {(item.status === 'pending' || item.status === 'suspended') && <button type="button" className="cnc-admin-button cnc-admin-primary" disabled={reviewing}
+                                    onClick={() => void handleReviewApplication(item.id, item.user_id, 'approve')}><CheckCircle2 size={16} /> Approve</button>}
+                                  {item.status === 'pending' && <button type="button" className="cnc-admin-button cnc-admin-danger" disabled={reviewing}
+                                    onClick={() => void handleReviewApplication(item.id, item.user_id, 'reject')}><XCircle size={16} /> Reject</button>}
+                                  {item.status === 'approved' && <button type="button" className="cnc-admin-button cnc-admin-danger" disabled={reviewing}
+                                    onClick={() => void handleReviewApplication(item.id, item.user_id, 'suspend')}><Ban size={16} /> Suspend</button>}
+                                </div>
+                              </div>
+                            </article>
+                          );
+                        })}
+                      </div>
+                    </section>
+                  ) : (
+                    <section className="cnc-admin-panel" data-admin-view="products">
+                      <div className="cnc-admin-panel-title">
+                        <div><h2>Product Moderation Queue</h2><p>Listings awaiting review.</p></div>
+                        <span className="cnc-admin-status">{moderationQueue.length}</span>
+                      </div>
+                      <div className="cnc-admin-queue">
+                        {!moderationQueue.length && <p className="cnc-admin-empty">No products currently awaiting moderation.</p>}
+                        {moderationQueue.map((product) => (
+                          <article key={product.id} className="cnc-admin-product">
+                            <span className="cnc-admin-emblem"><Package size={28} aria-hidden="true" /></span>
+                            <div className="cnc-admin-product-name">
+                              <h3>{product.name}</h3>
+                              <p>{product.store_name || product.seller_email || 'Seller'}</p>
+                              {product.category && <p className="capitalize">{product.category}</p>}
+                            </div>
+                            <dl className="cnc-admin-product-facts">
+                              <div><dt>Stock</dt><dd>{product.stock}</dd></div>
+                              <div><dt>Revision</dt><dd>{product.revision}</dd></div>
+                              <div><dt>Price</dt><dd>{new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format((product.price_minor || 0) / 100)}</dd></div>
+                            </dl>
+                            <div className="cnc-admin-actions">
+                              <button type="button" className="cnc-admin-button cnc-admin-primary" disabled={reviewing}
+                                onClick={() => void handleModerateProduct(product, 'approve')}><CheckCircle2 size={16} /> Approve &amp; Publish</button>
+                              <button type="button" className="cnc-admin-button cnc-admin-danger" disabled={reviewing}
+                                onClick={() => void handleModerateProduct(product, 'reject')}><XCircle size={16} /> Reject</button>
+                            </div>
+                          </article>
+                        ))}
+                      </div>
+                    </section>
+                  )}
+                </>
+              )}
+          </>}
         </div>
-      ) : (
-        <div className="space-y-6">
-          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-2 text-xs">
-            <h3 className="text-sm font-black text-slate-900">Server Feature Flags</h3>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
-              <div className="rounded-xl bg-slate-50 p-3">
-                <div className="text-slate-400">Online Payments</div>
-                <div className="font-black text-slate-900">{platformConfig.paymentsEnabled ? 'ENABLED' : 'DISABLED'}</div>
-              </div>
-              <div className="rounded-xl bg-slate-50 p-3">
-                <div className="text-slate-400">Coin Purchases</div>
-                <div className="font-black text-slate-900">{platformConfig.coinsPurchasesEnabled ? 'ENABLED' : 'DISABLED'}</div>
-              </div>
-              <div className="rounded-xl bg-slate-50 p-3">
-                <div className="text-slate-400">KYC Binary Uploads</div>
-                <div className="font-black text-slate-900">{platformConfig.kycUploadsEnabled ? 'ENABLED' : 'DISABLED'}</div>
-              </div>
-              <div className="rounded-xl bg-slate-50 p-3">
-                <div className="text-slate-400">Open Video Reports</div>
-                <div className="font-black text-slate-900">Not configured</div>
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
-            <h3 className="text-sm font-black text-slate-900 border-b border-slate-100 pb-3">
-              Recent Audit Log
-            </h3>
-            {!overview || overview.auditLogs.length === 0 ? (
-              <div className="p-8 text-center text-xs text-slate-400">No audit entries recorded yet.</div>
-            ) : (
-              <div className="divide-y divide-slate-100 text-xs">
-                {overview.auditLogs.map((log) => (
-                  <div key={log.id} className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                    <div>
-                      <span className="font-mono font-bold text-slate-900">{log.action}</span>
-                      <span className="text-slate-400">
-                        {' '}
-                        · {log.targetType} ({log.targetId})
-                      </span>
-                      {log.detail && <div className="text-slate-500 text-[11px]">{log.detail}</div>}
-                    </div>
-                    <span className="text-[11px] text-slate-400 shrink-0">
-                      {log.createdAt ? new Date(log.createdAt).toLocaleString() : ''}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      </div>
     </div>
   );
 }
