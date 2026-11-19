@@ -1,7 +1,7 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { api, type ApiSupportDetail, type ApiSupportTicket } from '../../../lib/api';
 import { useStore } from '../../../context/StoreContext';
-import { Headphones, RefreshCw, Send, ShieldAlert, FileText } from 'lucide-react';
+import { Headphones, RefreshCw, Send, Lock, Package, MessagesSquare } from 'lucide-react';
 
 const availableStatuses: ApiSupportTicket['status'][] = [
   'open', 'in_progress', 'waiting_for_customer', 'escalated', 'resolved',
@@ -18,27 +18,37 @@ export default function AdminSupportInbox() {
   const [reply, setReply] = useState('');
   const [internalNote, setInternalNote] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
+  const [listError, setListError] = useState('');
+  const [threadError, setThreadError] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [loading, setLoading] = useState(true);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const detailRequest = useRef(0);
+  const listRequest = useRef(0);
 
   const refresh = useCallback(async () => {
+    const request = ++listRequest.current;
+    setLoading(true);
     const res = await api.listSupportTickets(statusFilter
       ? statusFilter as ApiSupportTicket['status'] : undefined);
-    if (!res.ok) setError(res.error || 'Could not load support tickets.');
-    else { setTickets(res.data?.tickets || []); setError(''); }
+    if (request !== listRequest.current) return;
+    setListError(res.ok ? '' : res.error || 'Could not load support tickets.');
+    if (res.ok) setTickets(res.data?.tickets || []);
     setLoading(false);
   }, [statusFilter]);
 
   const openTicket = useCallback(async (id: string) => {
-    setSelected(id);
+    const request = ++detailRequest.current;
+    setDetailLoading(true);
     const res = await api.getSupportTicket(id);
+    if (request !== detailRequest.current) return;
+    setDetailLoading(false);
     if (res.ok && res.data) {
       setDetail(res.data);
-      setError('');
+      setThreadError('');
     } else {
       setDetail(null);
-      setError(res.error || 'Could not retrieve this ticket.');
+      setThreadError(res.error || 'Could not retrieve this ticket.');
     }
   }, []);
 
@@ -50,12 +60,13 @@ export default function AdminSupportInbox() {
     if (!selected || busy) return;
     setBusy(true);
     const res = await api.updateSupportTicket(selected, patch);
-    setBusy(false);
     if (!res.ok) {
+      setBusy(false);
       showToast(res.error || 'Unable to update ticket.', 'error');
       return;
     }
     await Promise.all([openTicket(selected), refresh()]);
+    setBusy(false);
   };
 
   const sendReply = async (event: React.FormEvent) => {
@@ -63,14 +74,15 @@ export default function AdminSupportInbox() {
     if (!selected || !reply.trim() || busy) return;
     setBusy(true);
     const res = await api.replySupportTicket(selected, reply.trim(), internalNote);
-    setBusy(false);
     if (!res.ok) {
+      setBusy(false);
       showToast(res.error || 'Could not add support message.', 'error');
       return;
     }
     setReply('');
     setInternalNote(false);
     await Promise.all([openTicket(selected), refresh()]);
+    setBusy(false);
   };
 
   const suggestReply = async () => {
@@ -86,126 +98,130 @@ export default function AdminSupportInbox() {
     showToast('Editable template inserted. Review before sending.', 'info');
   };
 
+  const chooseTicket = (id: string) => {
+    if (id === selected && detail) return;
+    setSelected(id);
+    setDetail(null);
+    setReply('');
+    setInternalNote(false);
+    setThreadError('');
+    void openTicket(id);
+  };
+
   return (
-    <section aria-label="Admin customer support inbox" className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h3 className="flex items-center gap-2 text-sm font-black text-slate-900">
-            <Headphones size={18} /> Customer Support Inbox
-          </h3>
-          <p className="mt-1 text-xs text-slate-500">
-            Owner-only triage, authorised order summaries, private notes and human escalation.
-          </p>
-        </div>
-        <button type="button" onClick={() => void refresh()}
-          className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold">
-          <RefreshCw size={15} /> Refresh
-        </button>
-      </div>
-      <div className="flex flex-wrap items-center gap-3 text-xs">
-        <label htmlFor="support-admin-filter" className="font-semibold text-slate-700">Status</label>
-        <select id="support-admin-filter" value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="rounded-xl border border-slate-200 bg-white px-3 py-2">
-          <option value="">All tickets</option>
-          {availableStatuses.map((s) => <option value={s} key={s} className="capitalize">{label(s)}</option>)}
-        </select>
-        <span className="text-slate-500">{tickets.length} tickets</span>
-      </div>
-      {error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-800">{error}</p>}
-      <div className="grid min-h-[400px] overflow-hidden rounded-2xl border border-slate-200 bg-white lg:grid-cols-[minmax(240px,340px)_minmax(0,1fr)]">
-        <div className="max-h-[570px] overflow-y-auto border-b border-slate-200 lg:border-b-0 lg:border-r">
-          {loading ? <p className="p-4 text-xs">Loading support tickets…</p>
-            : tickets.length === 0 ? <p className="p-4 text-xs text-slate-500">No tickets match this filter.</p>
-            : tickets.map((ticket) => (
-              <button type="button" onClick={() => void openTicket(ticket.id)} key={ticket.id}
-                className={'block w-full border-b border-slate-100 p-4 text-left hover:bg-emerald-50 ' +
-                  (selected === ticket.id ? 'bg-emerald-50' : '')}>
-                <span className="block truncate text-xs font-black text-slate-900">{ticket.subject}</span>
-                <span className="mt-1 block truncate text-[11px] text-slate-600">{ticket.requester_email || ticket.requester_id}</span>
-                <span className="mt-1 flex justify-between gap-1 text-[11px] text-slate-500">
-                  <span className="capitalize">{label(ticket.status)}</span>
-                  <span>{formatTime(ticket.updated)}</span>
-                </span>
-              </button>
-            ))}
-        </div>
-        <div className="flex min-w-0 flex-col">
-          {!detail ? <div className="flex flex-1 items-center justify-center p-8 text-center text-xs text-slate-500">
-            Select a customer ticket to review it.
-          </div> : <>
-            <div className="space-y-3 border-b border-slate-100 p-4">
-              <h4 className="text-sm font-black text-slate-900">{detail.ticket.subject}</h4>
-              <p className="text-xs capitalize text-slate-500">
-                {detail.ticket.category} · {formatTime(detail.ticket.created)}
-              </p>
-              {detail.linkedOrder && <div className="rounded-xl bg-slate-50 p-3 text-xs text-slate-700">
-                <FileText className="mr-1 inline-block" size={15} />
-                Order {detail.linkedOrder.id}: {detail.linkedOrder.status}
-                {' · '}Payment {detail.linkedOrder.payment_state}
-              </div>}
-              <div className="flex flex-wrap items-center gap-3 text-xs">
-                <label htmlFor="support-owner-status" className="font-semibold">Status</label>
-                <select id="support-owner-status" value={detail.ticket.status}
-                  disabled={busy}
-                  onChange={(e) => void updateTicket({ status: e.target.value as ApiSupportTicket['status'] })}
-                  className="rounded-lg border border-slate-200 bg-white p-2 capitalize">
-                  {availableStatuses.map((s) => <option key={s} value={s}>{label(s)}</option>)}
-                </select>
-                <label htmlFor="support-owner-priority" className="font-semibold">Priority</label>
-                <select id="support-owner-priority" value={detail.ticket.priority}
-                  disabled={busy}
-                  onChange={(e) => void updateTicket({ priority: e.target.value as ApiSupportTicket['priority'] })}
-                  className="rounded-lg border border-slate-200 bg-white p-2">
-                  <option value="normal">Normal</option>
-                  <option value="high">High</option>
-                </select>
-              </div>
-            </div>
-            <div className="min-h-[140px] max-h-[370px] flex-1 space-y-3 overflow-y-auto p-4">
-              {detail.messages.map((item) => (
-                <article key={item.id} className={
-                  'rounded-xl p-3 text-xs ' +
-                  (item.internal ? 'border border-amber-200 bg-amber-50'
-                    : item.author_id === detail.ticket.requester_id ? 'bg-slate-50' : 'bg-emerald-50')
-                }>
-                  <p className="mb-1 font-bold text-slate-600">
-                    {item.internal ? 'Private admin note' :
-                      item.author_id === detail.ticket.requester_id ? 'Customer' : 'Support team'}
-                  </p>
-                  <p className="whitespace-pre-wrap break-words text-slate-800">{item.body}</p>
-                  <span className="mt-1 block text-[10px] text-slate-500">{formatTime(item.created)}</span>
-                </article>
+    <section aria-label="Admin customer support inbox" className="cnc-admin-support">
+      <div className="cnc-admin-split">
+        <div className="cnc-admin-panel">
+          <div className="cnc-admin-panel-title">
+            <div><h2>Support Inbox</h2><p>Customer messages and inquiries</p></div>
+            <button type="button" className="cnc-admin-button" onClick={() => {
+              void refresh();
+              if (selected) void openTicket(selected);
+            }} disabled={loading || busy || detailLoading}>
+              <RefreshCw size={16} aria-hidden="true" /> Refresh
+            </button>
+          </div>
+          <label className="cnc-admin-field cnc-admin-filter">
+            Status
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} disabled={busy}>
+              <option value="">All statuses</option>
+              {availableStatuses.map((status) => <option value={status} key={status}>{label(status)}</option>)}
+            </select>
+          </label>
+          {listError && <p role="alert" className="cnc-admin-error">{listError}</p>}
+          <div className="cnc-admin-queue" aria-busy={loading}>
+            {loading ? <p role="status" className="cnc-admin-empty">Loading support tickets…</p>
+              : tickets.length === 0 ? <p className="cnc-admin-empty">No tickets match this filter.</p>
+              : tickets.map((ticket) => (
+                <button type="button" onClick={() => chooseTicket(ticket.id)} key={ticket.id}
+                  aria-pressed={selected === ticket.id} disabled={busy}>
+                  <MessagesSquare size={18} aria-hidden="true" />
+                  <span className="cnc-admin-queue-name">
+                    <strong>{ticket.subject}</strong>
+                    <small>{ticket.requester_email || ticket.requester_id}</small>
+                    <small>{formatTime(ticket.updated)}</small>
+                  </span>
+                  <span className="cnc-admin-status" data-status={ticket.status}>{label(ticket.status)}</span>
+                </button>
               ))}
-            </div>
-            <div className="space-y-2 border-t border-slate-100 p-4">
-              <p className="flex items-start gap-2 text-[11px] text-slate-500">
-                <ShieldAlert size={14} className="shrink-0" />
-                AI reply generation is not configured. Templates are not AI-generated and never send automatically.
-              </p>
-              <button type="button" onClick={() => void suggestReply()} disabled={busy}
-                className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700">
-                Insert editable reply template
-              </button>
-              <form onSubmit={(e) => void sendReply(e)} className="space-y-2">
-                <label htmlFor="support-admin-reply" className="sr-only">Support reply</label>
-                <textarea id="support-admin-reply" rows={3} maxLength={1600} value={reply}
-                  onChange={(e) => setReply(e.target.value)}
-                  placeholder="Write a personal response to this customer"
-                  className="w-full rounded-xl border border-slate-200 p-3 text-xs" />
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <label className="flex items-center gap-2 text-xs text-slate-600">
-                    <input type="checkbox" checked={internalNote}
-                      onChange={(e) => setInternalNote(e.target.checked)} /> Internal note (not visible to customer)
-                  </label>
-                  <button type="submit" disabled={busy || !reply.trim()}
-                    className="flex items-center gap-2 rounded-xl bg-[#0c5c36] px-4 py-2.5 text-xs font-bold text-white disabled:opacity-50">
-                    <Send size={14} /> {internalNote ? 'Save Private Note' : 'Send Reply'}
-                  </button>
+          </div>
+        </div>
+
+        <div className="cnc-admin-panel cnc-admin-thread" aria-busy={detailLoading}>
+          {threadError && <p role="alert" className="cnc-admin-error">{threadError}</p>}
+          {detailLoading ? <p role="status" className="cnc-admin-empty">Loading conversation…</p>
+            : !detail ? <div className="cnc-admin-empty">
+              <Headphones size={28} aria-hidden="true" />
+              Select a customer ticket to review it.
+            </div> : <>
+              <div className="cnc-admin-panel-title">
+                <div>
+                  <h2>{detail.ticket.subject}</h2>
+                  <p>Ticket #{detail.ticket.id} · {detail.ticket.requester_email || detail.ticket.requester_id} · {formatTime(detail.ticket.created)}</p>
                 </div>
+              </div>
+              <div className="cnc-admin-order">
+                {detail.linkedOrder && <div className="cnc-admin-linked-order">
+                  <span className="cnc-admin-emblem"><Package size={20} aria-hidden="true" /></span>
+                  <div>
+                    <strong>Linked Order #{detail.linkedOrder.id}</strong>
+                    <p>{detail.linkedOrder.status} · Payment {detail.linkedOrder.payment_state}</p>
+                  </div>
+                </div>}
+                <label className="cnc-admin-field">
+                  Status
+                  <select value={detail.ticket.status} disabled={busy}
+                    onChange={(e) => void updateTicket({ status: e.target.value as ApiSupportTicket['status'] })}>
+                    {availableStatuses.map((status) => <option key={status} value={status}>{label(status)}</option>)}
+                  </select>
+                </label>
+                <label className="cnc-admin-field">
+                  Priority
+                  <select value={detail.ticket.priority} disabled={busy}
+                    onChange={(e) => void updateTicket({ priority: e.target.value as ApiSupportTicket['priority'] })}>
+                    <option value="normal">Normal</option>
+                    <option value="high">High</option>
+                  </select>
+                </label>
+              </div>
+              <h3>Conversation</h3>
+              <div className="cnc-admin-messages">
+                {detail.messages.map((item) => {
+                  const customer = item.author_id === detail.ticket.requester_id;
+                  return (
+                    <article key={item.id} className="cnc-admin-message" data-kind={item.internal ? 'private' : customer ? 'customer' : 'support'}>
+                      <header>
+                        <strong>{item.internal ? <><Lock size={14} aria-hidden="true" /> Private admin note</> : customer ? 'Customer' : 'Cash N Carry Support'}</strong>
+                        <span>{formatTime(item.created)}</span>
+                      </header>
+                      <p>{item.body}</p>
+                    </article>
+                  );
+                })}
+              </div>
+              <form onSubmit={(e) => void sendReply(e)} className="cnc-admin-compose">
+                <h3>{internalNote ? 'Write a Private Note' : 'Reply to Customer'}</h3>
+                <div className="cnc-admin-actions">
+                  <button type="button" onClick={() => void suggestReply()} disabled={busy} className="cnc-admin-button">
+                    Insert editable reply template
+                  </button>
+                  <label className="cnc-admin-check">
+                    <input type="checkbox" checked={internalNote} disabled={busy}
+                      onChange={(e) => setInternalNote(e.target.checked)} />
+                    Internal note (visible to admins only)
+                  </label>
+                </div>
+                <label className="cnc-admin-field">
+                  <span className="sr-only">{internalNote ? 'Private note' : 'Support reply'}</span>
+                  <textarea rows={4} maxLength={1600} value={reply} disabled={busy}
+                    onChange={(e) => setReply(e.target.value)}
+                    placeholder={internalNote ? 'Write an internal note' : 'Type your reply to the customer'} />
+                </label>
+                <button type="submit" disabled={busy || !reply.trim()} className="cnc-admin-button cnc-admin-primary">
+                  <Send size={16} aria-hidden="true" /> {internalNote ? 'Save Private Note' : 'Send Reply'}
+                </button>
               </form>
-            </div>
-          </>}
+            </>}
         </div>
       </div>
     </section>
