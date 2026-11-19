@@ -26,6 +26,14 @@ export default function SellerProductsPage() {
     const params = new URLSearchParams(window.location.search);
     return params.get('bulkImport') === '1';
   });
+  const closeBulkImport = () => {
+    setShowBulkImport(false);
+    const url = new URL(window.location.href);
+    if (url.searchParams.has('bulkImport')) {
+      url.searchParams.delete('bulkImport');
+      window.history.replaceState(window.history.state, '', url.pathname + url.search);
+    }
+  };
   const [editingProduct, setEditingProduct] = useState<SellerProductItem | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -318,7 +326,7 @@ export default function SellerProductsPage() {
         <SellerBulkImport
           sellerName={sellerStore?.name || 'Verified Seller'}
           existingProducts={sellerProducts}
-          onClose={() => setShowBulkImport(false)}
+          onClose={closeBulkImport}
           onImported={refreshSellerData}
           showToast={showToast}
         />
