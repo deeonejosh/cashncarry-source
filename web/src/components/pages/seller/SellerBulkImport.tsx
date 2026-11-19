@@ -2,7 +2,7 @@ import React, { useRef, useState } from 'react';
 import { FileSpreadsheet, Download, Upload, X, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { api } from '../../../lib/api';
 import { BULK_MAX_ROWS, parseSellerSpreadsheet, type BulkImportRow } from '../../../lib/seller-spreadsheet';
-import { buildSellerWorkbook, downloadExcel, sampleGamingProducts } from '../../../lib/seller-spreadsheet-export';
+import { buildSellerWorkbook, downloadExcel } from '../../../lib/seller-spreadsheet-export';
 import type { SellerProductItem } from '../../../types';
 
 type Props = {
@@ -27,10 +27,6 @@ export default function SellerBulkImport({ sellerName, existingProducts, onClose
 
   const downloadTemplate = () => {
     downloadExcel(buildSellerWorkbook([]), 'cashncarry-seller-products-template.xlsx');
-  };
-
-  const downloadSample = () => {
-    downloadExcel(buildSellerWorkbook(sampleGamingProducts()), 'cashncarry-10-gaming-accessories-TEST.xlsx');
   };
 
   const downloadUploadedFile = () => {
@@ -117,14 +113,10 @@ export default function SellerBulkImport({ sellerName, existingProducts, onClose
         </header>
 
         <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-5 sm:p-6">
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2">
             <button type="button" onClick={downloadTemplate}
               className="flex items-center justify-center gap-2 rounded-xl border border-emerald-700 px-4 py-3 text-xs font-bold text-emerald-800 hover:bg-emerald-50">
               <Download size={17} /> Download blank Excel template
-            </button>
-            <button type="button" onClick={downloadSample}
-              className="flex items-center justify-center gap-2 rounded-xl border border-emerald-700 px-4 py-3 text-xs font-bold text-emerald-800 hover:bg-emerald-50">
-              <FileSpreadsheet size={17} /> Download 10 test gaming products
             </button>
             <label className={'flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-[#0c5c36] px-4 py-3 text-xs font-bold text-white hover:bg-emerald-900 ' +
               (importing || reading ? 'pointer-events-none opacity-50' : '')}>
