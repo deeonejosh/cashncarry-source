@@ -4,6 +4,9 @@ import { scryptAsync } from '@noble/hashes/scrypt.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { build } from 'esbuild';
+import readWorkbook from 'read-excel-file/node';
+import { parseProductRows, PRODUCT_COLUMNS, workbookDraftId } from '../src/lib/sellerProductWorkbook';
+import { sellerProductTemplate } from '../src/lib/sellerProductTemplate';
 import { Miniflare } from 'miniflare';
 import { renderAuthEmail } from '../deploy/chatgpt-sites/auth-email';
 import { resolveEdgeSEO, injectEdgeSEOMeta } from '../deploy/chatgpt-sites/edge-seo';
@@ -50,6 +53,31 @@ async function execMigrationSql(db: any, sql: string) {
 }
 
 async function run() {
+  await test('Excel product import keeps template columns, validates rows and uses stable draft IDs', async () => {
+    const template = Buffer.from(sellerProductTemplate.split(',')[1], 'base64');
+    const header = (await readWorkbook(template))[0];
+    assert.deepEqual(header, [...PRODUCT_COLUMNS]);
+    const rows = parseProductRows([header,
+      ['USB charger', 2500.5, 0, 'Electronics', null, 'Fast charging', 'https://example.com/photo.png', 3000],
+      [null, null, null, null],
+      ['Bad row', 100, 2.5, 'unknown', null, null, 'http://example.com/image.png', 50],
+    ], 'Test Store');
+    assert.deepEqual(rows[0].product, {
+      name: 'USB charger', priceNaira: 2500.5, stock: 0, category: 'tech', brand: 'Test Store',
+      description: 'Fast charging', imageUrl: 'https://example.com/photo.png', compareAtNaira: 3000,
+    });
+    assert.equal(rows[1].number, 4);
+    assert.equal(rows[1].product, undefined);
+    assert.equal(rows[1].errors.length, 4);
+    assert.throws(() => parseProductRows([['Name'], ['Product']], 'Test Store'), /Missing columns/);
+    assert.throws(() => parseProductRows([header, ...Array.from({ length: 51 }, () => ['Overflow'])], 'Test Store'), /more than 50/);
+    const draft = await workbookDraftId('seller-a', 'workbook-hash', 2);
+    assert.match(draft, /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/);
+    assert.equal(draft, await workbookDraftId('seller-a', 'workbook-hash', 2));
+    assert.notEqual(draft, await workbookDraftId('seller-a', 'workbook-hash', 3));
+    assert.notEqual(draft, await workbookDraftId('seller-b', 'workbook-hash', 2));
+  });
+
   await test('Auth email: branded accessible templates escape HTML and include expiry', () => {
     const verify = renderAuthEmail('<demo&code>', 'verify');
     assert.match(verify.subject, /verification/i);
