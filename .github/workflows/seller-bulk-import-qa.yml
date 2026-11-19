@@ -23,6 +23,7 @@ jobs:
           cd web
           npm run lint
           npx tsx scripts/seller-bulk-import-test.ts
+          node scripts/seller-bulk-xlsx-browser-test.mjs
           npm test
           npm run build
           npm run bundle:worker
