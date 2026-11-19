@@ -322,8 +322,9 @@ export default function SellerProductsPage() {
                   />
                 </div>
                 <div>
-                  <label className="font-bold text-slate-700">Category *</label>
+                  <label htmlFor="seller-product-category" className="font-bold text-slate-700">Category *</label>
                   <select
+                    id="seller-product-category"
                     value={category}
                     onChange={(e) => setCategory(e.target.value)}
                     className="mt-1 h-11 w-full rounded-xl border border-slate-200 px-3 outline-none bg-white"
