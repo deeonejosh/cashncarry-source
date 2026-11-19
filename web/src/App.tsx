@@ -190,6 +190,11 @@ function MainApp() {
     try {
       const params = new URLSearchParams();
       if (currentTab !== 'home') params.set('tab', currentTab);
+      // Preserve a deep-link to the seller's Excel import dialog while the
+      // initial authentication check is in flight.
+      if (currentTab === 'seller-products' && new URLSearchParams(window.location.search).get('bulkImport') === '1') {
+        params.set('bulkImport', '1');
+      }
       if (currentTab === 'shop' && selectedCategory !== 'all') params.set('category', selectedCategory);
       if (currentTab === 'shop' && shopSearchQuery.trim()) params.set('q', shopSearchQuery.trim());
       if (currentTab === 'policies' && policySection !== 'terms') params.set('section', policySection);
