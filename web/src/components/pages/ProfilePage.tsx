@@ -445,13 +445,23 @@ export default function ProfilePage({ onNavigate, initialAddressSetup = false }:
               </p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => navigateTo('seller-dashboard')}
-            className="shrink-0 rounded-xl bg-[#0E6B38] px-5 py-2.5 text-xs font-black text-white hover:bg-[#084B26]"
-          >
-            Open Seller Centre
-          </button>
+          <div className="flex w-full flex-col gap-2 sm:w-auto">
+            <button
+              type="button"
+              onClick={() => navigateTo('seller-dashboard')}
+              className="min-h-11 rounded-xl bg-[#0E6B38] px-5 py-2.5 text-xs font-black text-white hover:bg-[#084B26]"
+            >
+              Open Seller Centre
+            </button>
+            <a
+              href="/?tab=seller-products&amp;bulkImport=1"
+              className="flex min-h-11 items-center justify-center gap-2 rounded-xl border-2 border-[#0E6B38] bg-white px-5 py-2.5 text-xs font-black text-[#0E6B38] hover:bg-emerald-50"
+              aria-label="Bulk Upload Excel to Seller Centre"
+            >
+              <Package size={17} />
+              Bulk Upload Excel
+            </a>
+          </div>
         </div>
       ) : currentUser.sellerStatus === 'pending' ? (
         <div className="rounded-3xl border border-amber-200 bg-amber-50 p-6 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
