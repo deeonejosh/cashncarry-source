@@ -42,9 +42,9 @@ jobs:
           const css = assets.find(a=>/^index-[a-zA-Z0-9_-]+\.css$/.test(a));
           if (!js || !css) throw new Error('Cannot identify Vite main assets');
           let fixed=html;
-          fixed=fixed.replaceAll('/assets/'+js,'/assets/index-DjAQX0oY.js?v=bulk-20261119-v3');
-          fixed=fixed.replaceAll('/assets/'+css,'/assets/index-uvdl1fkh.css?v=bulk-20261119-v3');
-          if (!fixed.includes('/assets/index-DjAQX0oY.js?v=bulk-20261119-v3') || !fixed.includes('/assets/index-uvdl1fkh.css?v=bulk-20261119-v3'))
+          fixed=fixed.replaceAll('/assets/'+js,'/assets/index-DjAQX0oY.js?v=bulk-20261119-v4');
+          fixed=fixed.replaceAll('/assets/'+css,'/assets/index-uvdl1fkh.css?v=bulk-20261119-v4');
+          if (!fixed.includes('/assets/index-DjAQX0oY.js?v=bulk-20261119-v4') || !fixed.includes('/assets/index-uvdl1fkh.css?v=bulk-20261119-v4'))
             throw new Error('Cannot rewrite Vite index to the current staging Worker asset routes');
           const code = fs.readFileSync('web/dist/assets/'+js, 'utf8');
           if (!code.includes('Bulk Upload Excel') && !code.includes('Bulk import products'))
@@ -68,10 +68,10 @@ jobs:
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git switch -c artifact/staging-bulk-upload-frontend-v3-20261119
+          git switch -c artifact/staging-bulk-upload-frontend-v4-20261119
           git add -f release-cnc-bulk-upload/
           git commit -m "build: vetted latest staging bulk upload frontend assets; no deployment"
-          git push origin HEAD:refs/heads/artifact/staging-bulk-upload-frontend-v3-20261119
+          git push origin HEAD:refs/heads/artifact/staging-bulk-upload-frontend-v4-20261119
       - uses: actions/upload-artifact@v4
         with:
           name: staging-bulk-upload-frontend
