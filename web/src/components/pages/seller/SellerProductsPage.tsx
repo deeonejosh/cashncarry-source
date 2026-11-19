@@ -206,7 +206,6 @@ export default function SellerProductsPage() {
             <Download size={18}/> Export My Products
           </button>
         </div>
-        <p className="mt-3 text-xs text-slate-500">You can also download a 10-item gaming-accessories test sheet inside Bulk Upload Excel.</p>
       </section>
 
       <div className="cnc-workspace-panel cnc-inventory-table overflow-x-auto rounded-2xl border" role="region" aria-label="Product inventory" tabIndex={0}>
