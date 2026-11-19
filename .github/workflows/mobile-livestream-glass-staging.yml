@@ -1,0 +1,85 @@
+name: Build mobile livestream glass staging assets (NO PRODUCTION)
+on:
+  push:
+    branches: [feature/staging-mobile-livestream-glass-20261119]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  mobile-live-staging-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Install exact project dependencies
+        working-directory: web
+        run: npm ci --no-audit --no-fund
+      - name: Typecheck, parser regression, browser Excel regression, app tests and build
+        working-directory: web
+        run: |
+          npm run lint
+          npx tsx scripts/seller-bulk-import-test.ts
+          node scripts/seller-bulk-xlsx-browser-test.mjs
+          npm test
+          npm run build
+          npm run bundle:worker
+      - name: Validate actual mobile livestream features and compile static release bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p release-cnc-mobile-live
+          node --input-type=module <<'EOF'
+          import fs from 'node:fs';
+          const html = fs.readFileSync('web/dist/index.html','utf8');
+          const assets = fs.readdirSync('web/dist/assets');
+          const js = assets.find(a=>/^index-[\w-]+\.js$/.test(a));
+          const css = assets.find(a=>/^index-[\w-]+\.css$/.test(a));
+          if (!js || !css) throw new Error('Vite entry assets not found');
+          const jsCode = fs.readFileSync('web/dist/assets/'+js,'utf8');
+          const cssCode = fs.readFileSync('web/dist/assets/'+css,'utf8');
+          for (const marker of ['Bulk Upload Excel','Shop live products','Waiting for video connection',
+            'Video broadcasting is not configured','End this shopping room','Camera preview only','Cash']) {
+            if (!jsCode.includes(marker)) throw new Error('Missing mobile livestream or seller control: '+marker);
+          }
+          for (const marker of ['cnc-mobile-live-shell','cnc-mobile-live-orb','cnc-mobile-live-modal-backdrop']) {
+            if (!cssCode.includes(marker)) throw new Error('Missing glass parallax styles: '+marker);
+          }
+          if (jsCode.includes('Download 10 test gaming products') ||
+              jsCode.includes('cashncarry-10-gaming-accessories-TEST.xlsx'))
+            throw new Error('Removed gaming sample download has returned');
+          let patched = html.replaceAll('/assets/'+js, '/assets/index-OV904MHY.js?v=live-glass-20261119-v1')
+                            .replaceAll('/assets/'+css, '/assets/index-DvqBtUTy.css?v=live-glass-20261119-v1');
+          if (!patched.includes('/assets/index-OV904MHY.js?v=live-glass-20261119-v1') ||
+              !patched.includes('/assets/index-DvqBtUTy.css?v=live-glass-20261119-v1'))
+            throw new Error('Could not rewrite the verified staging route asset paths');
+          // This release modifies only the existing active staging Worker KV keys.
+          // The existing Worker, Access policy, D1, R2, auth and payment flags remain untouched.
+          fs.writeFileSync('release-cnc-mobile-live/index.html',patched);
+          fs.copyFileSync('web/dist/assets/'+js,'release-cnc-mobile-live/index.js');
+          fs.copyFileSync('web/dist/assets/'+css,'release-cnc-mobile-live/index.css');
+          fs.writeFileSync('release-cnc-mobile-live/source.txt',
+            'source='+process.env.GITHUB_SHA+'\nscope=mobile livestream glass staging UI only\n'+
+            'keys=cnc:marketplace-3d:7c1a29f:ui:index.html,cnc:marketplace-3d:7c1a29f:ui:assets:index-OV904MHY.js,cnc:marketplace-3d:7c1a29f:ui:assets:index-DvqBtUTy.css\n');
+          EOF
+          sha256sum release-cnc-mobile-live/index.* > release-cnc-mobile-live/hashes.txt
+          cat release-cnc-mobile-live/hashes.txt
+      - name: Save immutable assets on isolated artifact branch; do not deploy
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c artifact/staging-mobile-livestream-glass-20261119
+          git add -f release-cnc-mobile-live/
+          git commit -m "build: verified mobile livestream glass CSS/JS; staging-only assets"
+          git push origin HEAD:refs/heads/artifact/staging-mobile-livestream-glass-20261119
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mobile-livestream-glass-staging
+          path: release-cnc-mobile-live/
+          retention-days: 7
