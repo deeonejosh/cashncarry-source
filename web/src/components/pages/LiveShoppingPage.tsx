@@ -103,9 +103,8 @@ export default function LiveShoppingPage({
 
   const handleHeart = async () => {
     if (!activeRoom) return;
+    // Server response updates the room counts; never display a fake local reaction.
     await likeLiveRoom(activeRoom.id);
-    // Guest reactions require authentication; do not display an unpersisted like.
-    if (currentUser.authenticated) setHeartsCount((c) => c + 1);
   };
 
   const handleSendGift = async (giftType: 'rose' | 'star' | 'lion') => {
