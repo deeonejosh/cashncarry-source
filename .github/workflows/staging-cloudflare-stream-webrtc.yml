@@ -1,0 +1,93 @@
+name: Cloudflare Stream WHIP/WHEP staging pilot (BUILD ONLY)
+on:
+  push:
+    branches: [feature/staging-cloudflare-stream-webrtc-20261119]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Install dependencies
+        working-directory: web
+        run: npm ci --no-audit --no-fund
+      - name: Validate TypeScript, existing app and mobile browser behavior
+        working-directory: web
+        run: |
+          npm run lint
+          npm test
+          node scripts/mobile-live-browser-test.mjs
+          node scripts/seller-bulk-xlsx-browser-test.mjs
+          npm run build
+          npm run bundle:worker
+          node deploy/chatgpt-sites/worker-smoke.mjs
+      - name: Package current staged React UI and Worker backend for manual review (NO DEPLOY)
+        run: |
+          set -euo pipefail
+          mkdir -p release-cnc-webrtc
+          node --input-type=module <<'EOF'
+          import fs from 'node:fs';
+          const html=fs.readFileSync('web/dist/index.html','utf8');
+          const assets=fs.readdirSync('web/dist/assets');
+          const js=assets.find(x=>/^index-[a-zA-Z0-9_-]+\.js$/.test(x));
+          const css=assets.find(x=>/^index-[a-zA-Z0-9_-]+\.css$/.test(x));
+          if(!js||!css)throw Error('No expected Vite assets');
+          const frontend=fs.readFileSync('web/dist/assets/'+js,'utf8');
+          const styles=fs.readFileSync('web/dist/assets/'+css,'utf8');
+          const backend=fs.readFileSync('web/dist/_worker.js','utf8');
+          if(!frontend.includes('Cloudflare Stream could not connect')||!frontend.includes('Mobile livestream shopping room'))
+            throw Error('Cloudflare WHIP/WHEP frontend missing');
+          if(frontend.includes('Download 10 test gaming products')||!frontend.includes('Bulk Upload Excel'))
+            throw Error('Seller bulk import regression');
+          if(!styles.includes('cnc-cloudflare-stream-player') || !styles.includes('cnc-mobile-live-shell'))
+            throw Error('Mobile WebRTC player styling absent');
+          if(!backend.includes('BROADCAST_HANDSHAKE_REQUIRED') || !backend.includes('STREAM_SELLER_ID') || !backend.includes('broadcastConnected'))
+            throw Error('Cloudflare Stream single-seller backend guards absent');
+          const stamp='cf-whip-pilot-v1-20261119';
+          let fixed=html.replaceAll('/assets/'+js,'/assets/index-OV904MHY.js?v='+stamp)
+            .replaceAll('/assets/'+css,'/assets/index-DvqBtUTy.css?v='+stamp);
+          fixed=fixed.replace('<meta name="viewport"', '<meta name="cnc-staging-release" content="'+stamp+'" />\n    <meta name="viewport"');
+          if(!fixed.includes('OV904MHY.js?v='+stamp)||!fixed.includes('DvqBtUTy.css?v='+stamp))
+            throw Error('KV asset map mismatch');
+          fs.writeFileSync('release-cnc-webrtc/index.html',fixed);
+          fs.copyFileSync('web/dist/assets/'+js,'release-cnc-webrtc/index.js');
+          fs.copyFileSync('web/dist/assets/'+css,'release-cnc-webrtc/index.css');
+          fs.copyFileSync('web/dist/_worker.js','release-cnc-webrtc/backend.js');
+          fs.writeFileSync('release-cnc-webrtc/manifest.txt',[
+            'source='+process.env.GITHUB_SHA,
+            'environment=private_staging_only',
+            'worker=cashncarry-d1-staging-worker',
+            'stream_service=Cloudflare Stream WebRTC WHIP/WHEP',
+            'scope=approved_single_seller_pilot',
+            'kv_html=cnc:marketplace-3d:7c1a29f:ui:index.html',
+            'kv_js=cnc:marketplace-3d:7c1a29f:ui:assets:index-OV904MHY.js',
+            'kv_css=cnc:marketplace-3d:7c1a29f:ui:assets:index-DvqBtUTy.css',
+            'production_untouched=true',
+          ].join('\n')+'\n');
+          EOF
+          sha256sum release-cnc-webrtc/index.* release-cnc-webrtc/backend.js > release-cnc-webrtc/hashes.txt
+          cat release-cnc-webrtc/manifest.txt
+      - name: Save verified release in isolated artifact branch (no auto-deploy)
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c artifact/staging-cloudflare-webrtc-v1-20261119
+          git add -f release-cnc-webrtc/
+          git commit -m "build: Cloudflare Stream WebRTC staging pilot; tested frontend and backend"
+          git push origin HEAD:refs/heads/artifact/staging-cloudflare-webrtc-v1-20261119
+      - uses: actions/upload-artifact@v4
+        with:
+          name: staging-cloudflare-stream-webrtc
+          path: |
+            release-cnc-webrtc/
+            web/mobile-live-qa-artifacts/
+          retention-days: 14
