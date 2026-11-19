@@ -47,7 +47,9 @@ export async function unifiedSyncRoute(
   if (!db) return json({ error: 'Database unavailable' }, 503);
 
   const account = await currentAccount(request, env);
-  const streamEnv = env as AuthEnvironment & { STREAM_WHIP_URL?: string; STREAM_WHEP_URL?: string };
+  const streamEnv = env as AuthEnvironment & {
+    STREAM_SELLER_ID?: string; STREAM_WHIP_URL?: string; STREAM_WHEP_URL?: string;
+  };
   const streamingConfigured = Boolean(streamEnv.STREAM_WHIP_URL && streamEnv.STREAM_WHEP_URL);
 
   // Public GET endpoints (videos feed, active live rooms, product reviews)
@@ -407,11 +409,49 @@ export async function unifiedSyncRoute(
   if (route === '/live') {
     if (request.method === 'POST') {
       if (account.role !== 'seller') return json({ error: 'Seller role required to broadcast' }, 403);
-      // D1 alone cannot prove an actual camera/media session exists.
-      return json({
-        error: streamingConfigured ? 'Broadcast handshake not yet verified' : 'Streaming provider unavailable',
-        code: streamingConfigured ? 'BROADCAST_HANDSHAKE_REQUIRED' : 'BROADCAST_NOT_CONFIGURED',
-      }, 503);
+      // Private staging pilot: only the one approved seller with a dedicated
+      // Cloudflare Stream input can create a live room. The app starts WHIP
+      // first and submits only after the browser's RTCPeerConnection is connected.
+      // This browser attestation is NOT independent server-side media verification;
+      // do not enable this path for production or other sellers without
+      // Cloudflare Stream API status validation and per-seller input allocation.
+      if (!streamingConfigured || !streamEnv.STREAM_SELLER_ID || account.id !== streamEnv.STREAM_SELLER_ID) {
+        return json({error:'This seller has no configured Cloudflare Stream input',code:'BROADCAST_NOT_CONFIGURED'},503);
+      }
+      if (body.broadcastConnected !== true) {
+        return json({error:'Connect your camera to Cloudflare Stream before creating a room',code:'BROADCAST_HANDSHAKE_REQUIRED'},409);
+      }
+      const title = text(body.title, 100);
+      const category = text(body.category, 45) || 'general';
+      const pinnedProductId = text(body.pinnedProductId, 128);
+      if (title.length < 3) return json({error:'A livestream title is required'},400);
+      const seller = await db.prepare(
+        "SELECT s.name FROM cnc_seller_stores s JOIN cnc_seller_applications a ON a.user_id=s.owner AND a.status='approved' WHERE s.owner=?"
+      ).bind(account.id).first<{name:string}>();
+      if (!seller) return json({error:'Only approved sellers can broadcast'},403);
+      const existing = await db.prepare(
+        "SELECT room_id FROM cnc_live_room_state WHERE seller_id=? AND status='live' LIMIT 1"
+      ).bind(account.id).first();
+      if (existing) return json({error:'Finish your existing live room before starting another',code:'ROOM_ALREADY_ACTIVE'},409);
+      if (pinnedProductId) {
+        const eligible = await db.prepare(
+          "SELECT id FROM cnc_seller_products WHERE id=? AND owner=? AND publication='published' AND archived=0 AND stock>0"
+        ).bind(pinnedProductId,account.id).first();
+        if (!eligible) return json({error:'Only your published and in-stock products may be pinned'},409);
+      }
+      const url = streamEnv.STREAM_WHEP_URL || '';
+      try {
+        const whep = new URL(url);
+        if (whep.protocol !== 'https:' || !whep.hostname.endsWith('.cloudflarestream.com') ||
+            !whep.pathname.endsWith('/webRTC/play') || whep.search || whep.hash) {
+          return json({error:'Cloudflare Stream playback is not configured'},503);
+        }
+      } catch { return json({error:'Cloudflare Stream playback is unavailable'},503); }
+      const roomId = crypto.randomUUID();
+      await db.prepare(
+        "INSERT INTO cnc_live_room_state (room_id,seller_id,seller_name,title,category,status,viewer_count,hearts_count,pinned_product_id,stream_url,created) VALUES (?,?,?,?,?,'live',0,0,?,?,?)"
+      ).bind(roomId,account.id,seller.name,title,category,pinnedProductId,url,now).run();
+      return json({success:true,roomId,streamConnected:true},201);
     }
 
     if (request.method === 'PATCH') {
