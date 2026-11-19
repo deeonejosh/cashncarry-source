@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useStore } from '../../context/StoreContext';
+import {publishCloudflareStream,stopCloudflareStream} from '../../lib/cloudflare-stream-webrtc';
 import {
   X,
   Upload,
@@ -227,23 +228,47 @@ export default function CreateModal({ isOpen, onClose, onNavigate }: CreateModal
       return;
     }
 
-    setIsCreatingRoom(true);
-    const res = await createLiveRoom({
-      title: streamTitle.trim(),
-      category: streamCategory,
-      pinnedProductId: streamProductId || undefined,
-    });
-    setIsCreatingRoom(false);
-
-    if (!res.ok || !res.roomId) {
-      showToast(res.error || 'Could not start livestream.', 'error');
+    if (!liveStreamingConfigured) {
+      showToast('Cloudflare Stream is not connected for this seller yet.', 'error');
       return;
     }
-    setActiveRoomId(res.roomId);
-    setActiveView('broadcasting');
+    setIsCreatingRoom(true);
+    let media = mediaStreamRef.current;
+    try {
+      if (!media?.active) {
+        await startCamera(cameraFacing);
+        media = mediaStreamRef.current;
+      }
+      if (!media?.active) throw new Error('Allow camera and microphone access to broadcast.');
+      // Cloudflare WHIP must negotiate and report a connected WebRTC peer before
+      // this staging browser can create a public shopping room.
+      await publishCloudflareStream(media);
+      const res = await createLiveRoom({
+        title: streamTitle.trim(),
+        category: streamCategory,
+        pinnedProductId: streamProductId || undefined,
+        broadcastConnected: true,
+      });
+      if (!res.ok || !res.roomId) {
+        await stopCloudflareStream();
+        throw new Error(res.error || 'Could not start a shopping room.');
+      }
+      setActiveRoomId(res.roomId);
+      // Transfer media ownership from this modal to the app-level publisher.
+      // The broadcast persists when the seller opens the full live page.
+      mediaStreamRef.current = null;
+      if (videoPreviewRef.current) videoPreviewRef.current.srcObject = null;
+      onClose();
+      onNavigate('live');
+    } catch(error) {
+      showToast(error instanceof Error ? error.message : 'Unable to start broadcast.', 'error');
+    } finally {
+      setIsCreatingRoom(false);
+    }
   };
 
   const handleEndBroadcast = async () => {
+    await stopCloudflareStream();
     if (activeRoomId) {
       await endLiveRoom(activeRoomId);
     }
