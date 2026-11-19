@@ -182,6 +182,7 @@ async function run() {
     compatibilityDate: '2026-08-06',
     compatibilityFlags: ['nodejs_compat'],
     d1Databases: ['AUTH_DB', 'DB'],
+    r2Buckets: ['SELLER_VIDEO'],
     bindings: {
       AUTH_ORIGIN: origin,
       PAYMENTS_ENABLED: 'false',
@@ -378,6 +379,7 @@ async function run() {
         headers: bearerHeaders,
         body: JSON.stringify({
           displayName: 'Tunde Lagos',
+          username: 'Tunde_Lagos',
           bio: 'Synced across Android and Web',
           avatarUrl: 'https://example.invalid/avatar.png',
           selectedState: 'Abuja (FCT)',
@@ -390,6 +392,25 @@ async function run() {
       const profJson: any = await getProfRes.json();
       assert.equal(profJson.profile.display_name, 'Tunde Lagos');
       assert.equal(profJson.profile.selected_state, 'Abuja (FCT)');
+      assert.equal(profJson.profile.username, 'tunde_lagos');
+      const photo = new FormData();
+      photo.set('displayName', 'Tunde Lagos');
+      photo.set('username', 'tunde_lagos');
+      photo.set('selectedState', 'Abuja (FCT)');
+      photo.set('photo', new Blob([Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==','base64')], { type:'image/png' }), 'avatar.png');
+      const photoBody = new Response(photo);
+      const savePhoto = await mf.dispatchFetch(origin + '/api/v1/profile', {
+        method: 'PUT', headers: { authorization: bearerHeaders.authorization, 'x-client-type': 'mobile',
+          'content-type': photoBody.headers.get('content-type')! }, body: Buffer.from(await photoBody.arrayBuffer()),
+      });
+      assert.equal(savePhoto.status, 200, await savePhoto.clone().text());
+      const { profile: updatedProfile } = await savePhoto.json() as any;
+      const imageUrl = origin + updatedProfile.avatar_url;
+      assert.equal((await mf.dispatchFetch(imageUrl)).status, 401);
+      const savedPhoto = await mf.dispatchFetch(imageUrl, { headers: bearerHeaders });
+      assert.equal(savedPhoto.status, 200);
+      assert.equal(savedPhoto.headers.get('content-type'), 'image/png');
+
 
       const wishRes = await mf.dispatchFetch(origin + '/api/v1/wishlist', {
         method: 'POST',
@@ -673,6 +694,26 @@ async function run() {
       assert.equal(publicProduct?.category,'fashion');
       assert.equal(publicProduct?.active,1,'Approved listings must be buyer-visible');
       assert.equal((await mf.dispatchFetch(imageUrl)).status,200,'Published product photos must be visible to shoppers');
+      const video = new FormData();
+      video.set('video', new File([Uint8Array.of(0,0,0,16,102,116,121,112,105,115,111,109,0,0,0,0)],'fixture.mp4',{type:'video/mp4'}));
+      video.set('productId',productId);
+      video.set('title','Approved seller upload');
+      video.set('caption','For You staging test');
+      const videoBody = new Response(video);
+      const videoBytes = Buffer.from(await videoBody.arrayBuffer());
+      const uploadVideo = (cookie: string) => mf.dispatchFetch(origin+'/api/v1/videos/upload', {
+        method:'POST', headers:{cookie,origin,'content-type':videoBody.headers.get('content-type')!}, body:videoBytes,
+      });
+      assert.equal((await uploadVideo(sellerCookie)).status,403);
+      const videoResponse = await uploadVideo(sellerCookieApproved);
+      assert.equal(videoResponse.status,201,await videoResponse.clone().text());
+      const result = await videoResponse.json() as { videoUrl: string };
+      const videoUrl = origin + result.videoUrl;
+      const playback = await mf.dispatchFetch(videoUrl,{headers:{range:'bytes=4-7'}});
+      assert.equal(playback.status,206);
+      assert.equal(playback.headers.get('content-range'),'bytes 4-7/16');
+      assert.equal(await playback.text(),'ftyp');
+
 
       const suspended=await mf.dispatchFetch(origin+'/api/admin/seller-applications/review',makePost(adminCookie,{
         applicationId,userId:'staging-buyer',decision:'suspend',notes:'Test suspension'
@@ -683,6 +724,7 @@ async function run() {
       const hidden=await authDb.prepare("SELECT active FROM products WHERE id=?").bind(productId).first<{active:number}>();
       assert.equal(hidden?.active,0,'Suspended seller catalog must be hidden');
       assert.equal((await mf.dispatchFetch(imageUrl)).status,404,'Suspended seller photos must no longer be visible');
+      assert.equal((await mf.dispatchFetch(videoUrl)).status,404,'Suspended seller videos must no longer play');
       const audit=await authDb.prepare("SELECT COUNT(*) AS n FROM cnc_seller_application_events WHERE application_id=?")
         .bind(applicationId).first<{n:number}>();
       assert.ok((audit?.n??0)>=3,'Application lifecycle must be auditable');

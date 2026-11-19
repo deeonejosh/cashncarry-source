@@ -155,6 +155,7 @@ export interface HealthResponse {
 export interface ApiUserProfile {
   user_id: string;
   display_name: string;
+  username?: string | null;
   bio: string;
   avatar_url: string;
   selected_state: string;
@@ -293,13 +294,21 @@ class ApiClient {
 
   async updateProfile(input: {
     displayName: string;
+    username?: string;
     bio: string;
     avatarUrl: string;
     selectedState: string;
-  }): Promise<{ updated: boolean; profile?: ApiUserProfile; error?: string }> {
+  }, photo?: Blob): Promise<{ updated: boolean; profile?: ApiUserProfile; error?: string }> {
+    let body: string | FormData = JSON.stringify(input);
+    if (photo) {
+      body = new FormData();
+      for (const [key, value] of Object.entries(input)) {
+        if (value !== undefined) body.append(key, value);
+      }
+      body.append('photo', photo, 'profile-photo.jpg');
+    }
     const res = await this.requestJson<{ updated?: boolean; profile?: ApiUserProfile }>('/api/v1/profile', {
-      method: 'PUT',
-      body: JSON.stringify(input),
+      method: 'PUT', body, timeoutMs: 20000,
     });
     return { updated: Boolean(res.ok && res.data?.updated), profile: res.data?.profile, error: res.error };
   }

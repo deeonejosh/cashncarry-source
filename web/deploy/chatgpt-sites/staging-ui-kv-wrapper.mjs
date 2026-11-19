@@ -2,6 +2,7 @@
 // Imports the exact immutable v57 Worker backend, preserving all API business logic.
 // Cloudflare Access, Admin MFA, D1 and payments settings are not changed.
 import backend from './backend-v57.mjs';
+import { accountMediaRoute } from './account-media.mjs';
 
 const STAGING_ORIGIN = 'https://cashncarry-d1-staging-worker.cashncarry-workforce-2026.workers.dev';
 const WORKSPACE_TABS = new Map([
@@ -72,6 +73,16 @@ export default {
           headers.set('x-robots-tag', 'noindex, nofollow, noarchive');
         }
         return new Response(request.method === 'HEAD' ? null : content, {status:200,headers});
+      }
+    }
+    if (permitted) {
+      try {
+        const media = await accountMediaRoute(request, env);
+        if (media) return media;
+      } catch {
+        return Response.json({ error: 'Media temporarily unavailable' }, {
+          status: 503, headers: { 'cache-control': 'no-store' },
+        });
       }
     }
     return backend.fetch(request, env, ctx);

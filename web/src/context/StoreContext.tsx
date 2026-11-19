@@ -69,7 +69,7 @@ interface StoreContextType {
   ) => Promise<{ ok: boolean; verificationToken?: string; error?: string }>;
   verifyWithApi: (token: string, password: string) => Promise<{ ok: boolean; error?: string }>;
   logout: () => Promise<void>;
-  updateProfile: (updates: Partial<UserAccount>) => Promise<boolean>;
+  updateProfile: (updates: Partial<UserAccount>, photo?: Blob) => Promise<boolean>;
 
   // Marketplace data
   products: ProductItem[];
@@ -569,6 +569,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     setCurrentUser({
       id: authUser.id,
+      username: prof?.username ?? undefined,
       name: prof?.display_name || authUser.email.split('@')[0] || 'Account',
       email: prof?.email || authUser.email,
       role,
@@ -911,23 +912,25 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     showToast('You have signed out.', 'info');
   };
 
-  const updateProfile = async (updates: Partial<UserAccount>) => {
+  const updateProfile = async (updates: Partial<UserAccount>, photo?: Blob) => {
     if (!currentUser.authenticated) {
       openAuthModal('Sign in to update your profile.');
       return false;
     }
     const res = await api.updateProfile({
       displayName: updates.name ?? currentUser.name,
+      username: updates.username,
       bio: updates.bio ?? currentUser.bio ?? '',
       avatarUrl: updates.avatar ?? currentUser.avatar ?? '',
       selectedState: updates.selectedState ?? currentUser.selectedState ?? 'Lagos',
-    });
+    }, photo);
     if (!res.updated) {
       showToast(res.error || 'Could not update profile.', 'error');
       return false;
     }
     setCurrentUser((prev) => ({
       ...prev,
+      username: res.profile?.username ?? updates.username ?? prev.username,
       name: res.profile?.display_name ?? updates.name ?? prev.name,
       bio: res.profile?.bio ?? updates.bio ?? prev.bio,
       avatar: res.profile?.avatar_url ?? updates.avatar ?? prev.avatar,

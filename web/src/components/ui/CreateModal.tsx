@@ -29,8 +29,8 @@ interface CreateModalProps {
   onNavigate: (tab: string) => void;
 }
 
-const MAX_VIDEO_BYTES = 100 * 1024 * 1024;
-const ALLOWED_VIDEO_TYPES = new Set(['video/mp4', 'video/webm', 'video/quicktime']);
+const MAX_VIDEO_BYTES = 25 * 1024 * 1024;
+const ALLOWED_VIDEO_TYPES = new Set(['video/mp4', 'video/webm']);
 
 export default function CreateModal({ isOpen, onClose, onNavigate }: CreateModalProps) {
   const {
@@ -159,16 +159,15 @@ export default function CreateModal({ isOpen, onClose, onNavigate }: CreateModal
     const validType =
       ALLOWED_VIDEO_TYPES.has(file.type) ||
       lowerName.endsWith('.mp4') ||
-      lowerName.endsWith('.webm') ||
-      lowerName.endsWith('.mov');
+      lowerName.endsWith('.webm');
     if (!validType) {
       setSelectedFile(null);
-      setUploadError('Unsupported video format. Please choose an MP4, WebM, or MOV video file.');
+      setUploadError('Unsupported video format. Please choose an MP4 or WebM video file.');
       return;
     }
     if (file.size > MAX_VIDEO_BYTES) {
       setSelectedFile(null);
-      setUploadError('Video exceeds 100 MB limit.');
+      setUploadError('Video exceeds 25 MB limit.');
       return;
     }
     setSelectedFile(file);
@@ -505,12 +504,12 @@ export default function CreateModal({ isOpen, onClose, onNavigate }: CreateModal
 
               <div>
                 <label className="text-xs font-black text-slate-700 block mb-1.5">
-                  Select Video File (MP4, WebM, MOV · max 100 MB)
+                  Select Video File (MP4 or WebM · max 25 MB)
                 </label>
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept="video/mp4,video/webm,video/quicktime"
+                  accept="video/mp4,video/webm"
                   onChange={handleFileChange}
                   className="hidden"
                 />

@@ -65,6 +65,8 @@ export default function ProfilePage({ onNavigate, initialAddressSetup = false }:
   const [editingProfile, setEditingProfile] = useState(false);
   const [displayNameDraft, setDisplayNameDraft] = useState(currentUser.name);
   const [bioDraft, setBioDraft] = useState(currentUser.bio || '');
+  const [usernameDraft, setUsernameDraft] = useState(currentUser.username || '');
+  const [photoDraft, setPhotoDraft] = useState<File | null>(null);
   const [avatarDraft, setAvatarDraft] = useState(currentUser.avatar || '');
   const [stateDraft, setStateDraft] = useState(currentUser.selectedState || 'Lagos');
   const [savingProfile, setSavingProfile] = useState(false);
@@ -104,15 +106,39 @@ export default function ProfilePage({ onNavigate, initialAddressSetup = false }:
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     setSavingProfile(true);
-    const ok = await updateProfile({
-      name: displayNameDraft.trim(),
-      bio: bioDraft.trim(),
-      avatar: avatarDraft.trim(),
-      selectedState: stateDraft,
-    });
-    setSavingProfile(false);
-    if (ok) {
-      setEditingProfile(false);
+    try {
+      let updatedPhoto: Blob | undefined;
+      if (photoDraft) {
+        const photo = await createImageBitmap(photoDraft);
+        const size = Math.min(512, photo.width, photo.height);
+        const crop = Math.min(photo.width, photo.height);
+        const canvas = document.createElement('canvas');
+        canvas.width = canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        try {
+          if (!ctx) throw Error('Could not prepare the photo.');
+          ctx.fillStyle = 'white';
+          ctx.fillRect(0, 0, size, size);
+          ctx.drawImage(photo, (photo.width - crop) / 2, (photo.height - crop) / 2, crop, crop, 0, 0, size, size);
+        } finally {
+          photo.close();
+        }
+        const resized = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/jpeg', .88));
+        if (!resized) throw Error('Could not prepare the photo.');
+        updatedPhoto = resized;
+      }
+      const ok = await updateProfile({
+        name: displayNameDraft.trim(),
+        username: usernameDraft.trim().toLowerCase(),
+        bio: bioDraft.trim(),
+        avatar: avatarDraft.trim(),
+        selectedState: stateDraft,
+      }, updatedPhoto);
+      if (ok) setEditingProfile(false);
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Could not save the profile.', 'error');
+    } finally {
+      setSavingProfile(false);
     }
   };
 
@@ -171,7 +197,7 @@ export default function ProfilePage({ onNavigate, initialAddressSetup = false }:
 
             <div className="min-w-0 space-y-1.5">
               <div className="flex flex-wrap items-center gap-2">
-                <h1 className="break-words text-xl font-black text-white sm:text-3xl">{currentUser.name}</h1>
+                <h1 className="break-all text-xl font-black text-white sm:text-3xl">{currentUser.name}</h1>
                 <span className="inline-flex items-center gap-1 rounded-full bg-[#EAF7EF] px-2.5 py-0.5 text-xs font-bold text-[#0E6B38]">
                   <CheckCircle2 size={12} /> {currentUser.authenticated ? 'Signed In' : 'Guest Visitor'}
                 </span>
@@ -193,6 +219,7 @@ export default function ProfilePage({ onNavigate, initialAddressSetup = false }:
                 )}
               </div>
 
+              {currentUser.username && <p className="break-all text-sm font-semibold text-emerald-100">@{currentUser.username}</p>}
               <p className="text-xs text-emerald-50 max-w-xl">
                 {currentUser.bio ||
                   (currentUser.authenticated
@@ -230,6 +257,8 @@ export default function ProfilePage({ onNavigate, initialAddressSetup = false }:
                     setDisplayNameDraft(currentUser.name);
                     setBioDraft(currentUser.bio || '');
                     setAvatarDraft(currentUser.avatar || '');
+                    setUsernameDraft(currentUser.username || '');
+                    setPhotoDraft(null);
                     setStateDraft(currentUser.selectedState || 'Lagos');
                     setEditingProfile(!editingProfile);
                   }}
@@ -292,15 +321,39 @@ export default function ProfilePage({ onNavigate, initialAddressSetup = false }:
                 </select>
               </div>
             </div>
-            <div>
-              <label className="text-[11px] font-bold text-slate-700">Avatar Image URL (Optional)</label>
-              <input
-                type="url"
-                value={avatarDraft}
-                onChange={(e) => setAvatarDraft(e.target.value)}
-                placeholder="https://..."
-                className="mt-1 h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs outline-none focus:border-[#0E6B38]"
-              />
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="text-xs font-bold text-slate-700">
+                Username
+                <input required value={usernameDraft} pattern="[A-Za-z0-9_]{3,24}" maxLength={24}
+                  autoComplete="username" placeholder="e.g. gearpu_ng"
+                  onChange={e => setUsernameDraft(e.target.value)}
+                  className="mt-1 h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm" />
+                <span className="mt-1 block font-normal">3–24 letters, numbers or underscores.</span>
+              </label>
+              <div>
+                <label className="block text-xs font-bold text-slate-700">
+                  Profile picture
+                  <input id="cnc-profile-photo" type="file" accept="image/jpeg,image/png,image/webp"
+                    onChange={e => {
+                      const file = e.target.files?.[0];
+                      if (file && file.size > 15 * 1024 * 1024) {
+                        showToast('Choose a photo under 15 MB.', 'error');
+                        e.target.value = '';
+                        setPhotoDraft(null);
+                      } else setPhotoDraft(file ?? null);
+                    }}
+                    className="mt-1 block w-full rounded-xl border border-slate-200 bg-white p-2 text-xs" />
+                </label>
+                {(avatarDraft || photoDraft) && <button type="button" className="mt-1 text-xs font-bold text-emerald-800"
+                  onClick={() => {
+                    const input = document.getElementById('cnc-profile-photo') as HTMLInputElement | null;
+                    if (input) input.value = '';
+                    setPhotoDraft(null);
+                    setAvatarDraft('');
+                  }}>
+                  Remove photo
+                </button>}
+              </div>
             </div>
             <div>
               <label className="text-[11px] font-bold text-slate-700">Bio / About</label>

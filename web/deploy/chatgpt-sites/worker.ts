@@ -1,3 +1,4 @@
+import { accountMediaRoute, type AccountMediaEnvironment } from './account-media';
 import { expireUnpaidReservations } from './reservation-expiry';
 import { checkoutPage } from './checkout-pages';
 import { flutterwaveRoute, type PaymentEnvironment } from './flutterwave';
@@ -11,7 +12,7 @@ import { ordersRoute } from './orders';
 import { marketplaceRoute } from './marketplace';
 import { productPhotoRoute } from './product-photos';
 import { accountPage } from './account-pages';
-import { authRoute, currentAccount, type AuthEnvironment } from './new-auth';
+import { authRoute, currentAccount } from './new-auth';
 import { auctionsRoute } from './auctions';
 import { coinsRoute } from './coins';
 import { catalogPage, homePage, protectedPageUnavailable } from './catalog-pages';
@@ -20,7 +21,7 @@ import { resolveEdgeSEO, injectEdgeSEOMeta } from './edge-seo';
 import { unifiedSyncRoute } from './unified-sync';
 import { supportRoute } from './support';
 
-interface Environment extends AuthEnvironment, KycEnvironment, StreamEnvironment, PaymentEnvironment {
+interface Environment extends AccountMediaEnvironment, KycEnvironment, StreamEnvironment, PaymentEnvironment {
   DB?: CatalogDatabase & { prepare(sql: string): { first<T = unknown>(): Promise<T | null> } };
   ORDER_RESERVATIONS?: string;
   PAYMENTS_ENABLED?: string;
@@ -49,9 +50,11 @@ export default {
       Response.json(data, { status, headers: { 'cache-control': 'no-store', ...extraHeaders } });
 
     try {
+      const media = await accountMediaRoute(originalRequest, env);
+      if (media) return media;
       const photo = await productPhotoRoute(request, env);
       if (photo) return photo;
-    } catch { return reply({ error: 'Product photos temporarily unavailable' }, 503); }
+    } catch { return reply({ error: 'Media temporarily unavailable' }, 503); }
 
     if (url.pathname === '/api/health' || url.pathname === '/api/staging-config') {
       if (request.method !== 'GET' && request.method !== 'HEAD') {

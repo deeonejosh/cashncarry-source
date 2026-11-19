@@ -366,29 +366,9 @@ export async function unifiedSyncRoute(
   if (route === '/videos' && request.method === 'POST') {
     const title = text(body.title, 160);
     const productId = text(body.productId ?? body.product_id, 128);
-    const caption = text(body.caption, 280);
-    const coverUrl = text(body.coverUrl ?? body.cover_url, 400);
-    const videoUrl = text(body.videoUrl ?? body.video_url, 400);
     if (!title || !productId) return json({ error: 'title and productId required' }, 400);
     // A URL supplied by a client is not proof of a verified media upload.
     return json({ error: 'Verified video upload pipeline unavailable', code: 'VIDEO_UPLOAD_UNAVAILABLE' }, 503);
-    if (videoUrl && !videoUrl.startsWith('https://')) {
-      return json({ error: 'videoUrl must be https://' }, 400);
-    }
-    const id = crypto.randomUUID();
-    const prof = await db
-      .prepare(`SELECT display_name FROM cnc_user_profiles WHERE user_id = ?`)
-      .bind(account.id)
-      .first<{ display_name: string }>();
-    const sellerName = prof?.display_name || account.email.split('@')[0];
-    await db
-      .prepare(
-        `INSERT INTO cnc_short_videos (id, seller_id, seller_name, product_id, title, caption, video_url, cover_url, created)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-      )
-      .bind(id, account.id, sellerName, productId, title, caption, videoUrl, coverUrl, now)
-      .run();
-    return json({ success: true, id }, 201);
   }
 
   if (route === '/videos/like' && request.method === 'POST') {

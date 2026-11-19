@@ -774,3 +774,16 @@ button:disabled { cursor: not-allowed; }
   :is(.cnc-seller-shortcut, .cnc-menu-tile) { transition: transform .2s ease, border-color .2s ease; }
   :is(.cnc-seller-shortcut, .cnc-menu-tile):hover { transform: perspective(450px) translateY(-2px) rotateX(3deg); }
 }
+
+/* Keep keyboard and touch targets consistent across the redesigned surfaces. */
+.cnc-depth-theme :is(.cnc-workspace-panel, .cnc-policy-nav, .cnc-menu-tiles, .cnc-account-stats) button:focus-visible,
+.cnc-depth-theme :is(.cnc-shop-header, .cnc-discovery-categories) :is(button,input):focus-visible {
+  outline: 2px solid #a25316;
+  outline-offset: 2px;
+}
+@media (pointer: coarse) {
+  .cnc-depth-theme :is(.cnc-seller-overview, .cnc-account-page) button { min-height: 2.75rem; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .cnc-workspace-hero .cnc-seller-hero-art { animation: cnc-discovery-settle .75s ease-out; }
+}
