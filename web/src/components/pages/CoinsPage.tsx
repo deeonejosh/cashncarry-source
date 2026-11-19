@@ -95,8 +95,9 @@ export default function CoinsPage() {
           ) : (
             <form onSubmit={handleSendCustomGift} className="space-y-4">
               <div>
-                <label className="text-xs font-bold text-slate-700">Select Approved Seller</label>
+                <label htmlFor="gift-seller" className="text-xs font-bold text-slate-700">Select Approved Seller</label>
                 <select
+                  id="gift-seller"
                   value={recipient}
                   onChange={(e) => setRecipient(e.target.value)}
                   className="mt-1 h-11 w-full rounded-xl border border-slate-200 px-3 text-xs outline-none bg-white"
