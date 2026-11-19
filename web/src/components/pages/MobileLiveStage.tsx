@@ -50,7 +50,7 @@ export default function MobileLiveStage({
   useEffect(() => { setPanel(null); setConfirmEnd(false); setMoreRooms(false); }, [room.id]);
 
   const shareRoom = async () => {
-    const url = window.location.origin + '/?tab=live';
+    const url = window.location.origin + '/?tab=live&room=' + encodeURIComponent(room.id);
     try {
       if (navigator.share) await navigator.share({ title: room.title, text: 'Join Cash N Carry live shopping', url });
       else if (navigator.clipboard?.writeText) {
