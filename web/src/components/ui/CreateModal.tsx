@@ -103,6 +103,17 @@ export default function CreateModal({ isOpen, onClose, onNavigate }: CreateModal
     return () => stopCamera();
   }, []);
 
+  // getUserMedia completes before React mounts the preview <video> the first
+  // time: attaching only inside startCamera produces a black preview on mobile.
+  useEffect(() => {
+    const video = videoPreviewRef.current;
+    const media = mediaStreamRef.current;
+    if (!cameraActive || !video || !media) return;
+    video.srcObject = media;
+    video.muted = true;
+    void video.play().catch(() => {});
+  }, [cameraActive, cameraFacing, activeView]);
+
   const stopCamera = () => {
     if (mediaStreamRef.current) {
       mediaStreamRef.current.getTracks().forEach((track) => track.stop());
@@ -132,6 +143,7 @@ export default function CreateModal({ isOpen, onClose, onNavigate }: CreateModal
       }
     } catch {
       setCameraActive(false);
+      showToast('Please allow camera and microphone access in your browser.', 'error');
     }
   };
 
