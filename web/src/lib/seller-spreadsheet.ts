@@ -15,6 +15,7 @@ export type BulkProduct = {
 export type BulkImportRow = {
   line: number;
   id: string;
+  titlePreview: string;
   product: BulkProduct | null;
   errors: string[];
   status: 'ready' | 'imported' | 'failed';
@@ -275,6 +276,7 @@ export async function parseSellerSpreadsheet(
     return {
       line: index + 2,
       id: crypto.randomUUID(),
+      titlePreview: name || '(blank title)',
       product: errors.length ? null : {
         name, priceNaira: Number(priceRaw), stock: Number(stockRaw),
         category: foundCategory!.id, brand, description: desc, imageUrl: image,
