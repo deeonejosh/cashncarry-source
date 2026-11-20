@@ -705,6 +705,14 @@ class ApiClient {
     });
   }
 
+  async getSellerVideos() {
+    return this.requestJson<{ videos: { id: string; title: string; likes_count: number; comments_count: number }[] }>('/api/v1/seller/videos');
+  }
+
+  async getAdminOrders(id: string) {
+    return this.requestJson<{ orders: { id: string; status: string; payment_state: string; created: number; total_minor: number; seller_count: number }[] }>('/api/admin/orders?id=' + encodeURIComponent(id));
+  }
+
   async deleteVideo(videoId: string) {
     return this.requestJson<{ deleted?: boolean }>(`/api/v1/videos/${encodeURIComponent(videoId)}`, {
       method: 'DELETE',

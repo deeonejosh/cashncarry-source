@@ -25,6 +25,28 @@ export async function unifiedSyncRoute(
   if (!url.pathname.startsWith('/api/')) return null;
 
   const route = stripApiPrefix(url.pathname);
+  const videoId = /^\/videos\/([a-z0-9_-]{1,128})$/i.exec(route)?.[1];
+  if (route === '/seller/videos' || (videoId && request.method === 'DELETE')) {
+    const db = env.AUTH_DB;
+    if (!db) return json({error:'Database unavailable'},503);
+    const seller = await currentAccount(request, env);
+    if (!seller) return json({error:'Sign-in required'},401);
+    if (seller.role !== 'seller') return json({error:'Seller account required'},403);
+    const approved = await db.prepare("SELECT 1 FROM cnc_seller_applications WHERE user_id=? AND status='approved'").bind(seller.id).first();
+    if (!approved) return json({error:'Seller approval required'},403);
+    if (route === '/seller/videos') {
+      if (request.method !== 'GET') return json({error:'Method not allowed'},405);
+      const {results} = await db.prepare("SELECT id,title,likes_count,comments_count FROM cnc_short_videos WHERE seller_id=? ORDER BY created DESC,id DESC LIMIT 100").bind(seller.id).all();
+      return json({videos:results});
+    }
+    if (!hasValidMutationOrigin(request, env)) return json({error:'Invalid request origin'},403);
+    const [, , deleted] = await db.batch([
+      db.prepare('DELETE FROM cnc_video_likes WHERE video_id IN (SELECT id FROM cnc_short_videos WHERE id=? AND seller_id=?)').bind(videoId,seller.id),
+      db.prepare('DELETE FROM cnc_video_comments WHERE video_id IN (SELECT id FROM cnc_short_videos WHERE id=? AND seller_id=?)').bind(videoId,seller.id),
+      db.prepare('DELETE FROM cnc_short_videos WHERE id=? AND seller_id=?').bind(videoId,seller.id),
+    ]);
+    return deleted.meta.changes ? json({deleted:true}) : json({error:'Video not found'},404);
+  }
   const supported = new Set([
     '/profile',
     '/addresses',

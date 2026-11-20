@@ -202,6 +202,21 @@ try {
   await expectStatus(adminMedia, ids.owner, 'POST', {id:videoId,action:'delete-video'}, 200, 'admin deletes a posted video with related comments and likes');
   assert.equal(await db.prepare('SELECT id FROM cnc_short_videos WHERE id=?').bind(videoId).first(), null);
 
+  const ownVideo = 'seller-owned-video';
+  const foreignVideo = 'foreign-video';
+  for (const [id, owner] of [[ownVideo, ids.seller], [foreignVideo, ids.owner]]) {
+    await db.prepare('INSERT INTO cnc_short_videos (id,seller_id,seller_name,product_id,title) VALUES (?,?,?,?,?)')
+      .bind(id, owner, 'Fixture', 'product-fixture', id).run();
+  }
+  const sellerVideos = await expectStatus('/api/v1/seller/videos', ids.seller, 'GET', undefined, 200, 'seller can list only their own videos');
+  assert.deepEqual(sellerVideos.videos.map(video => video.id), [ownVideo]);
+  await expectStatus('/api/v1/videos/'+foreignVideo, ids.seller, 'DELETE', undefined, 404, 'seller cannot delete another account video');
+  await expectStatus('/api/v1/videos/'+ownVideo, ids.buyerA, 'DELETE', undefined, 403, 'buyer cannot delete seller video');
+  await expectStatus('/api/v1/videos/'+ownVideo, ids.seller, 'DELETE', undefined, 200, 'seller can delete their own video');
+  assert.ok(await db.prepare('SELECT id FROM cnc_short_videos WHERE id=?').bind(foreignVideo).first());
+  await expectStatus('/api/admin/orders', ids.seller, 'GET', undefined, 403, 'seller cannot access marketplace order oversight');
+  await expectStatus('/api/admin/orders', ids.owner, 'GET', undefined, 200, 'MFA administrator can access marketplace order oversight');
+
   const productId = '00000000-0000-4000-a000-' + 'a'.repeat(12);
   await expectStatus('/api/seller/products', ids.seller, 'POST',
     { action: 'create', id: productId, name: 'Temporary Test USB Cable', priceMinor: 150000,

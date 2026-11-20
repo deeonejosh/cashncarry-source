@@ -5,6 +5,7 @@ import { api, ApiSellerApplication } from '../../../lib/api';
 import { AdminOverview } from '../../../types';
 import './admin-console.css';
 import AdminSupportInbox from './AdminSupportInbox';
+import AdminOrders from './AdminOrders';
 import AdminLiveContent from './AdminLiveContent';
 import {
   ShieldCheck,
@@ -46,7 +47,7 @@ interface ModerationProductRow {
 export default function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps) {
   const { platformConfig, reloadMarketplace, showToast } = useStore();
 
-  const [activeTab, setActiveTab] = useState<'applications' | 'products' | 'audit' | 'support' | 'live'>('applications');
+  const [activeTab, setActiveTab] = useState<'applications' | 'products' | 'audit' | 'support' | 'live' | 'orders'>('applications');
   const [selectedApplication, setSelectedApplication] = useState<string | null | undefined>(undefined);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -148,6 +149,7 @@ export default function AdminDashboardPage({ onNavigate }: AdminDashboardPagePro
     { id: 'products', label: 'Product Moderation', icon: Package },
     { id: 'support', label: 'Support Inbox', icon: MessagesSquare },
     { id: 'live', label: 'Live & Videos', icon: Film },
+    { id: 'orders', label: 'Marketplace Orders', icon: Package },
     { id: 'audit', label: 'Audit & Settings', icon: Activity },
   ] as const;
   const metrics = [
@@ -192,7 +194,7 @@ export default function AdminDashboardPage({ onNavigate }: AdminDashboardPagePro
             <span className="cnc-admin-emblem"><ShieldCheck size={23} aria-hidden="true" /></span>
             <div><h1>Admin Console</h1><p>Cash N Carry Nigeria</p></div>
           </div>
-          {activeTab !== 'support' && activeTab !== 'live' && (
+          {activeTab !== 'support' && activeTab !== 'live' && activeTab !== 'orders' && (
             <button type="button" onClick={() => void loadAdminData()} className="cnc-admin-button" disabled={loading || reviewing}>
               <RefreshCw size={16} aria-hidden="true" /> Refresh
             </button>
@@ -200,7 +202,7 @@ export default function AdminDashboardPage({ onNavigate }: AdminDashboardPagePro
         </header>
 
         <div className="cnc-admin-content">
-          {activeTab === 'live' ? <AdminLiveContent /> : activeTab === 'support' ? <AdminSupportInbox /> : <>
+          {activeTab === 'orders' ? <AdminOrders /> : activeTab === 'live' ? <AdminLiveContent /> : activeTab === 'support' ? <AdminSupportInbox /> : <>
             {error && <div role="alert" className="cnc-admin-error">
               <AlertTriangle size={18} /> {error}
               <button type="button" className="cnc-admin-button" onClick={() => void loadAdminData()}>Retry</button>

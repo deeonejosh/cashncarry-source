@@ -3,11 +3,24 @@ import { escape, page } from './catalog-pages';
 
 export async function adminRoute(request: Request, env: AuthEnvironment & { KYC_UPLOADS_ENABLED?: string }): Promise<Response | null> {
   const url = new URL(request.url);
-  if (!['/admin','/api/admin/moderation','/api/admin/overview','/api/admin/live-content','/api/admin/seller-applications','/api/admin/seller-applications/review'].includes(url.pathname)) return null;
+  if (!['/admin','/api/admin/moderation','/api/admin/overview','/api/admin/live-content','/api/admin/orders','/api/admin/seller-applications','/api/admin/seller-applications/review'].includes(url.pathname)) return null;
   if (!env.AUTH_DB || !env.ADMIN_ACCOUNT_ID || !env.ADMIN_TOTP_SECRET_HEX) return null;
   const account = await currentAccount(request,env,true);
   if (!account) return new Response(null,{status:403,headers:{'cache-control':'no-store'}});
   const db=env.AUTH_DB;
+
+  if (url.pathname === '/api/admin/orders') {
+    if (request.method !== 'GET') return new Response(null,{status:405,headers:{allow:'GET','cache-control':'no-store'}});
+    const id = (url.searchParams.get('id') || '').trim();
+    if (id.length > 100) return Response.json({error:'Invalid order ID'},{status:400,headers:{'cache-control':'no-store'}});
+    const {results} = await db.prepare(`SELECT o.id, o.status, o.payment_state, o.created,
+      COALESCE(SUM(i.quantity * i.price_minor),0) AS total_minor,
+      COUNT(DISTINCT i.seller) AS seller_count
+      FROM cnc_orders o LEFT JOIN cnc_order_items i ON i.order_id=o.id
+      WHERE (?='' OR o.id=?) GROUP BY o.id ORDER BY o.created DESC,o.id DESC LIMIT 50`)
+      .bind(id,id).all();
+    return Response.json({orders:results},{headers:{'cache-control':'no-store'}});
+  }
 
   if (url.pathname === '/api/admin/live-content') {
     const reply = (body: unknown, status = 200) => Response.json(body, {status, headers:{'cache-control':'no-store'}});

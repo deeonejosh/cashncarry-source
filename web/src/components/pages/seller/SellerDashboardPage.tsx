@@ -1,3 +1,4 @@
+import SellerVideosPanel from './SellerVideosPanel';
 import storefrontArtwork from '../../../assets/home-seller-storefront.webp';
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../../../context/StoreContext';
@@ -119,6 +120,8 @@ export default function SellerDashboardPage({ onNavigate, onOpenCreate }: Seller
           </button>
         </div>
       </div>
+
+      <SellerVideosPanel />
 
       {/* Storefront Profile Card */}
       <div className="cnc-workspace-panel rounded-3xl border p-4 sm:p-6 space-y-4">
