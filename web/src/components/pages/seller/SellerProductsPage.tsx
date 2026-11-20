@@ -160,28 +160,11 @@ export default function SellerProductsPage() {
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <button type="button" onClick={() => setShowBulkImport(true)}
-            className="inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-orange-200 px-4 py-2.5 text-xs font-black text-orange-950 hover:bg-orange-300">
-            <Upload size={16} />
-            <span>Bulk Upload Excel</span>
-          </button>
-          <button type="button" onClick={downloadTemplate}
-            className="inline-flex min-h-11 items-center gap-1.5 rounded-xl border border-white/50 bg-white/15 px-4 py-2.5 text-xs font-black text-white hover:bg-white/25">
-            <FileSpreadsheet size={16} />
-            <span>Download Template</span>
-          </button>
-          <button type="button" onClick={exportProducts}
-            className="inline-flex min-h-11 items-center gap-1.5 rounded-xl border border-white/50 bg-white/15 px-4 py-2.5 text-xs font-black text-white hover:bg-white/25">
-            <Download size={16} />
-            <span>Download My Products</span>
-          </button>
-          <button type="button" onClick={() => setShowAddModal(true)}
-            className="inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-orange-200 px-4 py-2.5 text-xs font-black text-orange-950 hover:bg-orange-300">
-            <Plus size={16} />
-            <span>Add New Product</span>
-          </button>
-        </div>
+        <button type="button" onClick={() => setShowAddModal(true)}
+          className="inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-orange-200 px-4 py-2.5 text-xs font-black text-orange-950 hover:bg-orange-300">
+          <Plus size={16} />
+          <span>Add New Product</span>
+        </button>
       </div>
 
       <section aria-label="Bulk product upload and download" className="rounded-2xl border-2 border-emerald-700 bg-white p-4 shadow-sm sm:p-5">
