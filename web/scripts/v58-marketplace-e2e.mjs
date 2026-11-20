@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { build } from 'esbuild';
-import { Miniflare } from 'miniflare';
+import { Miniflare, createFetchMock } from 'miniflare';
 
 // ALL identities, products, and orders are created inside a disposable Miniflare D1.
 // This script MUST NOT issue network requests to the remote staging Worker or any provider.
@@ -27,7 +27,15 @@ const bundle = await build({
   entryPoints: ['deploy/chatgpt-sites/worker.ts'],
   bundle: true, write: false, platform: 'browser', format: 'esm', target: 'es2022', external: ['node:*'],
 });
+const fetchMock = createFetchMock();
+fetchMock.disableNetConnect();
+const streamHost = 'https://customer-fixture.cloudflarestream.com';
+const streamInput = '/1234567890abcdef1234567890abcdef';
+const streamProvider = fetchMock.get(streamHost);
+const providerStatus = (live) => streamProvider.intercept({ path: streamInput + '/lifecycle' })
+  .reply(200, { isInput: true, live });
 const mf = new Miniflare({
+  fetchMock,
   modules: true, script: bundle.outputFiles[0].text,
   compatibilityDate: '2026-08-06', compatibilityFlags: ['nodejs_compat'],
   // These two bindings refer to the SAME D1 database in deployed staging.
@@ -37,6 +45,10 @@ const mf = new Miniflare({
     ADMIN_TOTP_SECRET_HEX: '00112233445566778899aabbccddeeff00112233',
     PAYMENTS_ENABLED: 'false', COINS_PURCHASES_ENABLED: 'false',
     KYC_UPLOADS_ENABLED: 'false', FLW_MODE: 'disabled',
+    STREAM_SELLER_ID: 'v58-e2e-seller',
+    STREAM_WHIP_URL: streamHost + '/fixture/webRTC/publish',
+    STREAM_WHEP_URL: streamHost + streamInput + '/webRTC/play',
+    STREAM_STATUS_TOKEN: 'fixture-token',
     ORDER_RESERVATIONS: 'enabled', FLW_WEBHOOK_SIGNATURE: 'hmac-sha256',
   },
 });
@@ -129,6 +141,32 @@ try {
   assert.equal(publicStore.name, 'Temporary E2E Seller Shop');
   assert.equal(publicStore.verified, 1);
   record('approved seller storefront synchronises to public catalog', { database: true });
+
+  await expectStatus('/api/live/cloudflare/publish', ids.buyerA, 'POST', {}, 403,
+    'buyer cannot request a publishing endpoint');
+  await expectStatus('/api/live/cloudflare/play', ids.buyerA, 'GET', undefined, 200,
+    'signed-in buyer can obtain the playback endpoint');
+  const roomInput = { title: 'Isolated broadcast fixture' };
+  providerStatus(false);
+  await expectStatus('/api/live', ids.seller, 'POST', { ...roomInput, broadcastConnected: true }, 409,
+    'provider offline blocks room creation even when the browser claims connection');
+  providerStatus(true);
+  const room = await expectStatus('/api/live', ids.seller, 'POST', roomInput, 201,
+    'provider online permits room creation');
+  const activeRoom = async () => (await call('/api/live')).data.rooms.find(r => r.room_id === room.roomId);
+  providerStatus(false);
+  assert.equal((await activeRoom()).status, 'live');
+  providerStatus(true);
+  assert.equal((await activeRoom()).status, 'live');
+  assert.equal((await db.prepare('SELECT stream_offline_since FROM cnc_live_room_state WHERE room_id=?').bind(room.roomId).first()).stream_offline_since, null);
+  record('quick disconnect is tolerated and reconnection clears grace timer', { isolated: true });
+  providerStatus(false);
+  assert.equal((await activeRoom()).status, 'live');
+  await db.prepare('UPDATE cnc_live_room_state SET stream_offline_since=unixepoch()-46 WHERE room_id=?').bind(room.roomId).run();
+  assert.equal((await activeRoom()).status, 'live', 'provider errors are not evidence of a disconnect');
+  providerStatus(false);
+  assert.equal((await activeRoom()).status, 'ended');
+  record('only a confirmed continuing disconnect ends the room after grace expires', { isolated: true });
 
   const productId = '00000000-0000-4000-a000-' + 'a'.repeat(12);
   await expectStatus('/api/seller/products', ids.seller, 'POST',

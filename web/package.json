@@ -5,16 +5,17 @@
   "type": "module",
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
-    "build": "CNC_PRIVATE_STAGING=true tsx scripts/generate-sitemap.ts && CNC_PRIVATE_STAGING=true tsx scripts/generate-google-shopping-feed.ts && vite build && python3 scripts/audit_customer_ui.py --dist",
+    "build": "CNC_PRIVATE_STAGING=true node --import tsx scripts/generate-sitemap.ts && CNC_PRIVATE_STAGING=true node --import tsx scripts/generate-google-shopping-feed.ts && vite build && python3 scripts/audit_customer_ui.py --dist",
     "build:sites-candidate": "npm run build",
-    "bundle:worker": "esbuild deploy/chatgpt-sites/worker.ts --bundle --format=esm --target=es2022 --platform=browser --outfile=dist/_worker.js --external:node:*",
-    "sitemap": "tsx scripts/generate-sitemap.ts",
-    "feed": "tsx scripts/generate-google-shopping-feed.ts",
+    "bundle:worker": "esbuild deploy/chatgpt-sites/worker.ts --bundle --format=esm --target=es2022 --platform=browser --outfile=worker-dist/_worker.js --external:node:*",
+    "sitemap": "node --import tsx scripts/generate-sitemap.ts",
+    "feed": "node --import tsx scripts/generate-google-shopping-feed.ts",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
-    "test": "tsx scripts/run-automated-tests.ts",
+    "test": "node --import tsx scripts/run-automated-tests.ts",
     "lint": "tsc --noEmit",
-    "audit:customer-ui": "python3 scripts/audit_customer_ui.py"
+    "audit:customer-ui": "python3 scripts/audit_customer_ui.py",
+    "test:stream": "node --import tsx --test src/lib/__tests__/worker-stream.test.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

@@ -4,7 +4,7 @@ import { Miniflare } from 'miniflare';
 
 const worker = new Miniflare({
   modules: true,
-  scriptPath: 'dist/_worker.js',
+  scriptPath: 'worker-dist/_worker.js',
   compatibilityDate: '2026-08-06',
   d1Databases: ['DB'],
   serviceBindings: {

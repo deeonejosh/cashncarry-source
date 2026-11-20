@@ -26,7 +26,7 @@ jobs:
           npx tsx scripts/seller-bulk-import-test.ts
           node scripts/seller-bulk-xlsx-browser-test.mjs
           npm test
-          npm run build
+          CNC_LEGACY_ASSETS=true npm run build
           npm run bundle:worker
       - name: Package ONLY the 3 existing KV-owned private staging static assets
         shell: bash

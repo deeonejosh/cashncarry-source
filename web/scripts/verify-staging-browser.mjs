@@ -69,7 +69,7 @@ const mf = new Miniflare({
   host: '127.0.0.1',
   port: browserPort,
   modules: true,
-  scriptPath: 'dist/_worker.js',
+  scriptPath: 'worker-dist/_worker.js',
   compatibilityDate: '2026-08-06',
   compatibilityFlags: ['nodejs_compat'],
   d1Databases: ['AUTH_DB', 'DB'],

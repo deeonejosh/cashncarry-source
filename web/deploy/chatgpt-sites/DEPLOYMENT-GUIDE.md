@@ -37,7 +37,7 @@ node deploy/chatgpt-sites/worker-smoke.mjs
 node deploy/chatgpt-sites/new-auth-smoke.mjs
 npx playwright-core install --with-deps chromium
 node scripts/verify-staging-browser.mjs  # 26 routes x desktop/mobile, local Miniflare
-rm -f dist/_worker.js
+rm -f worker-dist/_worker.js
 python3 scripts/audit_customer_ui.py --dist
 ```
 
@@ -79,3 +79,17 @@ charges while the relevant feature flags are disabled.
 
 Note: a live *room* is not necessarily a video broadcast. The UI must explain
 that camera preview does not transmit unless media publishing is configured.
+
+### Livestream lifecycle and build outputs
+
+Apply D1 migration `0029_stream_disconnect_grace.sql` before enabling the
+lifecycle integration. Configure `STREAM_STATUS_TOKEN` as a Worker secret
+with the minimum read access needed for the Cloudflare Stream lifecycle
+endpoint. The configured WHEP URL must identify the same live input as WHIP.
+Verify offline, publishing, brief interruption, recovery and sustained
+disconnect with the staging seller and an independent viewer.
+
+Publish the complete frontend `dist/` directory, including every hashed
+asset. `worker-dist/` is a separate, private Worker package. The legacy KV
+packaging jobs use `CNC_LEGACY_ASSETS=true` because their entrypoint mappings
+expect a single JavaScript and CSS entry.

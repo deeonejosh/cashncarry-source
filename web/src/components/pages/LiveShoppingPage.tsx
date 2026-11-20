@@ -54,6 +54,7 @@ export default function LiveShoppingPage({
     sellerProducts,
     products,
     reloadMarketplace,
+    refreshLiveRooms,
     joinLiveRoom,
     likeLiveRoom,
     pinLiveProduct,
@@ -79,6 +80,12 @@ export default function LiveShoppingPage({
 
   const isHost = Boolean(isApprovedSeller && activeRoom && activeRoom.sellerId === currentUser.id);
   const ownPublishedProducts = sellerProducts.filter((p) => p.publication === 'published' && p.stock > 0);
+
+  useEffect(() => {
+    if (!activeRoom?.id) return;
+    const interval = window.setInterval(() => { void refreshLiveRooms(); }, 15_000);
+    return () => window.clearInterval(interval);
+  }, [activeRoom?.id, refreshLiveRooms]);
 
   useEffect(() => {
     if (!activeRoom?.id) return;

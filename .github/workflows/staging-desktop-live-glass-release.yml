@@ -28,7 +28,7 @@ jobs:
           node scripts/mobile-live-browser-test.mjs
           node scripts/seller-bulk-xlsx-browser-test.mjs
           npm test
-          npm run build
+          CNC_LEGACY_ASSETS=true npm run build
           npm run bundle:worker
       - name: Package desktop frontend for existing private Cloudflare staging KV map (NO DEPLOY)
         shell: bash

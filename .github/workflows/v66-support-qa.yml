@@ -33,20 +33,20 @@ jobs:
       - name: Package verified Worker and frontend on immutable artifact branch (NO DEPLOY)
         run: |
           test -f dist/index.html
-          test -f dist/_worker.js
+          test -f worker-dist/_worker.js
           JS_FILE=$(find dist/assets -maxdepth 1 -type f -name 'index-*.js' -print -quit)
           CSS_FILE=$(find dist/assets -maxdepth 1 -type f -name 'index-*.css' -print -quit)
           test -n "$JS_FILE" && test -n "$CSS_FILE"
           test -f "$JS_FILE" && test -f "$CSS_FILE"
           grep -Fq "/assets/$(basename "$JS_FILE")" dist/index.html
           grep -Fq "/assets/$(basename "$CSS_FILE")" dist/index.html
-          cp dist/_worker.js dist/staging-v66-support-backend.mjs
-          sha256sum dist/index.html "$JS_FILE" "$CSS_FILE" dist/staging-v66-support-backend.mjs > dist/staging-v66-support-manifest.sha256
-          printf 'source=%s\\nscope=existing-private-staging-only\\nno-deploy\\n' "$GITHUB_SHA" > dist/staging-v66-support-source.txt
+          cp worker-dist/_worker.js worker-dist/staging-v66-support-backend.mjs
+          sha256sum dist/index.html "$JS_FILE" "$CSS_FILE" worker-dist/staging-v66-support-backend.mjs > worker-dist/staging-v66-support-manifest.sha256
+          printf 'source=%s\\nscope=existing-private-staging-only\\nno-deploy\\n' "$GITHUB_SHA" > worker-dist/staging-v66-support-source.txt
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git switch -c artifact/staging-v66-support-20261118
-          git add -f dist/index.html "$JS_FILE" "$CSS_FILE" dist/staging-v66-support-backend.mjs dist/staging-v66-support-manifest.sha256 dist/staging-v66-support-source.txt
+          git add -f dist/index.html "$JS_FILE" "$CSS_FILE" worker-dist/staging-v66-support-backend.mjs worker-dist/staging-v66-support-manifest.sha256 worker-dist/staging-v66-support-source.txt
           git commit -m "build(private staging): tested support inbox UI and Worker, no deployment"
           git push origin HEAD:refs/heads/artifact/staging-v66-support-20261118
       - name: Evidence artifact

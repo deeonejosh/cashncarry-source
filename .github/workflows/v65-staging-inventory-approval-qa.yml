@@ -32,13 +32,13 @@ jobs:
         run: node scripts/v58-marketplace-e2e.mjs
       - name: Package immutable verified backend for private staging (NO DEPLOY)
         run: |
-          cp dist/_worker.js dist/staging-v65-approved-inventory-backend.mjs
-          sha256sum dist/staging-v65-approved-inventory-backend.mjs > dist/staging-v65-approved-inventory-backend.sha256
-          printf 'source=%s\\nscope=private-staging-only\\nno-deploy\\n' "$GITHUB_SHA" > dist/staging-v65-source.txt
+          cp worker-dist/_worker.js worker-dist/staging-v65-approved-inventory-backend.mjs
+          sha256sum worker-dist/staging-v65-approved-inventory-backend.mjs > worker-dist/staging-v65-approved-inventory-backend.sha256
+          printf 'source=%s\\nscope=private-staging-only\\nno-deploy\\n' "$GITHUB_SHA" > worker-dist/staging-v65-source.txt
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git switch -c artifact/staging-v65-inventory-approval-20261118
-          git add -f dist/staging-v65-approved-inventory-backend.mjs dist/staging-v65-approved-inventory-backend.sha256 dist/staging-v65-source.txt
+          git add -f worker-dist/staging-v65-approved-inventory-backend.mjs worker-dist/staging-v65-approved-inventory-backend.sha256 worker-dist/staging-v65-source.txt
           git commit -m "build(staging): immutable backend for verified inventory approval repair"
           git push origin HEAD:refs/heads/artifact/staging-v65-inventory-approval-20261118
       - name: Upload regression evidence

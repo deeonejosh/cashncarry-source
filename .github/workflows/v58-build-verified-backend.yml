@@ -36,15 +36,15 @@ jobs:
           echo 'd885970af9a34102f4a8d63b0f6d4b4bea90bd3c13b6d00c109fdcdac99c660c  dist/index.html' | sha256sum -c -
           echo '6595806be9b58806b6bf1b34d8c6dab88fd0f2864b14004884d39e36df68ae72  dist/assets/index-DjAQX0oY.js' | sha256sum -c -
           echo 'a25a7fb15bf5883b5152e0cb296a317feffaf4688c043e6a6ac51b9c68d51057  dist/assets/index-uvdl1fkh.css' | sha256sum -c -
-          cp dist/_worker.js dist/staging-v58-e2e-backend.mjs
-          sha256sum dist/staging-v58-e2e-backend.mjs > dist/staging-v58-e2e-backend.sha256
-          printf 'source=%s\nscope=private-staging-backend-only\nno-production\nno-deploy\n' "$GITHUB_SHA" > dist/staging-v58-e2e-source.txt
+          cp worker-dist/_worker.js worker-dist/staging-v58-e2e-backend.mjs
+          sha256sum worker-dist/staging-v58-e2e-backend.mjs > worker-dist/staging-v58-e2e-backend.sha256
+          printf 'source=%s\nscope=private-staging-backend-only\nno-production\nno-deploy\n' "$GITHUB_SHA" > worker-dist/staging-v58-e2e-source.txt
       - name: Commit immutable backend file to a separate release artifact branch (NO DEPLOY)
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git switch -c artifact/v58-marketplace-auction-history-20261118
-          git add -f dist/staging-v58-e2e-backend.mjs dist/staging-v58-e2e-backend.sha256 dist/staging-v58-e2e-source.txt
+          git add -f worker-dist/staging-v58-e2e-backend.mjs worker-dist/staging-v58-e2e-backend.sha256 worker-dist/staging-v58-e2e-source.txt
           git commit -m "build(private staging): verified auction history backend; no deployment"
           git push origin HEAD:refs/heads/artifact/v58-marketplace-auction-history-20261118
       - name: Upload immutable backend and E2E evidence
@@ -53,9 +53,9 @@ jobs:
         with:
           name: cnc-v58-e2e-auction-history-backend-release
           path: |
-            web/dist/staging-v58-e2e-backend.mjs
-            web/dist/staging-v58-e2e-backend.sha256
-            web/dist/staging-v58-e2e-source.txt
+            web/worker-dist/staging-v58-e2e-backend.mjs
+            web/worker-dist/staging-v58-e2e-backend.sha256
+            web/worker-dist/staging-v58-e2e-source.txt
             web/reports/v58-isolated-marketplace-e2e.json
           if-no-files-found: warn
           retention-days: 30

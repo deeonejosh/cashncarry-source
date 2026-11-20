@@ -32,13 +32,13 @@ jobs:
         run: node scripts/v58-marketplace-e2e.mjs
       - name: Package immutable compiled backend (NO DEPLOY)
         run: |
-          cp dist/_worker.js dist/staging-v67-support-atomic-backend.mjs
-          sha256sum dist/staging-v67-support-atomic-backend.mjs > dist/staging-v67-support-atomic-backend.sha256
-          printf 'source=%s\\nscope=private-staging-backend-only\\nno-production\\nno-deploy\\n' "$GITHUB_SHA" > dist/staging-v67-support-source.txt
+          cp worker-dist/_worker.js worker-dist/staging-v67-support-atomic-backend.mjs
+          sha256sum worker-dist/staging-v67-support-atomic-backend.mjs > worker-dist/staging-v67-support-atomic-backend.sha256
+          printf 'source=%s\\nscope=private-staging-backend-only\\nno-production\\nno-deploy\\n' "$GITHUB_SHA" > worker-dist/staging-v67-support-source.txt
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git switch -c artifact/staging-v67-support-atomic-20261118
-          git add -f dist/staging-v67-support-atomic-backend.mjs dist/staging-v67-support-atomic-backend.sha256 dist/staging-v67-support-source.txt
+          git add -f worker-dist/staging-v67-support-atomic-backend.mjs worker-dist/staging-v67-support-atomic-backend.sha256 worker-dist/staging-v67-support-source.txt
           git commit -m "build(private staging): isolated verified atomic support backend; no deploy"
           git push origin HEAD:refs/heads/artifact/staging-v67-support-atomic-20261118
       - name: Upload isolated evidence

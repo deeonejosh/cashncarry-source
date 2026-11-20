@@ -1,6 +1,6 @@
 import { createHash, createHmac } from 'node:crypto';
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
 import { Miniflare, createFetchMock } from 'miniflare';
 const browserPort = 18797;
 const origin = process.env.CNC_TEST_CHROMIUM ? 'https://127.0.0.1:' + browserPort : 'https://market.example.invalid';
@@ -10,39 +10,23 @@ fetchMock.disableNetConnect();
 const flutterwave = fetchMock.get('https://api.flutterwave.com');
 const worker = new Miniflare({
   ...(process.env.CNC_TEST_CHROMIUM ? { https: true, host: '127.0.0.1', port: browserPort } : {}),
-  fetchMock, modules: true, compatibilityDate: '2026-08-06', scriptPath: 'dist/_worker.js',
-  d1Databases: ['AUTH_DB','DB'], bindings: { AUTH_ORIGIN: origin, ORDER_RESERVATIONS: 'enabled', PAYMENTS_ENABLED: 'true', FLW_MODE:'sandbox', FLW_SECRET_KEY:'FLWSECK_TEST-fixture', FLW_WEBHOOK_HASH:'synthetic-signing-key', FLW_WEBHOOK_SIGNATURE:'hmac-sha256', ADMIN_ACCOUNT_ID: 'fixture-admin', ADMIN_TOTP_SECRET_HEX: '3132333435363738393031323334353637383930' },
+  fetchMock, modules: true, compatibilityDate: '2026-08-06', scriptPath: 'worker-dist/_worker.js',
+  d1Databases: { AUTH_DB: 'auth-smoke', DB: 'auth-smoke' }, bindings: { AUTH_ORIGIN: origin, ORDER_RESERVATIONS: 'enabled', PAYMENTS_ENABLED: 'true', FLW_MODE:'sandbox', FLW_SECRET_KEY:'FLWSECK_TEST-fixture', FLW_WEBHOOK_HASH:'synthetic-signing-key', FLW_WEBHOOK_SIGNATURE:'hmac-sha256', ADMIN_ACCOUNT_ID: 'fixture-admin', ADMIN_TOTP_SECRET_HEX: '3132333435363738393031323334353637383930' },
   serviceBindings: { AUTH_EMAIL: async req => { delivery.push(await req.json()); return new Response(null,{status:204}); } },
 });
 try {
   const db = await worker.getD1Database('AUTH_DB');
-  const migration = await readFile('deploy/chatgpt-sites/migrations/0001_new_auth.sql','utf8');
-  const triggerStart = migration.indexOf('CREATE TRIGGER');
-  await db.exec(migration.slice(0, triggerStart).replace(/\s+/g,' ').replace(/;\s*/g,';\n').trim());
-  await db.prepare(migration.slice(triggerStart)).run();
-  const addressMigration = await readFile('deploy/chatgpt-sites/migrations/0002_buyer_addresses.sql','utf8');
-  await db.exec(addressMigration.replace(/\s+/g,' ').replace(/;\s*/g,';\n').trim());
-  const marketMigration = await readFile('deploy/chatgpt-sites/migrations/0003_marketplace.sql','utf8');
-  await db.exec(marketMigration.replace(/\s+/g,' ').replace(/;\s*/g,';\n').trim());
-  const orderMigration = await readFile('deploy/chatgpt-sites/migrations/0004_order_reservations.sql','utf8');
-  const [tables, ...triggers] = orderMigration.split(/(?=CREATE TRIGGER)/);
-  await db.exec(tables.replace(/\s+/g,' ').replace(/;\s*/g,';\n').trim());
-  for (const trigger of triggers) await db.prepare(trigger.trim()).run();
-  const adminMigration = await readFile('deploy/chatgpt-sites/migrations/0005_admin_mfa.sql','utf8');
-  const [adminTables, adminTrigger] = adminMigration.split(/(?=CREATE TRIGGER)/);
-  await db.exec(adminTables.replace(/\s+/g,' ').replace(/;\s*/g,';\n').trim());
-  await db.prepare(adminTrigger.trim()).run();
-  const paymentMigration = await readFile('deploy/chatgpt-sites/migrations/0007_flutterwave_sandbox.sql','utf8');
-  const [paymentTable, paymentTrigger] = paymentMigration.split(/(?=CREATE TRIGGER)/);
-  await db.exec(paymentTable.replace(/\s+/g,' ').replace(/;\s*/g,';\n').trim());
-  await db.prepare(paymentTrigger.trim()).run();
-  const expiryMigration = await readFile('deploy/chatgpt-sites/migrations/0008_reservation_expiry.sql','utf8');
-  const [expiryTables, expiryTrigger] = expiryMigration.split(/(?=CREATE TRIGGER)/);
-  await db.exec(expiryTables.replace(/\s+/g,' ').replace(/;\s*/g,';\n').trim());
-  await db.prepare(expiryTrigger.trim()).run();
-  const catalog = await worker.getD1Database('DB');
-  await catalog.exec("CREATE TABLE stores (id TEXT PRIMARY KEY, verified INTEGER, suspended INTEGER); CREATE TABLE products (id TEXT PRIMARY KEY, store TEXT, name TEXT, description TEXT, category TEXT, price INTEGER, stock INTEGER, image TEXT, featured INTEGER, active INTEGER)");
-  await catalog.exec("INSERT INTO stores VALUES ('store',1,0); INSERT INTO products VALUES ('fixture-product','store','Cart fixture','','category',100,2,'',0,1)");
+  const migrations = 'deploy/chatgpt-sites/migrations';
+  for (const file of (await readdir(migrations)).filter(name => name.endsWith('.sql')).sort()) {
+    const sql = await readFile(migrations + '/' + file, 'utf8');
+    const [schema, ...triggers] = sql.split(/(?=CREATE TRIGGER)/);
+    const ddl = schema.split('\n').filter(line => !line.trim().startsWith('--')).join('\n').trim();
+    if (ddl) await db.exec(ddl.replace(/\s+/g, ' ').replace(/;\s*/g, ';\n').trim());
+    for (const trigger of triggers) {
+      await db.prepare(trigger.split('\n').filter(line => !line.trim().startsWith('--')).join('\n').trim()).run();
+    }
+  }
+  await db.exec("INSERT INTO stores (id,name,description) VALUES ('store','Fixture catalog',''); INSERT INTO products (id,store,name,description,category,price,stock,image,featured,active) VALUES ('fixture-product','store','Cart fixture','','fashion',100,2,'',0,1)");
   const web = (path, form, cookie = '', requestOrigin = origin) => worker.dispatchFetch(origin + path, form === undefined
     ? {redirect:'manual',headers:{cookie}} : {redirect:'manual',method:'POST',headers:{cookie,origin:requestOrigin,'content-type':'application/x-www-form-urlencoded'},body:new URLSearchParams(form)});
   const request = (route, body, extra = {}) => worker.dispatchFetch(origin + '/api/auth/' + route, body === undefined
@@ -76,11 +60,24 @@ try {
   const seller = 'seller@example.invalid';
   assert.equal((await request('register',{email:seller})).status,202);
   assert.equal((await request('verify',{token:delivery.at(-1).token,password,role:'seller'})).status,200);
+  const applicantLogin = await request('login',{email:seller,password});
+  assert.equal(applicantLogin.status, 200);
+  const applicantCookie = applicantLogin.headers.get('set-cookie').split(';')[0];
+  assert.equal((await (await request('me',undefined,{cookie:applicantCookie})).json()).user.role,'buyer');
+  assert.equal((await web('/seller/dashboard',undefined,applicantCookie)).status,403);
+  // Seed an approved seller for the remaining marketplace smokes. The isolated
+  // marketplace suite exercises the actual admin approval and session revocation.
+  await db.prepare("UPDATE cnc_auth_users SET role='seller' WHERE email=?").bind(seller).run();
+  await db.prepare("INSERT INTO cnc_seller_applications (id,user_id,business_name,phone,description,status) SELECT 'seller-smoke',id,'Fixture shop','08012345678','Approved smoke fixture','approved' FROM cnc_auth_users WHERE email=?").bind(seller).run();
   const sellerLogin = await request('login',{email:seller,password});
   assert.equal(sellerLogin.status,200);
   const sellerCookie = sellerLogin.headers.get('set-cookie').split(';')[0];
   assert.equal((await (await request('me',undefined,{cookie:sellerCookie})).json()).user.role,'seller');
-  const signIn = await web('/sign-in', {email,password:'replacement-password-123'});
+  const form = await web('/sign-in');
+  const csrf = (await form.text()).match(/name="admin_csrf" value="([^"]+)"/)?.[1];
+  assert.ok(csrf);
+  const csrfCookie = form.headers.get('set-cookie').split(';')[0];
+  const signIn = await web('/sign-in', {email,password:'replacement-password-123',admin_csrf:csrf},csrfCookie);
   assert.equal(signIn.status,303,await signIn.text());
   const buyerCookie = signIn.headers.get('set-cookie').split(';')[0];
   assert.equal((await web('/account')).headers.get('location'),'/sign-in');
@@ -106,7 +103,7 @@ try {
   const concurrent = await Promise.all([web('/seller/products',{...update,stock:'2'},sellerCookie),web('/seller/products',{...update,stock:'3'},sellerCookie)]);
   assert.deepEqual(concurrent.map(response => response.status).sort(),[303,409]);
   assert.equal((await web('/seller/products',{...update,revision:'2',stock:'-1'},sellerCookie)).status,400);
-  await db.exec("INSERT INTO cnc_auth_users (id,email,credential,role,verified) VALUES ('other-seller','other@example.invalid','','seller',1); INSERT INTO cnc_seller_stores VALUES ('other-seller','Other store',''); INSERT INTO cnc_seller_products (id,owner,name,price_minor,stock) VALUES ('foreign-draft','other-seller','Foreign draft',100,1)");
+  await db.exec("INSERT INTO cnc_auth_users (id,email,credential,role,verified) VALUES ('other-seller','other@example.invalid','','seller',1); INSERT INTO cnc_seller_stores (owner,name,description) VALUES ('other-seller','Other store',''); INSERT INTO cnc_seller_products (id,owner,name,price_minor,stock) VALUES ('foreign-draft','other-seller','Foreign draft',100,1)");
   assert.equal((await web('/seller/products',{...update,id:'foreign-draft'},sellerCookie)).status,409);
   assert.doesNotMatch(await (await web('/seller/products',undefined,sellerCookie)).text(),/Foreign draft/);
   assert.equal((await web('/seller/products',{action:'archive',id:draft.id,revision:'2'},sellerCookie)).status,303);
@@ -209,7 +206,7 @@ try {
   assert.equal((await web('/account',undefined,buyerCookie)).headers.get('location'),'/sign-in');
   await db.prepare('UPDATE cnc_auth_users SET suspended=1 WHERE email=?').bind(seller).run();
   assert.equal((await request('me',undefined,{cookie:sellerCookie})).status,401);
-  assert.equal((await db.prepare('SELECT COUNT(*) AS n FROM cnc_auth_audit').first()).n,4);
+  assert.equal((await db.prepare('SELECT COUNT(*) AS n FROM cnc_auth_audit').first()).n,5);
   if (process.env.CNC_TEST_CHROMIUM) {
     await db.prepare('DELETE FROM cnc_auth_rate').run();
     const { chromium } = await import('playwright-core');

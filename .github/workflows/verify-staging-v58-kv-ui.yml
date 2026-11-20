@@ -35,7 +35,7 @@ jobs:
         with:
           name: cnc-staging-v58-kv-ui-evidence
           path: |
-            web/dist/staging-v58/
+            web/worker-dist/staging-v58/
             web/reports/
           retention-days: 14
           if-no-files-found: warn

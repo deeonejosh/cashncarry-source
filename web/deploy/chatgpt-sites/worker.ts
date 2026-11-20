@@ -109,7 +109,7 @@ export default {
           coinsPurchasesEnabled,
           kycUploadsEnabled,
           orderReservationsEnabled: env.ORDER_RESERVATIONS === 'enabled',
-          streamConfigured: Boolean(env.STREAM_WHIP_URL && env.STREAM_WHEP_URL),
+          streamConfigured: Boolean(env.STREAM_WHIP_URL && env.STREAM_WHEP_URL && env.STREAM_STATUS_TOKEN),
           r2Configured: Boolean(env.KYC_PRIVATE),
         },
       });

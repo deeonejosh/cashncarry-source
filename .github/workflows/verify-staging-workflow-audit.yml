@@ -86,14 +86,14 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: cashncarry-staging-backend-${{ github.sha }}
-          path: web/dist/_worker.js
+          path: web/worker-dist/_worker.js
           if-no-files-found: error
           retention-days: 3
       - name: Build-only release asset bundle (no deployment)
         if: success()
         run: |
           set -euo pipefail
-          rm -f dist/_worker.js
+          rm -f worker-dist/_worker.js
           test -s dist/index.html
           test -n "$(find dist/assets -type f -name '*.js' -print -quit)"
           test -n "$(find dist/assets -type f -name '*.css' -print -quit)"

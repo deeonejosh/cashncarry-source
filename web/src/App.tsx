@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { mapApiProduct, StoreProvider, useStore } from './context/StoreContext';
 import { ProductItem, Order } from './types';
 import { api } from './lib/api';
@@ -14,14 +14,14 @@ import NewsletterModal from './components/ui/NewsletterModal';
 // Pages
 import HomePage from './components/pages/HomePage';
 import ShopPage from './components/pages/ShopPage';
-import ForYouVideoFeedPage from './components/pages/ForYouVideoFeedPage';
+const ForYouVideoFeedPage = lazy(() => import('./components/pages/ForYouVideoFeedPage'));
 import ProductDetailsPage from './components/pages/ProductDetailsPage';
 import CheckoutPage from './components/pages/CheckoutPage';
 import CheckoutCompletePage from './components/pages/CheckoutCompletePage';
 import OrdersPage from './components/pages/OrdersPage';
-import ProfilePage from './components/pages/ProfilePage';
-import LiveShoppingPage from './components/pages/LiveShoppingPage';
-import AuctionsPage from './components/pages/AuctionsPage';
+const ProfilePage = lazy(() => import('./components/pages/ProfilePage'));
+const LiveShoppingPage = lazy(() => import('./components/pages/LiveShoppingPage'));
+const AuctionsPage = lazy(() => import('./components/pages/AuctionsPage'));
 import CoinsPage from './components/pages/CoinsPage';
 import FlashDealsPage from './components/pages/FlashDealsPage';
 import WishlistPage from './components/pages/WishlistPage';
@@ -29,19 +29,19 @@ import ShipmentsPage from './components/pages/ShipmentsPage';
 import MessagesPage from './components/pages/MessagesPage';
 import NotificationsPage from './components/pages/NotificationsPage';
 import ReturnsPage from './components/pages/ReturnsPage';
-import EmailMarketingPage from './components/pages/EmailMarketingPage';
+const EmailMarketingPage = lazy(() => import('./components/pages/EmailMarketingPage'));
 import PolicyPage, { type PolicySection } from './components/pages/PolicyPage';
 import StorefrontPage from './components/pages/StorefrontPage';
 
 // Seller Centre Pages
-import SellerDashboardPage from './components/pages/seller/SellerDashboardPage';
-import SellerProductsPage from './components/pages/seller/SellerProductsPage';
-import SellerOrdersPage from './components/pages/seller/SellerOrdersPage';
-import SellerKYCPage from './components/pages/seller/SellerKYCPage';
-import SellerSettlementsPage from './components/pages/seller/SellerSettlementsPage';
+const SellerDashboardPage = lazy(() => import('./components/pages/seller/SellerDashboardPage'));
+const SellerProductsPage = lazy(() => import('./components/pages/seller/SellerProductsPage'));
+const SellerOrdersPage = lazy(() => import('./components/pages/seller/SellerOrdersPage'));
+const SellerKYCPage = lazy(() => import('./components/pages/seller/SellerKYCPage'));
+const SellerSettlementsPage = lazy(() => import('./components/pages/seller/SellerSettlementsPage'));
 
 // Admin Pages
-import AdminDashboardPage from './components/pages/admin/AdminDashboardPage';
+const AdminDashboardPage = lazy(() => import('./components/pages/admin/AdminDashboardPage'));
 import { Lock, ShieldAlert, Store, Clock } from 'lucide-react';
 
 const SELLER_CENTRE_TABS = new Set([
@@ -604,7 +604,9 @@ function MainApp() {
             : `cnc-page ${SELLER_CENTRE_TABS.has(currentTab) || ADMIN_TABS.has(currentTab) ? 'cnc-dashboard' : ''} flex-1 min-w-0 mx-auto max-w-7xl w-full px-3 pt-4 pb-24 sm:px-4 md:px-8 md:pt-6 md:pb-8`
         }
       >
-        {renderMainContent()}
+        <Suspense fallback={<p role="status" className="p-8 text-center">Loading page…</p>}>
+          {renderMainContent()}
+        </Suspense>
       </main>
 
       <CartDrawer

@@ -45,7 +45,7 @@ jobs:
       - name: Browser smoke - all 26 tabs and essential controls (desktop + mobile)
         run: node scripts/verify-staging-browser.mjs
       - name: Remove test bundle from public assets
-        run: rm -f dist/_worker.js
+        run: rm -f worker-dist/_worker.js
       - uses: actions/upload-artifact@v4
         with:
           name: cashncarry-private-staging-web-dist

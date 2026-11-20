@@ -1,8 +1,8 @@
+import { broadcastStatus, reconcileBroadcast, type StreamEnvironment } from './stream';
 import {
   currentAccount,
   hasValidMutationOrigin,
   readBody,
-  type AuthEnvironment,
 } from './new-auth';
 
 const json = (data: unknown, status = 200) =>
@@ -19,7 +19,7 @@ function stripApiPrefix(pathname: string): string {
 
 export async function unifiedSyncRoute(
   request: Request,
-  env: AuthEnvironment
+  env: StreamEnvironment
 ): Promise<Response | null> {
   const url = new URL(request.url);
   if (!url.pathname.startsWith('/api/')) return null;
@@ -47,10 +47,7 @@ export async function unifiedSyncRoute(
   if (!db) return json({ error: 'Database unavailable' }, 503);
 
   const account = await currentAccount(request, env);
-  const streamEnv = env as AuthEnvironment & {
-    STREAM_SELLER_ID?: string; STREAM_WHIP_URL?: string; STREAM_WHEP_URL?: string;
-  };
-  const streamingConfigured = Boolean(streamEnv.STREAM_WHIP_URL && streamEnv.STREAM_WHEP_URL);
+  const streamingConfigured = Boolean(env.STREAM_WHIP_URL && env.STREAM_WHEP_URL && env.STREAM_STATUS_TOKEN);
 
   // Public GET endpoints (videos feed, active live rooms, product reviews)
   if (request.method === 'GET') {
@@ -78,6 +75,7 @@ export async function unifiedSyncRoute(
     }
 
     if (route === '/live') {
+      await reconcileBroadcast(db, env);
       const { results } = await db
         .prepare(
           `SELECT room_id, seller_id, seller_name, title, category, status, viewer_count, hearts_count, pinned_product_id, stream_url, created
@@ -409,17 +407,8 @@ export async function unifiedSyncRoute(
   if (route === '/live') {
     if (request.method === 'POST') {
       if (account.role !== 'seller') return json({ error: 'Seller role required to broadcast' }, 403);
-      // Private staging pilot: only the one approved seller with a dedicated
-      // Cloudflare Stream input can create a live room. The app starts WHIP
-      // first and submits only after the browser's RTCPeerConnection is connected.
-      // This browser attestation is NOT independent server-side media verification;
-      // do not enable this path for production or other sellers without
-      // Cloudflare Stream API status validation and per-seller input allocation.
-      if (!streamingConfigured || !streamEnv.STREAM_SELLER_ID || account.id !== streamEnv.STREAM_SELLER_ID) {
+      if (!streamingConfigured || account.id !== env.STREAM_SELLER_ID) {
         return json({error:'This seller has no configured Cloudflare Stream input',code:'BROADCAST_NOT_CONFIGURED'},503);
-      }
-      if (body.broadcastConnected !== true) {
-        return json({error:'Connect your camera to Cloudflare Stream before creating a room',code:'BROADCAST_HANDSHAKE_REQUIRED'},409);
       }
       const title = text(body.title, 100);
       const category = text(body.category, 45) || 'general';
@@ -429,6 +418,7 @@ export async function unifiedSyncRoute(
         "SELECT s.name FROM cnc_seller_stores s JOIN cnc_seller_applications a ON a.user_id=s.owner AND a.status='approved' WHERE s.owner=?"
       ).bind(account.id).first<{name:string}>();
       if (!seller) return json({error:'Only approved sellers can broadcast'},403);
+      await reconcileBroadcast(db, env);
       const existing = await db.prepare(
         "SELECT room_id FROM cnc_live_room_state WHERE seller_id=? AND status='live' LIMIT 1"
       ).bind(account.id).first();
@@ -439,7 +429,7 @@ export async function unifiedSyncRoute(
         ).bind(pinnedProductId,account.id).first();
         if (!eligible) return json({error:'Only your published and in-stock products may be pinned'},409);
       }
-      const url = streamEnv.STREAM_WHEP_URL || '';
+      const url = env.STREAM_WHEP_URL || '';
       try {
         const whep = new URL(url);
         if (whep.protocol !== 'https:' || !whep.hostname.endsWith('.cloudflarestream.com') ||
@@ -447,10 +437,14 @@ export async function unifiedSyncRoute(
           return json({error:'Cloudflare Stream playback is not configured'},503);
         }
       } catch { return json({error:'Cloudflare Stream playback is unavailable'},503); }
+      const active = await broadcastStatus(env);
+      if (active === null) return json({error:'Unable to verify the Cloudflare broadcast',code:'BROADCAST_STATUS_UNAVAILABLE'},503);
+      if (!active) return json({error:'Cloudflare is not receiving your broadcast yet',code:'BROADCAST_NOT_LIVE'},409);
       const roomId = crypto.randomUUID();
-      await db.prepare(
-        "INSERT INTO cnc_live_room_state (room_id,seller_id,seller_name,title,category,status,viewer_count,hearts_count,pinned_product_id,stream_url,created) VALUES (?,?,?,?,?,'live',0,0,?,?,?)"
-      ).bind(roomId,account.id,seller.name,title,category,pinnedProductId,url,now).run();
+      const created = await db.prepare(
+        "INSERT INTO cnc_live_room_state (room_id,seller_id,seller_name,title,category,status,viewer_count,hearts_count,pinned_product_id,stream_url,created) SELECT ?,?,?,?,?,'live',0,0,?,?,? WHERE NOT EXISTS (SELECT 1 FROM cnc_live_room_state WHERE seller_id=? AND status='live') RETURNING room_id"
+      ).bind(roomId,account.id,seller.name,title,category,pinnedProductId,url,now,account.id).first();
+      if (!created) return json({error:'Finish your existing live room before starting another',code:'ROOM_ALREADY_ACTIVE'},409);
       return json({success:true,roomId,streamConnected:true},201);
     }
 

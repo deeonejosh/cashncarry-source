@@ -52,6 +52,7 @@ interface StoreContextType {
   auctionsState: SectionLoadState;
   ordersState: SectionLoadState;
   reloadMarketplace: () => Promise<void>;
+  refreshLiveRooms: () => Promise<void>;
 
   // Auth modal
   authModal: AuthModalOptions;
@@ -767,6 +768,13 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setCoinActivity([]);
     setOrdersState({ status: 'ready' });
   }, []);
+
+  const refreshLiveRooms = useCallback(async () => {
+    const response = await api.getLiveRooms();
+    if (response.ok) {
+      setLiveRooms((response.data?.rooms ?? []).map(room => mapApiLiveRoom(room, products)));
+    }
+  }, [products]);
 
   const reloadMarketplace = useCallback(async () => {
     setCatalogState({ status: 'loading' });
@@ -1568,6 +1576,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         auctionsState,
         ordersState,
         reloadMarketplace,
+        refreshLiveRooms,
         authModal,
         openAuthModal,
         closeAuthModal,

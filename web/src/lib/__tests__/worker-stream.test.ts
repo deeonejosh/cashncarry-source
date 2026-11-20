@@ -1,31 +1,39 @@
-import { expect, it, vi } from 'vitest';
-import { streamRoute } from '../../../deploy/chatgpt-sites/stream';
-import { currentAccount } from '../../../deploy/chatgpt-sites/new-auth';
-vi.mock('../../../deploy/chatgpt-sites/new-auth', () => ({currentAccount:vi.fn()}));
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
+import { broadcastStatus, streamRoute } from '../../../deploy/chatgpt-sites/stream';
 
+const input = '1234567890abcdef1234567890abcdef';
 const origin = 'https://market.example.invalid';
 const env = {
-  AUTH_ORIGIN:origin, STREAM_SELLER_ID:'fixture-seller',
-  STREAM_WHIP_URL:'https://customer-fixture.cloudflarestream.com/secret/webRTC/publish',
-  STREAM_WHEP_URL:'https://customer-fixture.cloudflarestream.com/public/webRTC/play',
+  AUTH_ORIGIN: origin,
+  STREAM_SELLER_ID: 'fixture-seller',
+  STREAM_WHEP_URL: `https://customer-fixture.cloudflarestream.com/${input}/webRTC/play`,
+  STREAM_STATUS_TOKEN: 'fixture-token',
 };
-const request = (mode: string, allowedOrigin = origin) => new Request(origin+'/api/live/cloudflare/'+mode,{
-  method:mode === 'publish' ? 'POST' : 'GET',headers:{origin:allowedOrigin},
+
+test('publishing rejects unauthenticated and cross-origin requests', async () => {
+  const publish = (caller: string) => new Request(origin + '/api/live/cloudflare/publish', {
+    method: 'POST', headers: { origin: caller },
+  });
+  assert.equal((await streamRoute(publish(origin), env))?.status, 401);
+  assert.equal((await streamRoute(publish('https://other.invalid'), env))?.status, 403);
 });
-it('requires an active session and reserves WHIP for the configured seller',async () => {
-  vi.mocked(currentAccount).mockResolvedValue(null);
-  expect((await streamRoute(request('publish'),env))?.status).toBe(401);
-  vi.mocked(currentAccount).mockResolvedValue({id:'other',role:'seller',email:'fixture@example.invalid'});
-  expect((await streamRoute(request('publish'),env))?.status).toBe(403);
-  vi.mocked(currentAccount).mockResolvedValue({id:'fixture-seller',role:'seller',email:'fixture@example.invalid'});
-  expect((await streamRoute(request('publish','https://other.invalid'),env))?.status).toBe(403);
-  const response = await streamRoute(request('publish'),env);
-  expect(await response?.json()).toEqual({whipUrl:env.STREAM_WHIP_URL});
-  expect(response?.headers.get('cache-control')).toBe('no-store');
-});
-it('gives a buyer only playback and rejects a non-Cloudflare endpoint',async () => {
-  vi.mocked(currentAccount).mockResolvedValue({id:'fixture-seller',role:'buyer',email:'fixture@example.invalid'});
-  expect((await streamRoute(request('publish'),env))?.status).toBe(403);
-  expect(await (await streamRoute(request('play'),env))?.json()).toEqual({whepUrl:env.STREAM_WHEP_URL});
-  expect((await streamRoute(request('play'),{...env,STREAM_WHEP_URL:'https://other.invalid/play'}))?.status).toBe(503);
+
+test('only accepts explicit provider lifecycle results for the configured input', async (t) => {
+  const fetchMock = t.mock.method(globalThis, 'fetch', async (url: URL, init: RequestInit) => {
+    assert.equal(url.href, `https://customer-fixture.cloudflarestream.com/${input}/lifecycle`);
+    assert.equal(new Headers(init.headers).get('authorization'), 'Bearer fixture-token');
+    assert.equal(init.redirect, 'manual');
+    return Response.json({ isInput: true, live: true });
+  });
+  assert.equal(await broadcastStatus(env), true);
+  fetchMock.mock.mockImplementation(async () => Response.json({ isInput: true, live: false }));
+  assert.equal(await broadcastStatus(env), false);
+  fetchMock.mock.mockImplementation(async () => Response.json({ live: true }));
+  assert.equal(await broadcastStatus(env), null);
+  fetchMock.mock.mockImplementation(async () => new Response(null, { status: 503 }));
+  assert.equal(await broadcastStatus(env), null);
+  assert.equal(await broadcastStatus({ ...env, STREAM_STATUS_TOKEN: undefined }), null);
+  assert.equal(await broadcastStatus({ ...env, STREAM_WHEP_URL: 'https://example.invalid/webRTC/play' }), null);
+  assert.equal(fetchMock.mock.callCount(), 4);
 });

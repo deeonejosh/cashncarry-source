@@ -30,12 +30,12 @@ jobs:
       - name: Isolated Miniflare D1 tests
         run: npm test
       - name: Generate verified production frontend
-        run: npm run build
+        run: CNC_LEGACY_ASSETS=true npm run build
       - name: Bundle real Cloudflare Worker backend
         run: npm run bundle:worker
       - name: Record exact artifact hashes
         run: |
-          sha256sum dist/index.html dist/assets/index-*.js dist/assets/index-*.css dist/_worker.js | tee /tmp/cnc-artifacts.sha256
+          sha256sum dist/index.html dist/assets/index-*.js dist/assets/index-*.css worker-dist/_worker.js | tee /tmp/cnc-artifacts.sha256
           test "$(find dist/assets -maxdepth 1 -name 'index-*.js' | wc -l)" -eq 1
           test "$(find dist/assets -maxdepth 1 -name 'index-*.css' | wc -l)" -eq 1
       - name: Publish immutable source-built artifacts (NOT Cloudflare deployment)
@@ -43,7 +43,7 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git switch -c artifact/staging-live-auction-v54-20261117
-          git add -f dist/index.html dist/assets/index-*.js dist/assets/index-*.css dist/_worker.js
+          git add -f dist/index.html dist/assets/index-*.js dist/assets/index-*.css worker-dist/_worker.js
           cp /tmp/cnc-artifacts.sha256 dist/release-sha256.txt
           git add -f dist/release-sha256.txt
           git commit -m 'build(private staging): verified media/auction safety candidate; payments and streams remain disabled'
@@ -56,6 +56,6 @@ jobs:
             web/dist/index.html
             web/dist/assets/index-*.js
             web/dist/assets/index-*.css
-            web/dist/_worker.js
+            web/worker-dist/_worker.js
             web/dist/release-sha256.txt
           retention-days: 30

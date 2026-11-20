@@ -39,7 +39,7 @@ async function applyMigration(db,sql) {
  }
 }
 const mf=new Miniflare({
- https:true,host:'127.0.0.1',port:18799,modules:true,scriptPath:'dist/_worker.js',
+ https:true,host:'127.0.0.1',port:18799,modules:true,scriptPath:'worker-dist/_worker.js',
  compatibilityDate:'2026-08-06',compatibilityFlags:['nodejs_compat'],
  d1Databases:['DB','AUTH_DB'],
  bindings:{

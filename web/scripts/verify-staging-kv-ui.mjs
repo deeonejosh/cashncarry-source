@@ -5,10 +5,10 @@ import {createHash} from 'node:crypto';
 import {Miniflare} from 'miniflare';
 
 const root = process.cwd();
-const releaseDir = path.join(root,'dist','staging-v58');
+const releaseDir = path.join(root,'worker-dist','staging-v58');
 fs.mkdirSync(releaseDir,{recursive:true});
 fs.copyFileSync('deploy/chatgpt-sites/staging-ui-kv-wrapper.mjs',path.join(releaseDir,'entry.mjs'));
-fs.copyFileSync('dist/_worker.js',path.join(releaseDir,'backend-v57.mjs'));
+fs.copyFileSync('worker-dist/_worker.js',path.join(releaseDir,'backend-v57.mjs'));
 
 const expected = [
   ['index.html','cnc:v58:ui:index.html','d885970af9a34102f4a8d63b0f6d4b4bea90bd3c13b6d00c109fdcdac99c660c'],

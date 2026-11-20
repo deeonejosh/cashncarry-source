@@ -30,14 +30,14 @@ jobs:
           npm test
           npm run build
           npm run bundle:worker
-          sha256sum dist/_worker.js dist/index.html > dist/CNC-source-built-v56-sha256.txt
+          sha256sum worker-dist/_worker.js dist/index.html > dist/CNC-source-built-v56-sha256.txt
           printf 'SOURCE_COMMIT=%s\nDEPLOY=NEVER_BY_CI\n' "$GITHUB_SHA" > dist/CNC-v56-source.txt
       - name: Commit immutable built assets to separate artifact branch
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git switch -c artifact/staging-master-v56fast-20261118
-          git add -f web/dist
+          git add -f web/dist web/worker-dist/_worker.js
           git commit -m 'build(staging): verified v56 full asset bundle; no Cloudflare deployment'
           git push origin HEAD:refs/heads/artifact/staging-master-v56fast-20261118
         working-directory: .
@@ -48,6 +48,7 @@ jobs:
           name: cashncarry-v56-fast-verified-release
           path: |
             web/dist/
+            web/worker-dist/_worker.js
             web/deploy/chatgpt-sites/migrations/0022_auction_seller_approval.sql
             web/deploy/chatgpt-sites/migrations/0023_approved_seller_public_store_sync.sql
             web/deploy/chatgpt-sites/migrations/0024_seller_order_fulfilment.sql

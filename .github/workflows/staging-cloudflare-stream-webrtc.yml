@@ -26,7 +26,7 @@ jobs:
           npm test
           node scripts/mobile-live-browser-test.mjs
           node scripts/seller-bulk-xlsx-browser-test.mjs
-          npm run build
+          CNC_LEGACY_ASSETS=true npm run build
           npm run bundle:worker
           node deploy/chatgpt-sites/worker-smoke.mjs
       - name: Package current staged React UI and Worker backend for manual review (NO DEPLOY)
@@ -42,7 +42,7 @@ jobs:
           if(!js||!css)throw Error('No expected Vite assets');
           const frontend=fs.readFileSync('web/dist/assets/'+js,'utf8');
           const styles=fs.readFileSync('web/dist/assets/'+css,'utf8');
-          const backend=fs.readFileSync('web/dist/_worker.js','utf8');
+          const backend=fs.readFileSync('web/worker-dist/_worker.js','utf8');
           if(!frontend.includes('Cloudflare Stream could not connect')||!frontend.includes('Mobile livestream shopping room'))
             throw Error('Cloudflare WHIP/WHEP frontend missing');
           if(frontend.includes('Download 10 test gaming products')||!frontend.includes('Bulk Upload Excel'))
@@ -60,7 +60,7 @@ jobs:
           fs.writeFileSync('release-cnc-webrtc/index.html',fixed);
           fs.copyFileSync('web/dist/assets/'+js,'release-cnc-webrtc/index.js');
           fs.copyFileSync('web/dist/assets/'+css,'release-cnc-webrtc/index.css');
-          fs.copyFileSync('web/dist/_worker.js','release-cnc-webrtc/backend.js');
+          fs.copyFileSync('web/worker-dist/_worker.js','release-cnc-webrtc/backend.js');
           fs.writeFileSync('release-cnc-webrtc/manifest.txt',[
             'source='+process.env.GITHUB_SHA,
             'environment=private_staging_only',

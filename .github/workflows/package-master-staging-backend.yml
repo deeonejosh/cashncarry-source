@@ -28,20 +28,20 @@ jobs:
       - name: Verify TypeScript and complete isolated D1 suite
         run: npm run lint && npm test
       - name: Build frontend and static audit (not replacing v54 frontend)
-        run: npm run build
+        run: CNC_LEGACY_ASSETS=true npm run build
       - name: Bundle actual staging Worker
         run: npm run bundle:worker
       - name: Verify content hash and no injected secrets
         run: |
-          test -s dist/_worker.js
-          sha256sum dist/_worker.js | tee dist/master-backend-sha256.txt
+          test -s worker-dist/_worker.js
+          sha256sum worker-dist/_worker.js | tee dist/master-backend-sha256.txt
           test "$(find dist/assets -maxdepth 1 -name 'index-*.js' | wc -l)" -eq 1
       - name: Commit source-built backend to isolated artifact branch; NO deployment
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git switch -c artifact/staging-master-v55-20261118
-          git add -f dist/_worker.js dist/master-backend-sha256.txt
+          git add -f worker-dist/_worker.js dist/master-backend-sha256.txt
           git commit -m 'build(staging): backend safety guard v55; preserve v54 frontend and all staging flags'
           git push origin HEAD:refs/heads/artifact/staging-master-v55-20261118
       - name: Upload evidence (NO deployment)
@@ -49,6 +49,6 @@ jobs:
         with:
           name: cnc-master-v55-backend-sourcebuilt
           path: |
-            web/dist/_worker.js
+            web/worker-dist/_worker.js
             web/dist/master-backend-sha256.txt
           retention-days: 30
