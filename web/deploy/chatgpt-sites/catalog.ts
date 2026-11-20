@@ -53,3 +53,17 @@ export async function readStorefronts(db: CatalogDatabase, offset: number) {
   ).bind(offset).all();
   return results;
 }
+
+export const sitemapPageSize = 500;
+
+export async function countPublicProducts(db: CatalogDatabase) {
+  const { results } = await db.prepare(`SELECT COUNT(*) AS count ${publicProducts}`).bind().all<{ count: number }>();
+  return results[0]?.count ?? 0;
+}
+
+export async function readPublicProductImages(db: CatalogDatabase, offset: number) {
+  const { results } = await db.prepare(
+    `SELECT p.id, p.image ${publicProducts} ORDER BY p.id LIMIT ? OFFSET ?`,
+  ).bind(sitemapPageSize, offset).all<{ id: string; image: string | null }>();
+  return results;
+}

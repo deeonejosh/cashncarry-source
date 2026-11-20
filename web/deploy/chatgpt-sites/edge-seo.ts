@@ -1,4 +1,5 @@
 import { readProduct, type CatalogDatabase } from './catalog';
+import { publicImageUrl } from './seo-image-url';
 
 interface EdgeSEOContext {
   url: URL;
@@ -55,9 +56,8 @@ export async function resolveEdgeSEO({ url, db, baseUrl }: EdgeSEOContext): Prom
     // No static/demo products, fuzzy matches, unpublished items or unverified stores.
     let product: {
       id: string;
-      slug: string;
+      stock: number;
       title: string;
-      brand: string;
       price: number;
       description: string;
       image: string;
@@ -73,12 +73,11 @@ export async function resolveEdgeSEO({ url, db, baseUrl }: EdgeSEOContext): Prom
           if (Number.isFinite(price) && price > 0) {
             product = {
               id: String(item.id),
-              slug: String(item.id),
+              stock: Number(item.stock) || 0,
               title: String(item.name || ''),
-              brand: 'Verified seller',
               price,
               description: String(item.description || ''),
-              image: String(item.image || ''),
+              image: publicImageUrl(String(item.image || ''), origin),
               category: String(item.category || ''),
             };
           }
@@ -91,9 +90,9 @@ export async function resolveEdgeSEO({ url, db, baseUrl }: EdgeSEOContext): Prom
     if (product) {
       const formattedPrice = `₦${product.price.toLocaleString()}`;
       const title = `${product.title} - ${formattedPrice} | Cash N Carry`.slice(0, 60);
-      const rawDesc = `${product.title} by ${product.brand}. Buy for ${formattedPrice} on Cash N Carry Nigeria with fast delivery, warranty, and secure escrow.`;
+      const rawDesc = product.description.trim() || `${product.title} for ${formattedPrice} on Cash N Carry Nigeria.`;
       const description = rawDesc.length > 160 ? `${rawDesc.slice(0, 157)}...` : rawDesc;
-      const canonicalUrl = `${origin}/product/${encodeURIComponent(product.slug || product.id)}`;
+      const canonicalUrl = `${origin}/products/${encodeURIComponent(product.id)}`;
 
       const breadcrumbs = {
         '@type': 'BreadcrumbList',
@@ -113,17 +112,15 @@ export async function resolveEdgeSEO({ url, db, baseUrl }: EdgeSEOContext): Prom
       const productSchema = {
         '@type': 'Product',
         name: product.title,
-        image: [product.image || defaultImage],
+        ...(product.image ? { image: [product.image] } : {}),
         description: product.description,
         sku: product.id,
-        brand: { '@type': 'Brand', name: product.brand || 'Cash N Carry Nigeria' },
         offers: {
           '@type': 'Offer',
           url: canonicalUrl,
           priceCurrency: 'NGN',
           price: product.price,
-          itemCondition: 'https://schema.org/NewCondition',
-          availability: 'https://schema.org/InStock',
+          availability: product.stock > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
         },
       };
 
@@ -151,8 +148,8 @@ export async function resolveEdgeSEO({ url, db, baseUrl }: EdgeSEOContext): Prom
       : 'Shop Marketplace Wholesale & Retail | Cash N Carry';
 
     const description = catData
-      ? catData.desc
-      : 'Browse verified Nigerian wholesale and retail products with genuine CAC-verified seller protection, instant delivery, and Flutterwave escrow payments.';
+      ? `Browse ${catData.label.toLowerCase()} from verified Nigerian sellers on Cash N Carry Nigeria.`
+      : 'Browse electronics, fashion, home goods and more from verified sellers on Cash N Carry Nigeria.';
 
     const canonicalUrl = categoryQuery && categoryQuery !== 'all'
       ? `${origin}/shop?category=${encodeURIComponent(categoryQuery)}`

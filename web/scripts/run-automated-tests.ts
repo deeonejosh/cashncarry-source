@@ -7,6 +7,7 @@ import { build } from 'esbuild';
 import { Miniflare } from 'miniflare';
 import { renderAuthEmail } from '../deploy/chatgpt-sites/auth-email';
 import { resolveEdgeSEO, injectEdgeSEOMeta } from '../deploy/chatgpt-sites/edge-seo';
+import { decoratePublicCatalog, publicSitemap } from '../deploy/chatgpt-sites/production-image-seo';
 
 console.log('🧪 Starting Cash N Carry Automated Staging & Backend Quality Suite...');
 
@@ -145,6 +146,40 @@ async function run() {
     assert.match(sqlSeen[0], /s.suspended = 0/);
     assert.match(sqlSeen[0], /p.id = \?/);
     assert.doesNotMatch(sqlSeen[0], /name LIKE/i, 'No fuzzy private-catalog lookups');
+  });
+
+  await test('Production image SEO: only public product URLs and safe images enter the sitemap and product head', async () => {
+    const origin = 'https://www.cashncarryng.com';
+    const rows = [
+      { id: 'sample product', name: 'Sample', price: 2500, stock: 0, image: '/media/product-photos/id?view=front&size=large' },
+      { id: 'invalid-image', name: 'Other', price: 1300, stock: 5, image: 'javascript:alert(1)' },
+    ];
+    const queries: string[] = [];
+    const db = { prepare(sql: string) {
+      queries.push(sql);
+      return { bind() {
+        return { all: async <T>() => ({ results: (sql.includes('COUNT(*)') ? [{ count: rows.length }] : rows) as T[] }) };
+      } };
+    } };
+    const sitemap = await publicSitemap(new Request(origin + '/sitemap.xml'), db);
+    assert.equal(sitemap?.status, 200);
+    const body = await sitemap!.text();
+    assert.match(body, /products\/sample%20product/);
+    assert.ok(body.includes('view=front&amp;size=large'));
+    assert.ok(!body.includes('javascript:'));
+    assert.ok(!body.includes('/admin'));
+    assert.ok(queries.every(sql => /p.active = 1 AND s.verified = 1 AND s.suspended = 0/.test(sql)));
+    assert.equal(await publicSitemap(new Request('https://private-staging.example/sitemap.xml'), db), null);
+    const headers = { 'content-type': 'text/html' };
+    const response = () => new Response('<html><head><title>Old</title></head><body></body></html>', { headers });
+    const product = await decoratePublicCatalog(new Request(origin + '/products/sample%20product'), response(), db);
+    const html = await product.text();
+    assert.ok(html.includes(origin + '/products/sample%20product'));
+    assert.ok(html.includes('og:image'));
+    assert.ok(html.includes('schema.org/OutOfStock'));
+    const admin = response();
+    assert.equal(await decoratePublicCatalog(new Request(origin + '/admin'), admin, db), admin);
+    assert.equal(await decoratePublicCatalog(new Request(origin + '/?tab=admin-dashboard'), admin, db), admin);
   });
 
   await test('SEO security: seller titles and JSON-LD cannot escape HTML/script contexts', () => {
