@@ -3,11 +3,45 @@ import { escape, page } from './catalog-pages';
 
 export async function adminRoute(request: Request, env: AuthEnvironment & { KYC_UPLOADS_ENABLED?: string }): Promise<Response | null> {
   const url = new URL(request.url);
-  if (!['/admin','/api/admin/moderation','/api/admin/overview','/api/admin/seller-applications','/api/admin/seller-applications/review'].includes(url.pathname)) return null;
+  if (!['/admin','/api/admin/moderation','/api/admin/overview','/api/admin/live-content','/api/admin/seller-applications','/api/admin/seller-applications/review'].includes(url.pathname)) return null;
   if (!env.AUTH_DB || !env.ADMIN_ACCOUNT_ID || !env.ADMIN_TOTP_SECRET_HEX) return null;
   const account = await currentAccount(request,env,true);
   if (!account) return new Response(null,{status:403,headers:{'cache-control':'no-store'}});
   const db=env.AUTH_DB;
+
+  if (url.pathname === '/api/admin/live-content') {
+    const reply = (body: unknown, status = 200) => Response.json(body, {status, headers:{'cache-control':'no-store'}});
+    if (request.method === 'GET') {
+      const [rooms, videos] = await db.batch([
+        db.prepare("SELECT room_id AS id,title,seller_name FROM cnc_live_room_state WHERE status='live' ORDER BY created DESC LIMIT 100"),
+        db.prepare("SELECT id,title,seller_name FROM cnc_short_videos ORDER BY created DESC LIMIT 100"),
+      ]);
+      return reply({rooms: rooms.results, videos: videos.results});
+    }
+    if (request.method !== 'POST') return reply({error:'Method not allowed'},405);
+    if (request.headers.get('origin') !== env.AUTH_ORIGIN) return reply({error:'Invalid request origin'},403);
+    let body: Record<string, unknown>;
+    try { body = await readBody(request); } catch { return reply({error:'Invalid request'},400); }
+    const id = typeof body.id === 'string' ? body.id : '';
+    if (!/^[a-z0-9_-]{1,128}$/i.test(id)) return reply({error:'Invalid content ID'},400);
+    if (body.action === 'end-room') {
+      const [, result] = await db.batch([
+        db.prepare("INSERT INTO cnc_auth_audit (user_id,event) SELECT ?,? WHERE EXISTS (SELECT 1 FROM cnc_live_room_state WHERE room_id=? AND status='live')").bind(account.id,'admin_live_end:'+id,id),
+        db.prepare("UPDATE cnc_live_room_state SET status='ended',ended_at=unixepoch() WHERE room_id=? AND status='live'").bind(id),
+      ]);
+      return result.meta.changes ? reply({success:true}) : reply({error:'Room is no longer live'},409);
+    }
+    if (body.action === 'delete-video') {
+      const results = await db.batch([
+        db.prepare("INSERT INTO cnc_auth_audit (user_id,event) SELECT ?,? WHERE EXISTS (SELECT 1 FROM cnc_short_videos WHERE id=?)").bind(account.id,'admin_video_delete:'+id,id),
+        db.prepare('DELETE FROM cnc_video_likes WHERE video_id=?').bind(id),
+        db.prepare('DELETE FROM cnc_video_comments WHERE video_id=?').bind(id),
+        db.prepare('DELETE FROM cnc_short_videos WHERE id=?').bind(id),
+      ]);
+      return results[3].meta.changes ? reply({success:true}) : reply({error:'Video is no longer available'},404);
+    }
+    return reply({error:'Unknown moderation action'},400);
+  }
 
   // Real, isolated staging counts. Always enforce admin session + MFA above.
   if (url.pathname === '/api/admin/overview') {

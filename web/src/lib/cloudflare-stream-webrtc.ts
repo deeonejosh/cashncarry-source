@@ -14,6 +14,15 @@ export interface CloudflarePublisher extends CloudflareSession {
 }
 
 let publisher: CloudflarePublisher | null = null;
+let publishingRoomId: string | null = null;
+
+export function setPublishingRoomId(roomId: string) {
+  publishingRoomId = roomId;
+}
+
+export function getPublishingRoomId() {
+  return publishingRoomId;
+}
 
 function assertCloudflareEndpoint(value: string, operation: 'publish' | 'play'): string {
   const url = new URL(value);
@@ -102,6 +111,7 @@ export function getLivePublisherPreview():MediaStream|null {
 export async function stopCloudflareStream():Promise<void> {
   const old=publisher;
   publisher=null;
+  publishingRoomId=null;
   if(!old)return;
   old.pc.close();
   old.media.getTracks().forEach(track=>track.stop());

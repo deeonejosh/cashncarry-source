@@ -1,8 +1,13 @@
+export interface ModerationContent { id: string; title: string; seller_name: string }
+
 export interface LiveStreamSummary {
   title: string;
   durationSeconds: number;
   heartsCount: number;
   commentsCount: number;
+  paidOrders?: number;
+  unitsSold?: number;
+  grossSalesMinor?: number;
 }
 
 import type { Role, SellerStatus } from '../types';
@@ -778,6 +783,16 @@ class ApiClient {
     return this.requestJson<{ success?: boolean; roomId?: string }>('/api/v1/live', {
       method: 'POST',
       body: JSON.stringify(input),
+    });
+  }
+
+  async getAdminLiveContent() {
+    return this.requestJson<{ rooms: ModerationContent[]; videos: ModerationContent[] }>('/api/admin/live-content');
+  }
+
+  async moderateLiveContent(action: 'end-room' | 'delete-video', id: string) {
+    return this.requestJson<{ success: boolean }>('/api/admin/live-content', {
+      method: 'POST', body: JSON.stringify({action, id}),
     });
   }
 

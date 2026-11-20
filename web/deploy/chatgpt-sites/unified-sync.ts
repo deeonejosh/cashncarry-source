@@ -486,10 +486,19 @@ export async function unifiedSyncRoute(
           `UPDATE cnc_live_room_state SET status='ended', ended_at=unixepoch() WHERE room_id=? AND seller_id=? AND status='live' RETURNING title, created, ended_at, hearts_count,
             (SELECT COUNT(*) FROM cnc_live_comments WHERE room_id=cnc_live_room_state.room_id AND is_reaction=0) AS comments_count`
         ).bind(roomId, account.id).first<{ title: string; created: number; ended_at: number; hearts_count: number; comments_count: number }>();
-        return updated ? json({ success: true, status: 'ended', summary: {
+        if (!updated) return json({ error: 'Live room already ended' }, 409);
+        const sales = await db.prepare(
+          `SELECT COUNT(DISTINCT i.order_id) AS orders, COALESCE(SUM(i.quantity),0) AS units,
+             COALESCE(SUM(i.quantity*i.price_minor),0) AS gross
+           FROM cnc_order_items i JOIN cnc_orders o ON o.id=i.order_id
+           WHERE i.seller=? AND o.status<>'cancelled' AND EXISTS
+             (SELECT 1 FROM cnc_flutterwave_payments p WHERE p.order_id=o.id AND p.paid_at BETWEEN ? AND ?)`
+        ).bind(account.id, updated.created, updated.ended_at).first<{orders:number;units:number;gross:number}>();
+        return json({ success: true, status: 'ended', summary: {
           title: updated.title, durationSeconds: Math.max(0, updated.ended_at - updated.created),
           heartsCount: updated.hearts_count, commentsCount: updated.comments_count,
-        } }) : json({ error: 'Live room already ended' }, 409);
+          paidOrders: sales?.orders ?? 0, unitsSold: sales?.units ?? 0, grossSalesMinor: sales?.gross ?? 0,
+        } });
       }
     }
   }

@@ -182,6 +182,26 @@ try {
   assert.ok(ended.summary.durationSeconds >= 0);
   record('repeated likes are counted once per tap and included in the seller summary', { isolated: true });
 
+  assert.deepEqual([ended.summary.paidOrders, ended.summary.unitsSold, ended.summary.grossSalesMinor], [0, 0, 0]);
+  providerStatus(true);
+  const moderated = await expectStatus('/api/live', ids.seller, 'POST', roomInput, 201, 'seller starts a room for admin moderation');
+  const adminMedia = '/api/admin/live-content';
+  await expectStatus(adminMedia, ids.buyerA, 'GET', undefined, 403, 'buyer cannot view admin live moderation');
+  await expectStatus(adminMedia, ids.seller, 'POST', {id: moderated.roomId, action:'end-room'}, 403, 'seller cannot use admin moderation');
+  const entries = await expectStatus(adminMedia, ids.owner, 'GET', undefined, 200, 'admin can list active streams');
+  assert.ok(entries.rooms.some(entry => entry.id === moderated.roomId));
+  await expectStatus(adminMedia, ids.owner, 'POST', {id: moderated.roomId, action:'end-room'}, 200, 'admin can end active stream');
+  assert.equal((await db.prepare('SELECT status FROM cnc_live_room_state WHERE room_id=?').bind(moderated.roomId).first()).status, 'ended');
+
+  const videoId = 'moderation-test-video';
+  await db.prepare('INSERT INTO cnc_short_videos (id,seller_id,seller_name,product_id,title) VALUES (?,?,?,?,?)')
+    .bind(videoId, ids.seller, 'Seller fixture', 'product-fixture', 'Video fixture').run();
+  await db.prepare('INSERT INTO cnc_video_likes (video_id,user_id) VALUES (?,?)').bind(videoId, ids.buyerA).run();
+  await db.prepare('INSERT INTO cnc_video_comments (id,video_id,user_id,author_name,body) VALUES (?,?,?,?,?)')
+    .bind('moderation-test-comment', videoId, ids.buyerA, 'Buyer fixture', 'Comment fixture').run();
+  await expectStatus(adminMedia, ids.owner, 'POST', {id:videoId,action:'delete-video'}, 200, 'admin deletes a posted video with related comments and likes');
+  assert.equal(await db.prepare('SELECT id FROM cnc_short_videos WHERE id=?').bind(videoId).first(), null);
+
   const productId = '00000000-0000-4000-a000-' + 'a'.repeat(12);
   await expectStatus('/api/seller/products', ids.seller, 'POST',
     { action: 'create', id: productId, name: 'Temporary Test USB Cable', priceMinor: 150000,

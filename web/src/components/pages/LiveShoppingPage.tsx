@@ -158,13 +158,23 @@ export default function LiveShoppingPage({
     const seconds = summary.durationSeconds % 60;
     return (
       <section className="cnc-live-summary" aria-labelledby="cnc-live-summary-title">
-        <h1 id="cnc-live-summary-title">Livestream summary</h1>
+        <div className="cnc-live-studio-icon" aria-hidden="true"><CheckCircle2 size={26}/></div>
+        <h1 id="cnc-live-summary-title">Stream ended</h1>
         <p>{summary.title}</p>
         <dl>
           <div><dt>Duration</dt><dd>{minutes}m {seconds}s</dd></div>
           <div><dt>Likes</dt><dd>{summary.heartsCount.toLocaleString()}</dd></div>
           <div><dt>Comments</dt><dd>{summary.commentsCount.toLocaleString()}</dd></div>
         </dl>
+        {typeof summary.grossSalesMinor === 'number' && <section className="cnc-live-summary-sales" aria-labelledby="cnc-live-sales-title">
+          <h2 id="cnc-live-sales-title">Paid sales during the stream</h2>
+          <p>Includes all your paid marketplace sales during this session.</p>
+          <dl>
+            <div><dt>Gross sales</dt><dd>{new Intl.NumberFormat('en-NG', {style:'currency',currency:'NGN'}).format(summary.grossSalesMinor / 100)}</dd></div>
+            <div><dt>Paid orders</dt><dd>{summary.paidOrders}</dd></div>
+            <div><dt>Units sold</dt><dd>{summary.unitsSold}</dd></div>
+          </dl>
+        </section>}
         <button type="button" onClick={() => { setSummary(null); onSellerCentre?.(); }}>Return to Seller Centre</button>
         {onOpenCreate && <button type="button" onClick={() => { setSummary(null); onOpenCreate(); }}>Go live again</button>}
       </section>

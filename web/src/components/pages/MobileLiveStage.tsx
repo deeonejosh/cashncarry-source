@@ -43,6 +43,18 @@ export default function MobileLiveStage({
   const [panel, setPanel] = useState<'products' | 'more' | null>(null);
   const [confirmEnd, setConfirmEnd] = useState(false);
   const [moreRooms, setMoreRooms] = useState(false);
+  const [floatingHearts, setFloatingHearts] = useState<{ id: number; x: number; y: number }[]>([]);
+  const nextHeart = useRef(0);
+  const react = (event: React.MouseEvent<HTMLElement>) => {
+    onHeart();
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const bounds = event.currentTarget.closest('.cnc-mobile-live-shell')?.getBoundingClientRect();
+    if (!bounds) return;
+    const id = nextHeart.current++;
+    const x = event.detail ? event.clientX - bounds.left : bounds.width * .82;
+    const y = event.detail ? event.clientY - bounds.top : bounds.height * .55;
+    setFloatingHearts(hearts => [...hearts.slice(-15), {id, x, y}]);
+  };
   const chatEnd = useRef<HTMLDivElement>(null);
   const pinned = room.pinnedProduct || sellerProducts.find(p => p.id === room.pinnedProductId) || null;
   const featured = pinned || sellerProducts[0] || null;
@@ -72,7 +84,7 @@ export default function MobileLiveStage({
   return (
     <section className="cnc-mobile-live-shell md:hidden" aria-label="Mobile livestream shopping room" onClick={event => {
       if (event.target instanceof Element &&
-          !event.target.closest('button, a, input, form, [role="log"], [role="dialog"], [role="alertdialog"], .cnc-mobile-live-modal-backdrop')) onHeart();
+          !event.target.closest('button, a, input, form, [role="log"], [role="dialog"], [role="alertdialog"], .cnc-mobile-live-modal-backdrop')) react(event);
     }}>
       {ownCamera ? (
         <SellerCameraMonitor media={ownCamera}/>
@@ -81,10 +93,17 @@ export default function MobileLiveStage({
       ) : null}
       <div className="cnc-mobile-live-shade" aria-hidden="true" />
 
+      <div className="cnc-live-floating-hearts" aria-hidden="true">
+        {floatingHearts.map(heart => <span key={heart.id} style={{left: heart.x, top: heart.y}}
+          onAnimationEnd={() => setFloatingHearts(items => items.filter(item => item.id !== heart.id))}>
+          <Heart size={26} fill="currentColor"/>
+        </span>)}
+      </div>
+
       <header className="cnc-mobile-live-top">
         <div className="cnc-mobile-live-top-row">
           <span className="cnc-mobile-live-pill cnc-mobile-live-pill--live"><Radio size={13}/> Live</span>
-          <button type="button" className="cnc-live-icon-glass" onClick={() => void shareRoom()} aria-label="Share livestream"><Share2 size={19}/></button>
+          <button type="button" className="cnc-live-icon-glass cnc-live-share" onClick={() => void shareRoom()} aria-label="Share livestream"><Share2 size={17}/> <span>Share</span></button>
         </div>
         <div className="cnc-mobile-live-host-strip">
           <div className="cnc-mobile-live-avatar">{room.sellerName.trim().slice(0, 1).toUpperCase()}</div>
@@ -128,8 +147,8 @@ export default function MobileLiveStage({
       </div>
 
       <div className="cnc-mobile-live-rail" aria-label={isHost ? 'Seller livestream controls' : 'Buyer livestream controls'}>
-        <button type="button" className="cnc-mobile-live-rail-button" onClick={onHeart} aria-label="Like this room">
-          <Heart size={22} className="cnc-mobile-live-heart"/><span>{heartsCount > 0 ? heartsCount.toLocaleString('en-NG') : 'Like'}</span>
+        <button type="button" className="cnc-mobile-live-rail-button" onClick={react} aria-label="Like this room">
+          <Heart size={22} className="cnc-mobile-live-heart"/><span>{isHost ? heartsCount.toLocaleString('en-NG') + ' likes' : heartsCount > 0 ? heartsCount.toLocaleString('en-NG') : 'Like'}</span>
         </button>
         <button type="button" className="cnc-mobile-live-rail-button" onClick={() => setPanel('products')} aria-label="View products">
           <ShoppingBag size={22}/><span>Products</span>

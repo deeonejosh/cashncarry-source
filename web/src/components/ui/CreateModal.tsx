@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import '../pages/live-studio.css';
 import { useStore } from '../../context/StoreContext';
-import {publishCloudflareStream,stopCloudflareStream} from '../../lib/cloudflare-stream-webrtc';
+import {publishCloudflareStream,setPublishingRoomId,stopCloudflareStream} from '../../lib/cloudflare-stream-webrtc';
 import {
   X,
   Upload,
@@ -272,6 +272,7 @@ export default function CreateModal({ isOpen, onClose, onNavigate }: CreateModal
         await stopCloudflareStream();
         throw new Error(res.error || 'Could not start a shopping room.');
       }
+      setPublishingRoomId(res.roomId);
       setActiveRoomId(res.roomId);
       // Transfer media ownership from this modal to the app-level publisher.
       // The broadcast persists when the seller opens the full live page.

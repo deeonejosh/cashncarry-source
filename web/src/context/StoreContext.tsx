@@ -1,3 +1,4 @@
+import { getPublishingRoomId, stopCloudflareStream } from '../lib/cloudflare-stream-webrtc';
 import type { LiveStreamSummary } from '../lib/api';
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import {
@@ -769,6 +770,20 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setCoinActivity([]);
     setOrdersState({ status: 'ready' });
   }, []);
+
+  useEffect(() => {
+    const timer = window.setInterval(async () => {
+      const roomId = getPublishingRoomId();
+      if (!roomId) return;
+      const response = await api.getLiveRooms();
+      if (getPublishingRoomId() === roomId && response.ok &&
+          response.data?.rooms?.some(room => room.room_id === roomId && room.status === 'ended')) {
+        void stopCloudflareStream();
+        showToast('Your livestream has ended.', 'info');
+      }
+    }, 5_000);
+    return () => window.clearInterval(timer);
+  }, [showToast]);
 
   const refreshLiveRooms = useCallback(async () => {
     const response = await api.getLiveRooms();
