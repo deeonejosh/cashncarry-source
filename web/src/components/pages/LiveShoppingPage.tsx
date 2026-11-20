@@ -1,3 +1,4 @@
+import type { LiveStreamSummary } from '../../lib/api';
 import MobileLiveStage from './MobileLiveStage';
 import MobileLiveEmptyStage from './MobileLiveEmptyStage';
 import DesktopLiveEmptyStage from './DesktopLiveEmptyStage';
@@ -77,6 +78,8 @@ export default function LiveShoppingPage({
     return () => viewport.removeEventListener('change', update);
   }, []);
 
+  const [summary, setSummary] = useState<LiveStreamSummary | null>(null);
+  const [ending, setEnding] = useState(false);
   const [comments, setComments] = useState<LiveComment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [, setViewerCount] = useState(0);
@@ -150,6 +153,24 @@ export default function LiveShoppingPage({
     if (added) onProceedToCheckout();
   };
 
+  if (summary) {
+    const minutes = Math.floor(summary.durationSeconds / 60);
+    const seconds = summary.durationSeconds % 60;
+    return (
+      <section className="cnc-live-summary" aria-labelledby="cnc-live-summary-title">
+        <h1 id="cnc-live-summary-title">Livestream summary</h1>
+        <p>{summary.title}</p>
+        <dl>
+          <div><dt>Duration</dt><dd>{minutes}m {seconds}s</dd></div>
+          <div><dt>Likes</dt><dd>{summary.heartsCount.toLocaleString()}</dd></div>
+          <div><dt>Comments</dt><dd>{summary.commentsCount.toLocaleString()}</dd></div>
+        </dl>
+        <button type="button" onClick={() => { setSummary(null); onSellerCentre?.(); }}>Return to Seller Centre</button>
+        {onOpenCreate && <button type="button" onClick={() => { setSummary(null); onOpenCreate(); }}>Go live again</button>}
+      </section>
+    );
+  }
+
   if (liveState.status === 'loading') {
     return <div className="py-20 text-center text-sm font-semibold text-slate-500">Loading live rooms...</div>;
   }
@@ -197,11 +218,26 @@ export default function LiveShoppingPage({
     product.sellerId === activeRoom.sellerId && product.publication === 'published' && !product.archived
   );
   const addMobileCart = async (product: ProductItem) => { await addToCart(product, 1); };
-  const endMobileRoom = async () => {
-    await stopCloudflareStream();
-    const result = await endLiveRoom(activeRoom.id);
-    if (!result.ok) showToast(result.error || 'Could not end the room.', 'error');
+  const endRoom = async () => {
+    if (ending) return;
+    setEnding(true);
+    try {
+      const result = await endLiveRoom(activeRoom.id);
+      if (!result.ok) {
+        showToast(result.error || 'Could not end the room.', 'error');
+        return;
+      }
+      if (result.summary) setSummary(result.summary);
+      await stopCloudflareStream();
+    } finally {
+      setEnding(false);
+    }
   };
+  const unpin = async () => {
+    const result = await pinLiveProduct(activeRoom.id, '');
+    if (!result.ok) showToast(result.error || 'Could not unpin product.', 'error');
+  };
+
 
   return (
     <>
@@ -220,7 +256,8 @@ export default function LiveShoppingPage({
       onHeart={() => void handleHeart()}
       onOpenGift={() => setGiftingModalOpen(true)}
       onPin={() => setPinModalOpen(true)}
-      onEndRoom={() => void endMobileRoom()}
+      onUnpin={() => void unpin()}
+      onEndRoom={() => void endRoom()}
       onExit={() => onExit?.()}
       onChangeRoom={onChangeRoom}
       onAddToCart={(product) => void addMobileCart(product)}
@@ -340,11 +377,11 @@ export default function LiveShoppingPage({
                 </div>
                 <button
                   type="button"
-                  onClick={() => isHost ? onSelectProduct(pinnedProduct) : void handleBuyPinned(pinnedProduct)}
+                  onClick={() => isHost ? void unpin() : void handleBuyPinned(pinnedProduct)}
                   className="shrink-0 rounded-xl bg-orange-600 px-3 py-2 text-xs font-black text-white hover:bg-orange-500"
-                  disabled={pinnedProduct.stock < 1}
+                  disabled={!isHost && pinnedProduct.stock < 1}
                 >
-                  {pinnedProduct.stock < 1 ? 'Sold out' : isHost ? 'View product' : 'Buy now'}
+                  {isHost ? 'Unpin' : pinnedProduct.stock < 1 ? 'Sold out' : 'Buy now'}
                 </button>
               </div>
             ) : (
@@ -452,9 +489,7 @@ export default function LiveShoppingPage({
             <button type="button" className="cnc-desktop-neon-secondary" onClick={()=>setDesktopEndConfirm(false)}>Keep streaming</button>
             <button type="button" className="cnc-desktop-neon-primary" onClick={async()=>{
               setDesktopEndConfirm(false);
-              await stopCloudflareStream();
-              const result=await endLiveRoom(activeRoom.id);
-              if(!result.ok)showToast(result.error||'Could not end livestream.','error');
+              await endRoom();
             }}>End livestream</button>
           </div>
         </div>

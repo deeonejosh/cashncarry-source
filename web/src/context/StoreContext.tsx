@@ -1,3 +1,4 @@
+import type { LiveStreamSummary } from '../lib/api';
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import {
   UserAccount,
@@ -199,7 +200,7 @@ interface StoreContextType {
   joinLiveRoom: (roomId: string) => Promise<void>;
   likeLiveRoom: (roomId: string) => Promise<void>;
   pinLiveProduct: (roomId: string, productId: string) => Promise<{ ok: boolean; error?: string }>;
-  endLiveRoom: (roomId: string) => Promise<{ ok: boolean; error?: string }>;
+  endLiveRoom: (roomId: string) => Promise<{ ok: boolean; error?: string; summary?: LiveStreamSummary }>;
   loadLiveComments: (roomId: string) => Promise<LiveComment[]>;
   addLiveComment: (roomId: string, body: string) => Promise<boolean>;
 
@@ -1442,31 +1443,32 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       return;
     }
     const res = await api.updateLiveRoom({ roomId, action: 'like' });
-    if (res.ok && res.data?.room) {
-      const updated = mapApiLiveRoom(res.data.room, products);
-      setLiveRooms((prev) => prev.map((r) => (r.id === roomId ? updated : r)));
+    const heartsCount = res.data?.heartsCount;
+    if (res.ok && typeof heartsCount === 'number') {
+      setLiveRooms(prev => prev.map(room => room.id === roomId
+        ? { ...room, heartsCount: Math.max(room.heartsCount, heartsCount) }
+        : room));
     }
   };
 
   const pinLiveProduct = async (roomId: string, productId: string) => {
     const res = await api.updateLiveRoom({ roomId, action: 'pin', pinnedProductId: productId });
     if (!res.ok) return { ok: false, error: res.error || 'Could not pin product.' };
-    await reloadMarketplace();
+    await refreshLiveRooms();
     return { ok: true };
   };
 
   const endLiveRoom = async (roomId: string) => {
     const res = await api.updateLiveRoom({ roomId, action: 'end' });
     if (!res.ok) return { ok: false, error: res.error || 'Could not end livestream.' };
-    await reloadMarketplace();
-    showToast('Livestream ended.', 'info');
-    return { ok: true };
+    await refreshLiveRooms();
+    return { ok: true, summary: res.data?.summary };
   };
 
   const loadLiveComments = async (roomId: string): Promise<LiveComment[]> => {
     const res = await api.getLiveComments(roomId);
     if (!res.ok || !Array.isArray(res.data?.comments)) return [];
-    return res.data.comments.map((c) => ({
+    return [...res.data.comments].reverse().map((c) => ({
       id: String(c.id || ''),
       roomId: String(c.room_id || roomId),
       userId: String(c.user_id || ''),

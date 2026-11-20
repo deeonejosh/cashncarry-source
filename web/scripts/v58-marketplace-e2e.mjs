@@ -168,6 +168,20 @@ try {
   assert.equal((await activeRoom()).status, 'ended');
   record('only a confirmed continuing disconnect ends the room after grace expires', { isolated: true });
 
+  providerStatus(true);
+  const summaryRoom = await expectStatus('/api/live', ids.seller, 'POST', roomInput, 201, 'seller opens summary test room');
+  const roomId = summaryRoom.roomId;
+  await expectStatus('/api/live/comments', ids.buyerA, 'POST', { roomId, body: 'First comment' }, 201, 'first live comment stored');
+  await expectStatus('/api/live/comments', ids.buyerA, 'POST', { roomId, body: 'Second comment' }, 201, 'second live comment stored');
+  const hearts = await Promise.all([1, 2, 3].map(() => call('/api/live', ids.buyerA, 'PATCH', { roomId, action: 'like' })));
+  assert.deepEqual(hearts.map(r => r.data.heartsCount).sort(), [1, 2, 3]);
+  const ended = await expectStatus('/api/live', ids.seller, 'PATCH', { roomId, action: 'end' }, 200, 'seller ends room and receives summary');
+  assert.equal(ended.summary.title, roomInput.title);
+  assert.equal(ended.summary.heartsCount, 3);
+  assert.equal(ended.summary.commentsCount, 2);
+  assert.ok(ended.summary.durationSeconds >= 0);
+  record('repeated likes are counted once per tap and included in the seller summary', { isolated: true });
+
   const productId = '00000000-0000-4000-a000-' + 'a'.repeat(12);
   await expectStatus('/api/seller/products', ids.seller, 'POST',
     { action: 'create', id: productId, name: 'Temporary Test USB Cable', priceMinor: 150000,

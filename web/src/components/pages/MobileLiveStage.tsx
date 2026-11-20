@@ -1,7 +1,7 @@
 import './live-studio.css';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  ArrowLeft, CheckCircle2, Gift, Heart, MessageCircle, MoreHorizontal, Package,
+  CheckCircle2, Gift, Heart, MessageCircle, MoreHorizontal, Package,
   Pin, Radio, Send, Share2, ShoppingBag, Sparkles, Users, X, ShieldCheck,
 } from 'lucide-react';
 import type { LiveRoom, ProductItem, LiveComment } from '../../types';
@@ -23,6 +23,7 @@ interface Props {
   onHeart: () => void;
   onOpenGift: () => void;
   onPin: () => void;
+  onUnpin?: () => void;
   onEndRoom: () => void;
   onExit: () => void;
   onChangeRoom: (roomId: string) => void;
@@ -36,7 +37,7 @@ const naira = (value: number) => '₦' + value.toLocaleString('en-NG');
 export default function MobileLiveStage({
   room, rooms, sellerProducts, comments, commentValue, heartsCount, coinBalance,
   isHost, videoConfigured, onCommentChange, onSendComment, onHeart, onOpenGift,
-  onPin, onEndRoom, onExit, onChangeRoom, onAddToCart, onBuy, onSelectProduct,
+  onPin, onUnpin, onEndRoom, onExit, onChangeRoom, onAddToCart, onBuy, onSelectProduct,
   onShareNotice,
 }: Props) {
   const [panel, setPanel] = useState<'products' | 'more' | null>(null);
@@ -69,7 +70,10 @@ export default function MobileLiveStage({
   };
 
   return (
-    <section className="cnc-mobile-live-shell md:hidden" aria-label="Mobile livestream shopping room">
+    <section className="cnc-mobile-live-shell md:hidden" aria-label="Mobile livestream shopping room" onClick={event => {
+      if (event.target instanceof Element &&
+          !event.target.closest('button, a, input, form, [role="log"], [role="dialog"], [role="alertdialog"], .cnc-mobile-live-modal-backdrop')) onHeart();
+    }}>
       {ownCamera ? (
         <SellerCameraMonitor media={ownCamera}/>
       ) : videoUrl ? (
@@ -79,8 +83,6 @@ export default function MobileLiveStage({
 
       <header className="cnc-mobile-live-top">
         <div className="cnc-mobile-live-top-row">
-          <button type="button" className="cnc-live-icon-glass" onClick={isHost ? () => setConfirmEnd(true) : onExit} aria-label="Leave livestream"><ArrowLeft size={19}/></button>
-          <span className="cnc-mobile-live-brand" aria-label="Cash N Carry">Cash<span>N</span>Carry</span>
           <span className="cnc-mobile-live-pill cnc-mobile-live-pill--live"><Radio size={13}/> Live</span>
           <button type="button" className="cnc-live-icon-glass" onClick={() => void shareRoom()} aria-label="Share livestream"><Share2 size={19}/></button>
         </div>
@@ -88,7 +90,7 @@ export default function MobileLiveStage({
           <div className="cnc-mobile-live-avatar">{room.sellerName.trim().slice(0, 1).toUpperCase()}</div>
           <div className="cnc-mobile-live-host-copy">
             <div className="cnc-mobile-live-seller-name">{room.sellerName}<CheckCircle2 size={13} color="#52f2b0"/></div>
-            <span className="cnc-mobile-live-subtitle">{isHost ? 'Seller controls' : 'Shop with a verified seller'}</span>
+            <h1 className="cnc-mobile-live-room-title">{room.title}</h1>
           </div>
           <span className="cnc-mobile-live-pill"><Users size={12}/> {room.viewerCount > 0 ? room.viewerCount.toLocaleString('en-NG') : 'Room open'}</span>
         </div>
@@ -114,7 +116,6 @@ export default function MobileLiveStage({
           <span className="cnc-mobile-live-video-dot"/>
           {videoConfigured ? 'Waiting for video connection' : 'Video broadcasting is not configured'}
         </div>}
-        <div className="cnc-mobile-live-session-title">{room.title}</div>
       </div>
 
       <div className="cnc-mobile-live-chat" role="log" aria-label="Live chat messages">
@@ -155,8 +156,8 @@ export default function MobileLiveStage({
             <span className="cnc-mobile-live-pinned-title">{pinned.title}</span>
             <span className="cnc-mobile-live-pinned-price">{naira(pinned.price)}</span>
           </div>
-          <button type="button" className="cnc-mobile-live-buy-button" onClick={() => onBuy(pinned)} disabled={pinned.stock < 1}>
-            {pinned.stock < 1 ? 'Sold out' : 'Buy now'}
+          <button type="button" className="cnc-mobile-live-buy-button" onClick={() => isHost ? onUnpin?.() : onBuy(pinned)} disabled={isHost ? !onUnpin : pinned.stock < 1}>
+            {isHost ? 'Unpin' : pinned.stock < 1 ? 'Sold out' : 'Buy now'}
           </button>
         </div>
       ) : (
@@ -196,6 +197,7 @@ export default function MobileLiveStage({
             <p><ShieldCheck size={18}/> Prices and checkout are checked on the server.</p>
             <p>◉ Coin balance: {coinBalance.toLocaleString('en-NG')}</p>
             <button type="button" onClick={() => { setPanel(null); void shareRoom(); }}><Share2 size={17}/> Share livestream</button>
+            <button type="button" onClick={onExit}>Leave livestream</button>
             <button type="button" onClick={() => { setPanel(null); onOpenGift(); }}><Gift size={17}/> Send gift</button>
           </div>}
         </section>

@@ -457,8 +457,8 @@ export async function unifiedSyncRoute(
       if (action === 'like') {
         const updated = await db.prepare(
           `UPDATE cnc_live_room_state SET hearts_count=hearts_count+1 WHERE room_id=? AND status='live' RETURNING hearts_count`
-        ).bind(roomId).first();
-        return updated ? json({ success: true }) : json({ error: 'Live room unavailable' }, 409);
+        ).bind(roomId).first<{ hearts_count: number }>();
+        return updated ? json({ success: true, heartsCount: updated.hearts_count }) : json({ error: 'Live room unavailable' }, 409);
       }
       if (action === 'join') {
         // Do not increment the old counter on refresh: no presence tracking exists.
@@ -483,9 +483,13 @@ export async function unifiedSyncRoute(
       }
       if (action === 'end') {
         const updated = await db.prepare(
-          `UPDATE cnc_live_room_state SET status='ended', ended_at=unixepoch() WHERE room_id=? AND seller_id=? AND status='live' RETURNING room_id`
-        ).bind(roomId, account.id).first();
-        return updated ? json({ success: true, status: 'ended' }) : json({ error: 'Live room already ended' }, 409);
+          `UPDATE cnc_live_room_state SET status='ended', ended_at=unixepoch() WHERE room_id=? AND seller_id=? AND status='live' RETURNING title, created, ended_at, hearts_count,
+            (SELECT COUNT(*) FROM cnc_live_comments WHERE room_id=cnc_live_room_state.room_id AND is_reaction=0) AS comments_count`
+        ).bind(roomId, account.id).first<{ title: string; created: number; ended_at: number; hearts_count: number; comments_count: number }>();
+        return updated ? json({ success: true, status: 'ended', summary: {
+          title: updated.title, durationSeconds: Math.max(0, updated.ended_at - updated.created),
+          heartsCount: updated.hearts_count, commentsCount: updated.comments_count,
+        } }) : json({ error: 'Live room already ended' }, 409);
       }
     }
   }

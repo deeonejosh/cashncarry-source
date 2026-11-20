@@ -81,3 +81,28 @@
 }
 
 .cnc-mobile-studio-preview::before { display: none; }
+
+.cnc-live-summary {
+  width: min(100%, 42rem);
+  margin: clamp(1rem, 6vw, 4rem) auto;
+  padding: clamp(1rem, 5vw, 2rem);
+  border-radius: 1.25rem;
+  background: #111817;
+  color: #f2fbf5;
+}
+.cnc-live-summary h1 { font-weight: 850; font-size: 1.5rem; }
+.cnc-live-summary p, .cnc-live-summary dt { color: #b9d5c7; }
+.cnc-live-summary dl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem; margin: 1.25rem 0; }
+.cnc-live-summary dl div { padding: .65rem; background: #203b32; border-radius: .75rem; }
+.cnc-live-summary dd { font-weight: 800; overflow-wrap: anywhere; }
+.cnc-live-summary button { min-height: 44px; padding: .5rem .75rem; margin: .25rem .5rem .25rem 0; background: #176748; border-radius: .65rem; }
+
+@media (max-width: 767px) {
+  .cnc-mobile-live-top-row { position: absolute; top: 0; right: 0; }
+  .cnc-mobile-live-host-strip { margin-top: 0; padding-right: 44px; }
+  .cnc-mobile-live-host-strip > .cnc-mobile-live-pill { display: none; }
+  .cnc-mobile-live-room-title { font-size: .8rem; font-weight: 700; color: #d8e9e0; overflow-wrap: anywhere; }
+  .cnc-mobile-live-top-row .cnc-live-icon-glass { width: 40px; min-width: 40px; }
+  .cnc-mobile-live-top-row .cnc-mobile-live-pill { margin-left: 0; }
+  .cnc-mobile-live-host-copy { min-width: 0; padding-right: 62px; }
+}

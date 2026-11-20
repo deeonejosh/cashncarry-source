@@ -1,6 +1,6 @@
 import './live-studio.css';
 import React from 'react';
-import { ArrowLeft, ArrowRight, Radio } from 'lucide-react';
+import { ArrowRight, Radio } from 'lucide-react';
 
 interface Props {
   isApprovedSeller: boolean;
@@ -14,13 +14,6 @@ export default function MobileLiveEmptyStage({
 }: Props) {
   return (
     <section className="cnc-mobile-live-empty-room md:hidden" aria-label="Livestream studio">
-      <header className="cnc-live-empty-header">
-        <button type="button" className="cnc-live-empty-back" aria-label="Leave livestream studio" onClick={() => onExit?.()}>
-          <ArrowLeft size={21}/>
-        </button>
-        <span className="cnc-live-empty-brand">Cash<span>N</span>Carry</span>
-        <span className="cnc-live-empty-status"><Radio size={14}/> LIVE STUDIO</span>
-      </header>
       <div className="cnc-live-empty-panel">
         <div className="cnc-live-studio-icon" aria-hidden="true"><Radio size={28}/></div>
         <h1>The live stage is ready</h1>

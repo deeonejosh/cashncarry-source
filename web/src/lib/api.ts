@@ -1,3 +1,10 @@
+export interface LiveStreamSummary {
+  title: string;
+  durationSeconds: number;
+  heartsCount: number;
+  commentsCount: number;
+}
+
 import type { Role, SellerStatus } from '../types';
 
 export interface ApiCategory {
@@ -779,7 +786,7 @@ class ApiClient {
     action: 'join' | 'like' | 'pin' | 'end';
     pinnedProductId?: string;
   }) {
-    return this.requestJson<{ ok?: boolean; room?: Record<string, unknown> }>('/api/v1/live', {
+    return this.requestJson<{ ok?: boolean; room?: Record<string, unknown>; heartsCount?: number; summary?: LiveStreamSummary }>('/api/v1/live', {
       method: 'PATCH',
       body: JSON.stringify(input),
     });
