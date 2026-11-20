@@ -27,6 +27,8 @@ import {
 } from 'lucide-react';
 
 interface LiveShoppingPageProps {
+  selectedRoomId: string;
+  onChangeRoom: (roomId: string) => void;
   onSelectProduct: (p: ProductItem) => void;
   onProceedToCheckout: () => void;
   onOpenCreate?: () => void;
@@ -35,6 +37,8 @@ interface LiveShoppingPageProps {
 }
 
 export default function LiveShoppingPage({
+  selectedRoomId,
+  onChangeRoom,
   onSelectProduct,
   onProceedToCheckout,
   onOpenCreate,
@@ -62,7 +66,6 @@ export default function LiveShoppingPage({
   } = useStore();
 
   const activeRooms = liveRooms.filter((r) => r.status === 'live');
-  const [selectedRoomId, setSelectedRoomId] = useState<string>(() => new URLSearchParams(window.location.search).get('room') || '');
   const activeRoom = activeRooms.find((r) => r.id === selectedRoomId) || activeRooms[0] || null;
 
   const [comments, setComments] = useState<LiveComment[]>([]);
@@ -204,7 +207,7 @@ export default function LiveShoppingPage({
       onPin={() => setPinModalOpen(true)}
       onEndRoom={() => void endMobileRoom()}
       onExit={() => onExit?.()}
-      onChangeRoom={setSelectedRoomId}
+      onChangeRoom={onChangeRoom}
       onAddToCart={(product) => void addMobileCart(product)}
       onBuy={(product) => void handleBuyPinned(product)}
       onSelectProduct={onSelectProduct}
@@ -234,7 +237,7 @@ export default function LiveShoppingPage({
             <button
               key={room.id}
               type="button"
-              onClick={() => setSelectedRoomId(room.id)}
+              onClick={() => onChangeRoom(room.id)}
               className={`rounded-full px-4 py-2 text-xs font-bold whitespace-nowrap border transition ${
                 room.id === activeRoom.id
                   ? 'bg-rose-600 text-white border-rose-600'

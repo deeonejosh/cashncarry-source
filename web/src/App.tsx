@@ -151,6 +151,9 @@ function MainApp() {
   const [selectedStorefrontId, setSelectedStorefrontId] = useState<string>(
     () => new URLSearchParams(window.location.search).get('seller') || ''
   );
+  const [selectedLiveRoomId, setSelectedLiveRoomId] = useState(
+    () => new URLSearchParams(window.location.search).get('room') || ''
+  );
   const historyReady = useRef(false);
   const [productLinkId, setProductLinkId] = useState(
     () => getProductLinkId(new URLSearchParams(window.location.search))
@@ -204,6 +207,9 @@ function MainApp() {
       if (currentTab === 'storefront' && selectedStorefrontId) {
         params.set('seller', selectedStorefrontId);
       }
+      if (currentTab === 'live' && selectedLiveRoomId) {
+        params.set('room', selectedLiveRoomId);
+      }
       const queryString = params.toString();
       const newUrl = queryString ? `${window.location.pathname}?${queryString}` : window.location.pathname;
       if (!historyReady.current) {
@@ -215,7 +221,7 @@ function MainApp() {
     } catch {
       // ignore
     }
-  }, [currentTab, selectedCategory, productLinkId, shopSearchQuery, selectedStorefrontId, policySection]);
+  }, [currentTab, selectedCategory, productLinkId, shopSearchQuery, selectedStorefrontId, selectedLiveRoomId, policySection]);
 
   useEffect(() => {
     const restore = () => {
@@ -225,6 +231,7 @@ function MainApp() {
       setSelectedCategory(params.get('category') || 'all');
       setShopSearchQuery(params.get('q') || '');
       setSelectedStorefrontId(params.get('seller') || '');
+      setSelectedLiveRoomId(params.get('room') || '');
       setProductLinkId(productId);
       setPolicySection(readPolicySection(params));
     };
@@ -239,6 +246,7 @@ function MainApp() {
 
   const navigateTab = (tab: string) => {
     if (tab !== 'profile') setAddressSetupRequested(false);
+    if (tab !== 'live') setSelectedLiveRoomId('');
     setCurrentTab(tab);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -467,6 +475,8 @@ function MainApp() {
       case 'live':
         return (
           <LiveShoppingPage
+            selectedRoomId={selectedLiveRoomId}
+            onChangeRoom={setSelectedLiveRoomId}
             onSelectProduct={handleSelectProduct}
             onProceedToCheckout={handleProceedToCheckout}
             onOpenCreate={() => setIsCreateModalOpen(true)}

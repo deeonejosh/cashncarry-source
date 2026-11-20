@@ -115,6 +115,20 @@ try {
   assert.equal(healthData.staging.coinsPurchasesEnabled, false);
   assert.equal(healthData.staging.kycUploadsEnabled, false);
 
+  const liveLinkContext = await browser.newContext({ ignoreHTTPSErrors: true });
+  try {
+    const page = await liveLinkContext.newPage();
+    const sharedRoom = 'shared-room-regression';
+    await page.goto(`${origin}/?tab=live&room=${sharedRoom}`, { waitUntil: 'networkidle' });
+    await page.locator('main[data-cnc-route="live"]').waitFor();
+    assert.equal(new URL(page.url()).searchParams.get('room'), sharedRoom);
+    await page.reload({ waitUntil: 'networkidle' });
+    assert.equal(new URL(page.url()).searchParams.get('room'), sharedRoom);
+    console.log('PASS: shared livestream room remains in the URL after initialization and reload');
+  } finally {
+    await liveLinkContext.close();
+  }
+
   const tabsToVerify = [
     { tab: 'home', text: 'Cash N Carry' },
     { tab: 'shop', text: 'Shop' },
