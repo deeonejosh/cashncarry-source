@@ -195,7 +195,7 @@ interface StoreContextType {
     category: string;
     pinnedProductId?: string;
     broadcastConnected?: boolean;
-  }) => Promise<{ ok: boolean; roomId?: string; error?: string }>;
+  }) => Promise<{ ok: boolean; roomId?: string; error?: string; code?: string }>;
   joinLiveRoom: (roomId: string) => Promise<void>;
   likeLiveRoom: (roomId: string) => Promise<void>;
   pinLiveProduct: (roomId: string, productId: string) => Promise<{ ok: boolean; error?: string }>;
@@ -1421,7 +1421,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
     const res = await api.createLiveRoom(input);
     if (!res.ok || !res.data?.roomId) {
-      return { ok: false, error: res.error || 'Could not start livestream.' };
+      return { ok: false, error: res.error || 'Could not start livestream.', code: res.code };
     }
     await reloadMarketplace();
     showToast('Live room created.', 'success');

@@ -69,6 +69,14 @@ export default function LiveShoppingPage({
   const activeRooms = liveRooms.filter((r) => r.status === 'live');
   const activeRoom = activeRooms.find((r) => r.id === selectedRoomId) || activeRooms[0] || null;
 
+  const [desktop, setDesktop] = useState(() => window.matchMedia('(min-width: 48rem)').matches);
+  useEffect(() => {
+    const viewport = window.matchMedia('(min-width: 48rem)');
+    const update = () => setDesktop(viewport.matches);
+    viewport.addEventListener('change', update);
+    return () => viewport.removeEventListener('change', update);
+  }, []);
+
   const [comments, setComments] = useState<LiveComment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [, setViewerCount] = useState(0);
@@ -197,7 +205,7 @@ export default function LiveShoppingPage({
 
   return (
     <>
-    <MobileLiveStage
+    {!desktop && <MobileLiveStage
       room={activeRoom}
       rooms={activeRooms}
       sellerProducts={sellerPublished}
@@ -219,8 +227,8 @@ export default function LiveShoppingPage({
       onBuy={(product) => void handleBuyPinned(product)}
       onSelectProduct={onSelectProduct}
       onShareNotice={(text) => showToast(text, 'info')}
-    />
-    <div className="cnc-desktop-live-workspace hidden md:block space-y-6 pb-16">
+    />}
+    {desktop && <div className="cnc-desktop-live-workspace hidden md:block space-y-6 pb-16">
       <div className="cnc-desktop-live-heading">
         <div>
           <span className="cnc-desktop-live-eyebrow"><Radio size={15}/> CASH N CARRY LIVE</span>
@@ -441,8 +449,8 @@ export default function LiveShoppingPage({
         <span><Heart size={16}/>{activeRoom.heartsCount.toLocaleString('en-NG')} likes</span>
         <span><MessageCircle size={16}/>{comments.length} comments loaded</span>
       </div>}
-    </div>
-    {desktopEndConfirm&&isHost&&(
+    </div>}
+    {desktop && desktopEndConfirm&&isHost&&(
       <div className="cnc-desktop-live-end-backdrop">
         <div className="cnc-desktop-live-end-dialog" role="alertdialog" aria-modal="true" aria-labelledby="cnc-desktop-end-title">
           <Radio size={34}/>

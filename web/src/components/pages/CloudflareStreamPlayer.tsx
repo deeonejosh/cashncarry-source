@@ -16,19 +16,24 @@ export default function CloudflareStreamPlayer({url,className,onStatusChange}:Pr
   const [muted,setMuted]=useState(true);
   const [attempt,setAttempt]=useState(0);
 
+  useEffect(() => {
+    if (status !== 'connecting') return;
+    const timeout = window.setTimeout(() => setStatus('error'), 20_000);
+    return () => window.clearTimeout(timeout);
+  }, [status, url, attempt]);
+
   useEffect(() => {onStatusChange?.(status);},[status,onStatusChange]);
 
   useEffect(() => {
     if(!validWhep(url)){setStatus('idle');return;}
     let cancelled=false;
     let session:CloudflareSession|null=null;
+    const video = videoRef.current;
     setStatus('connecting');
     void watchCloudflareStream(url!,stream=>{
       if(cancelled)return;
-      const video=videoRef.current;
       if(video){
         video.srcObject=stream;
-        video.muted=true;
         void video.play().catch(()=>{});
       }
     }).then(value=>{
@@ -37,7 +42,7 @@ export default function CloudflareStreamPlayer({url,className,onStatusChange}:Pr
       // RTCPeerConnection may negotiate before the broadcaster is actually sending media.
       const ready=()=>{
         if(cancelled)return;
-        if(value.pc.connectionState==='connected')setStatus('playing');
+        if(value.pc.connectionState==='disconnected')setStatus('connecting');
         if(value.pc.connectionState==='failed'||value.pc.connectionState==='closed')setStatus('error');
       };
       value.pc.addEventListener('connectionstatechange',ready);
@@ -47,7 +52,7 @@ export default function CloudflareStreamPlayer({url,className,onStatusChange}:Pr
     });
     return ()=>{
       cancelled=true;
-      if(videoRef.current)videoRef.current.srcObject=null;
+      if(video)video.srcObject=null;
       void stopCloudflareViewer(session);
     };
   },[url,attempt]);
@@ -55,7 +60,8 @@ export default function CloudflareStreamPlayer({url,className,onStatusChange}:Pr
   if(!validWhep(url))return null;
   return <div className="cnc-cloudflare-stream-player">
     <video ref={videoRef} className={className||'h-full w-full object-cover'} playsInline autoPlay muted={muted}
-      aria-label="Cloudflare Stream live broadcast" />
+      aria-label="Cloudflare Stream live broadcast" onPlaying={() => setStatus('playing')}
+      onWaiting={() => setStatus(current => current === 'error' ? current : 'connecting')} />
     {status!=='playing'&&<div className="cnc-stream-connection-status" role="status">
       {status==='error'?'Video connection lost': 'Connecting live video...'}
     </div>}

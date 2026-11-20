@@ -256,12 +256,18 @@ export default function CreateModal({ isOpen, onClose, onNavigate }: CreateModal
       // Cloudflare WHIP must negotiate and report a connected WebRTC peer before
       // this staging browser can create a public shopping room.
       await publishCloudflareStream(media);
-      const res = await createLiveRoom({
+      const room = {
         title: streamTitle.trim(),
         category: streamCategory,
         pinnedProductId: streamProductId || undefined,
         broadcastConnected: true,
-      });
+      };
+      let res = await createLiveRoom(room);
+      // A connected WHIP peer can precede Cloudflare's first live status update.
+      for (let retry = 0; res.code === 'BROADCAST_NOT_LIVE' && retry < 4; retry++) {
+        await new Promise(resolve => window.setTimeout(resolve, 1_500));
+        res = await createLiveRoom(room);
+      }
       if (!res.ok || !res.roomId) {
         await stopCloudflareStream();
         throw new Error(res.error || 'Could not start a shopping room.');
