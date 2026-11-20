@@ -8,30 +8,31 @@ import Footer from './components/ui/Footer';
 import CartDrawer from './components/ui/CartDrawer';
 import SEOHead from './components/seo/SEOHead';
 import AuthModal from './components/ui/AuthModal';
-import CreateModal from './components/ui/CreateModal';
 import NewsletterModal from './components/ui/NewsletterModal';
+
+const CreateModal = lazy(() => import('./components/ui/CreateModal'));
 
 // Pages
 import HomePage from './components/pages/HomePage';
-import ShopPage from './components/pages/ShopPage';
+const ShopPage = lazy(() => import('./components/pages/ShopPage'));
 const ForYouVideoFeedPage = lazy(() => import('./components/pages/ForYouVideoFeedPage'));
-import ProductDetailsPage from './components/pages/ProductDetailsPage';
-import CheckoutPage from './components/pages/CheckoutPage';
-import CheckoutCompletePage from './components/pages/CheckoutCompletePage';
-import OrdersPage from './components/pages/OrdersPage';
+const ProductDetailsPage = lazy(() => import('./components/pages/ProductDetailsPage'));
+const CheckoutPage = lazy(() => import('./components/pages/CheckoutPage'));
+const CheckoutCompletePage = lazy(() => import('./components/pages/CheckoutCompletePage'));
+const OrdersPage = lazy(() => import('./components/pages/OrdersPage'));
 const ProfilePage = lazy(() => import('./components/pages/ProfilePage'));
 const LiveShoppingPage = lazy(() => import('./components/pages/LiveShoppingPage'));
 const AuctionsPage = lazy(() => import('./components/pages/AuctionsPage'));
-import CoinsPage from './components/pages/CoinsPage';
-import FlashDealsPage from './components/pages/FlashDealsPage';
-import WishlistPage from './components/pages/WishlistPage';
-import ShipmentsPage from './components/pages/ShipmentsPage';
-import MessagesPage from './components/pages/MessagesPage';
-import NotificationsPage from './components/pages/NotificationsPage';
-import ReturnsPage from './components/pages/ReturnsPage';
+const CoinsPage = lazy(() => import('./components/pages/CoinsPage'));
+const FlashDealsPage = lazy(() => import('./components/pages/FlashDealsPage'));
+const WishlistPage = lazy(() => import('./components/pages/WishlistPage'));
+const ShipmentsPage = lazy(() => import('./components/pages/ShipmentsPage'));
+const MessagesPage = lazy(() => import('./components/pages/MessagesPage'));
+const NotificationsPage = lazy(() => import('./components/pages/NotificationsPage'));
+const ReturnsPage = lazy(() => import('./components/pages/ReturnsPage'));
 const EmailMarketingPage = lazy(() => import('./components/pages/EmailMarketingPage'));
 import PolicyPage, { type PolicySection } from './components/pages/PolicyPage';
-import StorefrontPage from './components/pages/StorefrontPage';
+const StorefrontPage = lazy(() => import('./components/pages/StorefrontPage'));
 
 // Seller Centre Pages
 const SellerDashboardPage = lazy(() => import('./components/pages/seller/SellerDashboardPage'));
@@ -173,6 +174,11 @@ function MainApp() {
   const [returnOrder, setReturnOrder] = useState<Order | null>(null);
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [hasOpenedCreateModal, setHasOpenedCreateModal] = useState(false);
+  const openCreateModal = () => {
+    setHasOpenedCreateModal(true);
+    setIsCreateModalOpen(true);
+  };
   const [newsletterModalOpen, setNewsletterModalOpen] = useState(false);
 
   useEffect(() => {
@@ -397,7 +403,7 @@ function MainApp() {
             onSelectProduct={handleSelectProduct}
             onProceedToCheckout={handleProceedToCheckout}
             onBack={() => navigateTab('shop')}
-            onOpenCreate={() => setIsCreateModalOpen(true)}
+            onOpenCreate={openCreateModal}
           />
         );
       case 'home':
@@ -479,7 +485,7 @@ function MainApp() {
             onChangeRoom={setSelectedLiveRoomId}
             onSelectProduct={handleSelectProduct}
             onProceedToCheckout={handleProceedToCheckout}
-            onOpenCreate={() => setIsCreateModalOpen(true)}
+            onOpenCreate={openCreateModal}
             onExit={() => navigateTab(isApprovedSeller ? 'seller-dashboard' : 'shop')}
             onSellerCentre={() => navigateTab('seller-dashboard')}
           />
@@ -524,7 +530,7 @@ function MainApp() {
       case 'returns':
         return <ReturnsPage initialOrder={returnOrder} onBack={() => navigateTab('orders')} />;
       case 'seller-dashboard':
-        return <SellerDashboardPage onNavigate={navigateTab} onOpenCreate={() => setIsCreateModalOpen(true)} />;
+        return <SellerDashboardPage onNavigate={navigateTab} onOpenCreate={openCreateModal} />;
       case 'seller-products':
         return <SellerProductsPage />;
       case 'seller-orders':
@@ -587,7 +593,7 @@ function MainApp() {
           setCurrentTab={navigateTab}
           selectedCategory={selectedCategory}
           onSelectCategory={handleSelectCategory}
-          onOpenCreate={() => setIsCreateModalOpen(true)}
+          onOpenCreate={openCreateModal}
           onSearch={(query) => {
             setShopSearchQuery(query);
             navigateTab('shop');
@@ -625,15 +631,19 @@ function MainApp() {
         <MobileNav
           currentTab={currentTab}
           setCurrentTab={navigateTab}
-          onOpenCreate={() => setIsCreateModalOpen(true)}
+          onOpenCreate={openCreateModal}
         />
       )}
 
-      <CreateModal
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-        onNavigate={navigateTab}
-      />
+      {hasOpenedCreateModal && (
+        <Suspense fallback={<p role="status" className="fixed bottom-24 left-1/2 z-50 -translate-x-1/2 rounded-full bg-white px-4 py-2 shadow">Loading creation tools…</p>}>
+          <CreateModal
+            isOpen={isCreateModalOpen}
+            onClose={() => setIsCreateModalOpen(false)}
+            onNavigate={navigateTab}
+          />
+        </Suspense>
+      )}
 
       <AuthModal onNavigate={navigateTab} />
 

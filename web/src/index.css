@@ -545,8 +545,8 @@ button:disabled { cursor: not-allowed; }
   .cnc-discovery-category .cnc-discovery-art { width: 4.9rem; }
 }
 @media (prefers-reduced-motion: no-preference) {
-  [data-art-in-view] :is(.cnc-discovery-art, .cnc-motion-art) { animation: cnc-discovery-settle .85s ease-out both; }
-  [data-art-in-view] .cnc-showcase-art { animation-duration: 1.35s; }
+  [data-art-in-view]:not(.cnc-marketplace-hero) :is(.cnc-discovery-art, .cnc-motion-art) { animation: cnc-discovery-settle .85s ease-out both; }
+  [data-art-in-view]:not(.cnc-marketplace-hero) .cnc-showcase-art { animation-duration: 1.35s; }
   [data-art-in-view] .cnc-trust-card:nth-child(2n) .cnc-motion-art { animation-delay: .1s; }
   @keyframes cnc-discovery-settle {
     from { transform: perspective(420px) translateY(.55rem) rotateY(-19deg) scale(.9); }
