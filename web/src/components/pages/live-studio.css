@@ -1,0 +1,83 @@
+@import './desktop-live-glass.css';
+@import './mobile-live-glass.css';
+
+/* Keep motion on shoppable items and the video stage visually quiet. */
+.cnc-live-studio-icon {
+  display: grid;
+  place-items: center;
+  width: 3.5rem;
+  height: 3.5rem;
+  margin: 0 auto 1rem;
+  border: 1px solid #426258;
+  border-radius: 1rem;
+  background: #203b32;
+  color: #adf3cb;
+}
+
+.cnc-live-product-depth {
+  transform-style: preserve-3d;
+  animation: cnc-live-card-enter 380ms cubic-bezier(.2,.75,.25,1) backwards;
+}
+
+.cnc-live-product-depth img {
+  transform: translateZ(8px);
+}
+
+@keyframes cnc-live-card-enter {
+  from { transform: perspective(700px) translateY(8px) rotateX(9deg); opacity: .55; }
+  to { transform: perspective(700px) translateY(0) rotateX(0); opacity: 1; }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .cnc-live-product-depth { transition: transform 200ms ease; }
+  .cnc-live-product-depth:hover { transform: perspective(700px) translateY(-3px) rotateX(3deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cnc-live-product-depth, .cnc-live-product-depth:hover {
+    animation: none;
+    transition: none;
+    transform: none;
+  }
+}
+
+@media (min-width: 768px) {
+  .cnc-desktop-live-workspace, .cnc-desktop-live-empty {
+    background: #111817;
+    border-color: #2e423b;
+    border-radius: 22px;
+    box-shadow: 0 16px 40px #0d20151a;
+  }
+  .cnc-desktop-live-workspace::before, .cnc-desktop-live-workspace::after,
+  .cnc-desktop-live-empty::before, .cnc-desktop-live-empty::after,
+  .cnc-desktop-live-stage::before { display: none; }
+  .cnc-desktop-live-heading { padding-bottom: .5rem; }
+  .cnc-desktop-live-stage { background: #101513 !important; }
+  .cnc-desktop-live-stage, .cnc-desktop-live-chat {
+    border-color: #3b5147 !important;
+    box-shadow: none !important;
+  }
+  .cnc-desktop-live-chat, .cnc-desktop-live-chat-head { background: #192320 !important; }
+  .cnc-desktop-live-pinned {
+    background: #172720ed !important;
+    border-color: #537968 !important;
+    box-shadow: 0 8px 18px #0005;
+  }
+  .cnc-desktop-live-pinned > button:last-child {
+    background: #127046 !important;
+    box-shadow: none;
+  }
+  .cnc-desktop-live-empty { min-height: min(56vh, 520px); }
+}
+
+@media (max-width: 767px) {
+  .cnc-mobile-live-shell, .cnc-mobile-live-empty-room { background: #101715; }
+  .cnc-mobile-live-shell { --cnc-glass: #162520d9; }
+  .cnc-mobile-live-empty-room { justify-content: center; }
+  .cnc-live-empty-header { position: absolute; top: max(16px, env(safe-area-inset-top)); left: 16px; right: 16px; }
+  .cnc-mobile-live-hero-product, .cnc-mobile-live-hero-icon { animation: none; filter: none; }
+  .cnc-mobile-live-pinned, .cnc-mobile-live-product-row { background: #172720ef; border-color: #537968; }
+  .cnc-mobile-live-buy-button { background: #127046; }
+}
+
+.cnc-mobile-studio-preview::before { display: none; }

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import '../pages/desktop-live-glass.css';
+import '../pages/live-studio.css';
 import { useStore } from '../../context/StoreContext';
 import {publishCloudflareStream,stopCloudflareStream} from '../../lib/cloudflare-stream-webrtc';
 import {
@@ -671,8 +671,6 @@ export default function CreateModal({ isOpen, onClose, onNavigate }: CreateModal
                   <video ref={videoPreviewRef} autoPlay playsInline muted className="h-full w-full object-cover" />
                 ) : (
                   <div className="cnc-mobile-studio-placeholder text-center p-6 space-y-3 text-white">
-                    <div className="cnc-studio-platform cnc-studio-platform--rear" aria-hidden="true"/>
-                    <div className="cnc-studio-platform cnc-studio-platform--front" aria-hidden="true"/>
                     <div className="cnc-mobile-studio-camera-icon mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 text-orange-400">
                       <Camera size={28} />
                     </div>

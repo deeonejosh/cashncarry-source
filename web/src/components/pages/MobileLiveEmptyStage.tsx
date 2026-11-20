@@ -1,6 +1,6 @@
+import './live-studio.css';
 import React from 'react';
 import { ArrowLeft, ArrowRight, Radio } from 'lucide-react';
-import './mobile-live-glass.css';
 
 interface Props {
   isApprovedSeller: boolean;
@@ -9,20 +9,11 @@ interface Props {
   onExit?: () => void;
 }
 
-/**
- * Empty/ended mobile seller view. The glass, animated 3D platform and
- * holographic radio orb are decorative. No video is simulated here.
- */
 export default function MobileLiveEmptyStage({
   isApprovedSeller, liveStreamingConfigured, onOpenCreate, onExit,
 }: Props) {
   return (
     <section className="cnc-mobile-live-empty-room md:hidden" aria-label="Livestream studio">
-      <div className="cnc-live-empty-sky" aria-hidden="true">
-        <span className="cnc-live-empty-sky-orb cnc-live-empty-sky-orb--cyan"/>
-        <span className="cnc-live-empty-sky-orb cnc-live-empty-sky-orb--violet"/>
-        <span className="cnc-live-empty-grid"/>
-      </div>
       <header className="cnc-live-empty-header">
         <button type="button" className="cnc-live-empty-back" aria-label="Leave livestream studio" onClick={() => onExit?.()}>
           <ArrowLeft size={21}/>
@@ -30,14 +21,8 @@ export default function MobileLiveEmptyStage({
         <span className="cnc-live-empty-brand">Cash<span>N</span>Carry</span>
         <span className="cnc-live-empty-status"><Radio size={14}/> LIVE STUDIO</span>
       </header>
-      <div className="cnc-live-empty-stage" aria-hidden="true">
-        <div className="cnc-live-empty-aura"/>
-        <div className="cnc-live-empty-hologram"><Radio size={82} strokeWidth={1.8}/></div>
-        <div className="cnc-live-empty-platform cnc-live-empty-platform--base"/>
-        <div className="cnc-live-empty-platform cnc-live-empty-platform--top"/>
-      </div>
       <div className="cnc-live-empty-panel">
-        <div className="cnc-live-empty-eyebrow"><span/> CASH N CARRY LIVE SHOPPING</div>
+        <div className="cnc-live-studio-icon" aria-hidden="true"><Radio size={28}/></div>
         <h1>The live stage is ready</h1>
         <p>{isApprovedSeller
           ? 'Your next live shopping session starts here. Go live, pin products and chat with customers in real time.'

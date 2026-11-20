@@ -1,6 +1,6 @@
+import './live-studio.css';
 import React from 'react';
-import {ArrowLeft, ArrowRight, Radio, ShoppingBag, VideoOff, ShieldCheck} from 'lucide-react';
-import './desktop-live-glass.css';
+import {ArrowLeft, ArrowRight, Radio, VideoOff, ShieldCheck} from 'lucide-react';
 
 interface Props {
   isApprovedSeller: boolean;
@@ -18,16 +18,9 @@ export default function DesktopLiveEmptyStage({
   const title = hasEndedRoom ? 'Livestream Ended' : 'The live stage is ready';
   return (
     <section className="cnc-desktop-live-empty hidden md:flex" aria-label="Desktop livestream studio">
-      <div className="cnc-desktop-empty-glow cnc-desktop-empty-glow--blue" aria-hidden="true"/>
-      <div className="cnc-desktop-empty-glow cnc-desktop-empty-glow--pink" aria-hidden="true"/>
-      <div className="cnc-desktop-empty-orbit cnc-desktop-empty-orbit--left" aria-hidden="true"><ShoppingBag size={48}/></div>
-      <div className="cnc-desktop-empty-orbit cnc-desktop-empty-orbit--right" aria-hidden="true"><ShoppingBag size={47}/></div>
       <div className="cnc-desktop-empty-content">
-        <div className="cnc-desktop-live-eyebrow"><Radio size={16}/> CASH N CARRY LIVE STUDIO</div>
-        <div className="cnc-desktop-empty-hologram" aria-hidden="true">
-          <div className="cnc-desktop-empty-sphere">{hasEndedRoom ? <VideoOff size={64}/> : <Radio size={68}/>}</div>
-          <div className="cnc-desktop-empty-platform"/>
-          <div className="cnc-desktop-empty-ring"/>
+        <div className="cnc-live-studio-icon" aria-hidden="true">
+          {hasEndedRoom ? <VideoOff size={28}/> : <Radio size={28}/>}
         </div>
         <div className="cnc-desktop-empty-panel">
           <h1>{title}</h1>

@@ -3,7 +3,7 @@ import MobileLiveEmptyStage from './MobileLiveEmptyStage';
 import DesktopLiveEmptyStage from './DesktopLiveEmptyStage';
 import DesktopHostPreview from './DesktopHostPreview';
 import DesktopLiveMediaControls from './DesktopLiveMediaControls';
-import './desktop-live-glass.css';
+import './live-studio.css';
 import CloudflareStreamPlayer from './CloudflareStreamPlayer';
 import {getLivePublisherPreview,stopCloudflareStream,validWhep} from '../../lib/cloudflare-stream-webrtc';
 import React, { useState, useEffect } from 'react';
@@ -231,14 +231,10 @@ export default function LiveShoppingPage({
     {desktop && <div className="cnc-desktop-live-workspace hidden md:block space-y-6 pb-16">
       <div className="cnc-desktop-live-heading">
         <div>
-          <span className="cnc-desktop-live-eyebrow"><Radio size={15}/> CASH N CARRY LIVE</span>
-          <h1>Livestreaming <span>Seller Experience</span></h1>
-          <p>Shop live, pin products and chat with buyers.</p>
+          <h1>{activeRoom.title}</h1>
+          <p>{activeRoom.sellerName}</p>
         </div>
         <div className="cnc-desktop-live-heading-actions">
-          <span className="cnc-desktop-live-heading-pill"><CheckCircle2 size={16}/>
-            {liveStreamingConfigured ? 'Cloudflare Stream configured' : 'Stream not configured'}
-          </span>
           <button type="button" className="cnc-desktop-neon-secondary" onClick={()=>{
             if(isHost)setDesktopEndConfirm(true);
             else onExit?.();
@@ -295,10 +291,6 @@ export default function LiveShoppingPage({
                 <span className="h-2 w-2 animate-pulse rounded-full bg-white" />
                 LIVE
               </span>
-              <span className="flex items-center gap-1 rounded-full bg-black/60 px-3 py-1 text-xs font-bold border border-white/10">
-                <Users size={13} className="text-emerald-300" />
-                <span>Viewers unverified</span>
-              </span>
             </div>
           </div>
 
@@ -311,7 +303,7 @@ export default function LiveShoppingPage({
             </div>
           ) : null}
           <div className="cnc-desktop-live-stage-title my-auto text-center space-y-2 py-8 relative z-10">
-            <h1 className="text-xl sm:text-2xl font-black">{activeRoom.title}</h1>
+
             {!validWhep(activeRoom.streamUrl) && (
               <p className="text-xs">Live video is not connected to this room.</p>
             )}
@@ -319,7 +311,7 @@ export default function LiveShoppingPage({
 
           <div className="cnc-desktop-live-stage-bottom flex flex-wrap items-end justify-between gap-3">
             {pinnedProduct ? (
-              <div className="cnc-desktop-live-pinned flex max-w-sm items-center gap-3 rounded-2xl bg-black/80 p-2.5 border border-white/20">
+              <div className="cnc-desktop-live-pinned cnc-live-product-depth flex max-w-sm items-center gap-3 rounded-2xl bg-black/80 p-2.5 border border-white/20">
                 {pinnedProduct.image ? (
                   <img
                     src={pinnedProduct.image}

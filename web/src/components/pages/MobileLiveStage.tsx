@@ -1,10 +1,10 @@
+import './live-studio.css';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   ArrowLeft, CheckCircle2, Gift, Heart, MessageCircle, MoreHorizontal, Package,
   Pin, Radio, Send, Share2, ShoppingBag, Sparkles, Users, X, ShieldCheck,
 } from 'lucide-react';
 import type { LiveRoom, ProductItem, LiveComment } from '../../types';
-import './mobile-live-glass.css';
 import CloudflareStreamPlayer from './CloudflareStreamPlayer';
 import {getLivePublisherPreview,validWhep} from '../../lib/cloudflare-stream-webrtc';
 
@@ -70,13 +70,6 @@ export default function MobileLiveStage({
 
   return (
     <section className="cnc-mobile-live-shell md:hidden" aria-label="Mobile livestream shopping room">
-      <div className="cnc-mobile-live-universe" aria-hidden="true">
-        <span className="cnc-mobile-live-orb cnc-mobile-live-orb--one" />
-        <span className="cnc-mobile-live-orb cnc-mobile-live-orb--two" />
-        <span className="cnc-mobile-live-orb cnc-mobile-live-orb--three" />
-        <span className="cnc-mobile-live-planet" />
-        <span className="cnc-mobile-live-floor" />
-      </div>
       {ownCamera ? (
         <SellerCameraMonitor media={ownCamera}/>
       ) : videoUrl ? (
@@ -88,7 +81,7 @@ export default function MobileLiveStage({
         <div className="cnc-mobile-live-top-row">
           <button type="button" className="cnc-live-icon-glass" onClick={isHost ? () => setConfirmEnd(true) : onExit} aria-label="Leave livestream"><ArrowLeft size={19}/></button>
           <span className="cnc-mobile-live-brand" aria-label="Cash N Carry">Cash<span>N</span>Carry</span>
-          <span className="cnc-mobile-live-pill cnc-mobile-live-pill--live"><Radio size={13}/> LIVE ROOM</span>
+          <span className="cnc-mobile-live-pill cnc-mobile-live-pill--live"><Radio size={13}/> Live</span>
           <button type="button" className="cnc-live-icon-glass" onClick={() => void shareRoom()} aria-label="Share livestream"><Share2 size={19}/></button>
         </div>
         <div className="cnc-mobile-live-host-strip">
@@ -154,7 +147,7 @@ export default function MobileLiveStage({
       </div>
 
       {pinned ? (
-        <div className="cnc-mobile-live-pinned" aria-label="Pinned product">
+        <div className="cnc-mobile-live-pinned cnc-live-product-depth" aria-label="Pinned product">
           <button type="button" className="cnc-mobile-live-pinned-photo" onClick={() => onSelectProduct(pinned)}
             aria-label={'View '+pinned.title}>{pinned.image ? <img src={pinned.image} alt=""/> : <Package size={25}/>}</button>
           <div className="cnc-mobile-live-pinned-copy">
@@ -184,13 +177,13 @@ export default function MobileLiveStage({
         <section role="dialog" aria-modal="true" aria-labelledby="cnc-mobile-live-sheet-title"
           className="cnc-mobile-live-sheet" onClick={event => event.stopPropagation()}>
           <div className="cnc-mobile-live-sheet-head">
-            <div><span className="cnc-mobile-live-eyebrow">CASH N CARRY LIVE</span>
+            <div>
               <h2 id="cnc-mobile-live-sheet-title">{panel === 'products' ? 'Shop live products' : 'Room options'}</h2></div>
             <button type="button" onClick={() => setPanel(null)} className="cnc-live-icon-glass" aria-label="Close"><X size={20}/></button>
           </div>
           {panel === 'products' ? <div className="cnc-mobile-live-products">
             {available.length === 0 ? <p className="cnc-mobile-live-empty">No published products available from this seller yet.</p>
-              : available.map(product => <article className="cnc-mobile-live-product-row" key={product.id}>
+              : available.map(product => <article className="cnc-mobile-live-product-row cnc-live-product-depth" key={product.id}>
                 <button type="button" className="cnc-mobile-live-product-thumb" onClick={() => { setPanel(null); onSelectProduct(product); }}>
                   {product.image ? <img src={product.image} alt={product.title}/> : <Package size={26}/>}
                 </button>
