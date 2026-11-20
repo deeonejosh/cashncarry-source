@@ -48,7 +48,7 @@
   .cnc-desktop-live-rooms button[aria-current=true]{border-color:#4bfbfa;background:#0e586f;}
   .cnc-desktop-live-grid{position:relative;z-index:1;grid-template-columns:minmax(0,1.88fr) minmax(280px,.84fr)!important;
     align-items:stretch;gap:16px!important;}
-  .cnc-desktop-live-stage{min-width:0;min-height:465px;aspect-ratio:auto!important;height:100%;
+  .cnc-desktop-live-stage{grid-column:auto!important;min-width:0;min-height:465px;aspect-ratio:auto!important;height:100%;
     border:1.5px solid #8d70f0d2!important;border-radius:26px!important;overflow:hidden;
     padding:20px!important;background:linear-gradient(150deg,#110f3d,#070b26 70%)!important;
     box-shadow:0 0 0 2px #8c53eb37,inset 0 0 36px #8d39c13f,0 12px 28px #0005;}
@@ -68,6 +68,7 @@
     backdrop-filter:blur(14px);border-radius:18px!important;}
   .cnc-desktop-live-stage-top>div:last-child span:first-child{background:linear-gradient(110deg,#fa205f,#b021da)!important;
     box-shadow:0 0 15px #d52e9e8c;}
+  .cnc-desktop-live-stage:has(.cnc-desktop-host-monitor,.cnc-desktop-live-stage-video) .cnc-desktop-live-stage-title{opacity:0;pointer-events:none;}
   .cnc-desktop-live-stage-title h1{text-shadow:0 5px 17px #0009,0 0 26px #7b33e3;font-size:clamp(19px,2.3vw,31px);}
   .cnc-desktop-live-stage-title p{color:#f4dce6!important;font-weight:750;}
   .cnc-desktop-live-stage-bottom{margin-top:auto;}
