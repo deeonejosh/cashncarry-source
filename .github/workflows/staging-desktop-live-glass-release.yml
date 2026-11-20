@@ -1,0 +1,97 @@
+name: Desktop livestream neon glass — staging QA and frontend package (NO AUTO DEPLOY)
+on:
+  push:
+    branches: [feature/staging-desktop-livestream-neon-20261119]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  verify-and-package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Install locked dependencies
+        working-directory: web
+        run: npm ci --no-audit --no-fund
+      - name: Type-check, desktop and mobile browser QA, application checks and build
+        working-directory: web
+        run: |
+          npm run lint
+          node scripts/desktop-live-browser-test.mjs
+          node scripts/seller-empty-browser-test.mjs
+          node scripts/mobile-live-browser-test.mjs
+          node scripts/seller-bulk-xlsx-browser-test.mjs
+          npm test
+          npm run build
+          npm run bundle:worker
+      - name: Package desktop frontend for existing private Cloudflare staging KV map (NO DEPLOY)
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p release-desktop-live
+          node --input-type=module <<'EOF'
+          import fs from 'node:fs';
+          const html=fs.readFileSync('web/dist/index.html','utf8');
+          const entries=fs.readdirSync('web/dist/assets');
+          const js=entries.find(f=>/^index-[a-zA-Z0-9_-]+\.js$/.test(f));
+          const css=entries.find(f=>/^index-[a-zA-Z0-9_-]+\.css$/.test(f));
+          if(!js||!css)throw Error('Expected Vite hashed assets missing');
+          const code=fs.readFileSync('web/dist/assets/'+js,'utf8');
+          const styles=fs.readFileSync('web/dist/assets/'+css,'utf8');
+          const requiredCode=['Desktop livestream studio','Livestream Ended','The live stage is ready','Cloudflare Stream could not connect','Your live camera','Bulk Upload Excel','Mobile livestream shopping room','Pin Your Published Product'];
+          const requiredCSS=['cnc-desktop-live-stage','cnc-desktop-live-grid','cnc-desktop-studio-modal','cnc-desktop-live-chat','cnc-desktop-live-empty','cnc-mobile-live-shell'];
+          if(!requiredCode.every(s=>code.includes(s)))throw Error('Compiled desktop app missing: '+requiredCode.filter(s=>!code.includes(s)));
+          if(!requiredCSS.every(s=>styles.includes(s)))throw Error('Compiled desktop CSS missing: '+requiredCSS.filter(s=>!styles.includes(s)));
+          if(code.includes('Download 10 test gaming products'))throw Error('Old sample Excel download resurfaced');
+          const ver='desktop-neon-glass-v1-20261120';
+          let fixed=html.replaceAll('/assets/'+js,'/assets/index-OV904MHY.js?v='+ver)
+            .replaceAll('/assets/'+css,'/assets/index-DvqBtUTy.css?v='+ver);
+          fixed=fixed.replace('<meta name="viewport"', '<meta name="cnc-staging-release" content="'+ver+'" />\n    <meta name="viewport"');
+          if(!fixed.includes('index-OV904MHY.js?v='+ver)||!fixed.includes('index-DvqBtUTy.css?v='+ver))
+            throw Error('Staging frontend KV routing mismatch');
+          fs.writeFileSync('release-desktop-live/index.html',fixed);
+          fs.copyFileSync('web/dist/assets/'+js,'release-desktop-live/index.js');
+          fs.copyFileSync('web/dist/assets/'+css,'release-desktop-live/index.css');
+          fs.writeFileSync('release-desktop-live/manifest.txt',[
+            'source='+process.env.GITHUB_SHA,
+            'environment=private-staging-only',
+            'worker=cashncarry-d1-staging-worker',
+            'scope=desktop-seller-three-livestream-screens-frontend-only',
+            'kv_html=cnc:marketplace-3d:7c1a29f:ui:index.html',
+            'kv_js=cnc:marketplace-3d:7c1a29f:ui:assets:index-OV904MHY.js',
+            'kv_css=cnc:marketplace-3d:7c1a29f:ui:assets:index-DvqBtUTy.css',
+            'backend_worker_unchanged=true',
+            'stream_secrets_unchanged=true',
+            'D1_unchanged=true',
+            'production_untouched=true',
+          ].join('\n')+'\n');
+          EOF
+          sha256sum release-desktop-live/index.* > release-desktop-live/hashes.txt
+          cat release-desktop-live/manifest.txt
+          cat release-desktop-live/hashes.txt
+      - name: Save verified staging frontend to isolated GitHub artifact branch (NO DEPLOY)
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c artifact/staging-desktop-live-neon-v1-20261120
+          git add -f release-desktop-live/
+          git commit -m "build(staging): verified desktop live neon glass frontend; preserve mobile and stream"
+          git push origin HEAD:refs/heads/artifact/staging-desktop-live-neon-v1-20261120
+      - name: Attach desktop QA screenshots and built staging assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: staging-desktop-live-neon-glass
+          path: |
+            release-desktop-live/
+            web/desktop-live-qa-artifacts/
+            web/seller-live-redesign-qa/
+            web/mobile-live-qa-artifacts/
+          retention-days: 14
