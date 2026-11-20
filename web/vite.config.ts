@@ -6,7 +6,17 @@ import {defineConfig} from 'vite';
 export default defineConfig(() => {
   return {
     build: process.env.CNC_LEGACY_ASSETS === 'true'
-      ? { cssCodeSplit: false, rolldownOptions: { output: { codeSplitting: false } } }
+      ? {
+          cssCodeSplit: false,
+          rolldownOptions: {
+            output: {
+              codeSplitting: false,
+              assetFileNames: asset => asset.names.some(name => name.endsWith('.css'))
+                ? 'assets/index-[hash][extname]'
+                : 'assets/[name]-[hash][extname]',
+            },
+          },
+        }
       : undefined,
     plugins: [react(), tailwindcss()],
     resolve: {
